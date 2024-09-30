@@ -5,8 +5,140 @@ __metadata:
   version: 8
   cacheKey: 10c0
 
+"@oxlint/darwin-arm64@npm:0.9.9":
+  version: 0.9.9
+  resolution: "@oxlint/darwin-arm64@npm:0.9.9"
+  conditions: os=darwin & cpu=arm64
+  languageName: node
+  linkType: hard
+
+"@oxlint/darwin-x64@npm:0.9.9":
+  version: 0.9.9
+  resolution: "@oxlint/darwin-x64@npm:0.9.9"
+  conditions: os=darwin & cpu=x64
+  languageName: node
+  linkType: hard
+
+"@oxlint/linux-arm64-gnu@npm:0.9.9":
+  version: 0.9.9
+  resolution: "@oxlint/linux-arm64-gnu@npm:0.9.9"
+  conditions: os=linux & cpu=arm64 & libc=glibc
+  languageName: node
+  linkType: hard
+
+"@oxlint/linux-arm64-musl@npm:0.9.9":
+  version: 0.9.9
+  resolution: "@oxlint/linux-arm64-musl@npm:0.9.9"
+  conditions: os=linux & cpu=arm64 & libc=musl
+  languageName: node
+  linkType: hard
+
+"@oxlint/linux-x64-gnu@npm:0.9.9":
+  version: 0.9.9
+  resolution: "@oxlint/linux-x64-gnu@npm:0.9.9"
+  conditions: os=linux & cpu=x64 & libc=glibc
+  languageName: node
+  linkType: hard
+
+"@oxlint/linux-x64-musl@npm:0.9.9":
+  version: 0.9.9
+  resolution: "@oxlint/linux-x64-musl@npm:0.9.9"
+  conditions: os=linux & cpu=x64 & libc=musl
+  languageName: node
+  linkType: hard
+
+"@oxlint/win32-arm64@npm:0.9.9":
+  version: 0.9.9
+  resolution: "@oxlint/win32-arm64@npm:0.9.9"
+  conditions: os=win32 & cpu=arm64
+  languageName: node
+  linkType: hard
+
+"@oxlint/win32-x64@npm:0.9.9":
+  version: 0.9.9
+  resolution: "@oxlint/win32-x64@npm:0.9.9"
+  conditions: os=win32 & cpu=x64
+  languageName: node
+  linkType: hard
+
+"@types/node@npm:^20":
+  version: 20.16.10
+  resolution: "@types/node@npm:20.16.10"
+  dependencies:
+    undici-types: "npm:~6.19.2"
+  checksum: 10c0/c0c0c7ecb083ec638c2118e54b5242bb4c39a75608cbac9475cf15aaceb64b8bc997a87a0798e700a81d61651c8a7750ae0455be0f0996ada6e8b2bb818d90c5
+  languageName: node
+  linkType: hard
+
 "global-module@workspace:.":
   version: 0.0.0-use.local
   resolution: "global-module@workspace:."
+  dependencies:
+    "@types/node": "npm:^20"
+    oxlint: "npm:^0"
+    typescript: "npm:^5.6"
   languageName: unknown
   linkType: soft
+
+"oxlint@npm:^0":
+  version: 0.9.9
+  resolution: "oxlint@npm:0.9.9"
+  dependencies:
+    "@oxlint/darwin-arm64": "npm:0.9.9"
+    "@oxlint/darwin-x64": "npm:0.9.9"
+    "@oxlint/linux-arm64-gnu": "npm:0.9.9"
+    "@oxlint/linux-arm64-musl": "npm:0.9.9"
+    "@oxlint/linux-x64-gnu": "npm:0.9.9"
+    "@oxlint/linux-x64-musl": "npm:0.9.9"
+    "@oxlint/win32-arm64": "npm:0.9.9"
+    "@oxlint/win32-x64": "npm:0.9.9"
+  dependenciesMeta:
+    "@oxlint/darwin-arm64":
+      optional: true
+    "@oxlint/darwin-x64":
+      optional: true
+    "@oxlint/linux-arm64-gnu":
+      optional: true
+    "@oxlint/linux-arm64-musl":
+      optional: true
+    "@oxlint/linux-x64-gnu":
+      optional: true
+    "@oxlint/linux-x64-musl":
+      optional: true
+    "@oxlint/win32-arm64":
+      optional: true
+    "@oxlint/win32-x64":
+      optional: true
+  bin:
+    oxc_language_server: bin/oxc_language_server
+    oxlint: bin/oxlint
+  checksum: 10c0/cc9bd67e6031ffb4013ec52cd90ea2d9a3d7c803a763f1766be41ae91e492fb479dbb1755f3a6c2cd40d23cee2f104416b355ebf026291e738007b1ff2e2856a
+  languageName: node
+  linkType: hard
+
+"typescript@npm:^5.6":
+  version: 5.6.2
+  resolution: "typescript@npm:5.6.2"
+  bin:
+    tsc: bin/tsc
+    tsserver: bin/tsserver
+  checksum: 10c0/3ed8297a8c7c56b7fec282532503d1ac795239d06e7c4966b42d4330c6cf433a170b53bcf93a130a7f14ccc5235de5560df4f1045eb7f3550b46ebed16d3c5e5
+  languageName: node
+  linkType: hard
+
+"typescript@patch:typescript@npm%3A^5.6#optional!builtin<compat/typescript>":
+  version: 5.6.2
+  resolution: "typescript@patch:typescript@npm%3A5.6.2#optional!builtin<compat/typescript>::version=5.6.2&hash=8c6c40"
+  bin:
+    tsc: bin/tsc
+    tsserver: bin/tsserver
+  checksum: 10c0/94eb47e130d3edd964b76da85975601dcb3604b0c848a36f63ac448d0104e93819d94c8bdf6b07c00120f2ce9c05256b8b6092d23cf5cf1c6fa911159e4d572f
+  languageName: node
+  linkType: hard
+
+"undici-types@npm:~6.19.2":
+  version: 6.19.8
+  resolution: "undici-types@npm:6.19.8"
+  checksum: 10c0/078afa5990fba110f6824823ace86073b4638f1d5112ee26e790155f481f2a868cc3e0615505b6f4282bdf74a3d8caad715fd809e870c2bb0704e3ea6082f344
+  languageName: node
+  linkType: hard

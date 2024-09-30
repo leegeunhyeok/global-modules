@@ -1,4 +1,13 @@
 {
   "name": "global-module",
-  "packageManager": "yarn@4.5.0"
+  "packageManager": "yarn@4.5.0",
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "lint": "oxlint --tsconfig tsconfig.json"
+  },
+  "devDependencies": {
+    "@types/node": "^20",
+    "oxlint": "^0",
+    "typescript": "^5.6"
+  }
 }
