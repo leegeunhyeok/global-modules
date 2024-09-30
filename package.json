@@ -2,12 +2,18 @@
   "name": "global-module",
   "packageManager": "yarn@4.5.0",
   "scripts": {
+    "start": "node --import @swc-node/register/esm-register src/index.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "lint": "oxlint --tsconfig tsconfig.json"
   },
   "devDependencies": {
+    "@swc-node/register": "1.10.x",
+    "@swc/core": "1.7.x",
     "@types/node": "^20",
     "oxlint": "^0",
     "typescript": "^5.6"
+  },
+  "engines": {
+    "node": ">=20.6"
   }
 }
