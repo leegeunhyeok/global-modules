@@ -1,0 +1,23 @@
+{
+  "name": "@global-module/runtime",
+  "version": "0.0.0",
+  "packageManager": "yarn@4.5.0",
+  "scripts": {
+    "start": "node --import @swc-node/register/esm-register src/index.ts",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "lint": "oxlint --tsconfig tsconfig.json",
+    "test": "vitest",
+    "build": "rm -rf dist && node --loader ../../.pnp.loader.mjs build/index.mjs && tsc -p tsconfig.build.json"
+  },
+  "devDependencies": {
+    "@swc-node/register": "^1.10.9",
+    "@swc/core": "1.7.x",
+    "@swc/helpers": "^0.5.13",
+    "@swc/types": "^0.1.12",
+    "@types/node": "^20",
+    "esbuild": "^0.24.0",
+    "oxlint": "^0.9.9",
+    "typescript": "5.6.2",
+    "vitest": "^2.1.1"
+  }
+}
