@@ -5,6 +5,5 @@
     "types": ["node"],
     "esModuleInterop": true,
     "allowJs": false
-  },
-  "include": ["src"]
+  }
 }
