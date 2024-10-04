@@ -401,7 +401,7 @@ __metadata:
     "@swc/types": "npm:^0.1.12"
     "@types/node": "npm:^20"
     esbuild: "npm:^0.24.0"
-    esbuild-dependency-graph: "npm:^0.4.1"
+    esbuild-dependency-graph: "npm:^0.4.4"
     oxlint: "npm:^0.9.9"
     typescript: "npm:5.6.2"
     vite: "npm:^5.4.8"
@@ -2743,10 +2743,12 @@ __metadata:
   languageName: node
   linkType: hard
 
-"esbuild-dependency-graph@npm:^0.4.1":
-  version: 0.4.1
-  resolution: "esbuild-dependency-graph@npm:0.4.1"
-  checksum: 10c0/8914399708063551a0b963d680f5f3c7800d91c33ffbfc1ab09751eebcfe56910aa8544ebd07b4fb6962f92a4b95f7c02d10062bc6f5f35e9774f8b629b016f7
+"esbuild-dependency-graph@npm:^0.4.4":
+  version: 0.4.4
+  resolution: "esbuild-dependency-graph@npm:0.4.4"
+  peerDependencies:
+    esbuild: "*"
+  checksum: 10c0/2ec6b7be4a545b2f8bf1b2a2015fe981594b098fb02856f33cccb1a5eb6fa21fbe88223f40e0ac6820fcb0ff8401c91f0478851d4105f144cc7b3432ee57e7a9
   languageName: node
   linkType: hard
 

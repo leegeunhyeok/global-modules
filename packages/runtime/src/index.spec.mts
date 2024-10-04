@@ -2,7 +2,7 @@ import vm from 'node:vm';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { describe, it, expect, beforeAll, vi, Mock } from 'vitest';
-import { DependencyGraph, isExternal } from 'esbuild-dependency-graph';
+import { DependencyGraph, isInternal } from 'esbuild-dependency-graph';
 import { setup } from './index.js';
 
 describe('@global-module/runtime', () => {
@@ -156,18 +156,18 @@ describe('@global-module/runtime', () => {
           .filter((path) => path !== targetModule)
           .map((path) => {
             const module = graph.getModule(path);
+
             return {
               id: DEPENDENCY_IDS[path],
-              imports: isExternal(module)
-                ? {}
-                : // @ts-expect-error -- fix me
-                  module.imports.reduce(
+              imports: isInternal(module)
+                ? module.imports.reduce(
                     (prev, importMeta) => ({
                       ...prev,
                       [importMeta.original]: DEPENDENCY_IDS[importMeta.path],
                     }),
                     {}
-                  ),
+                  )
+                : {},
             };
           });
 
