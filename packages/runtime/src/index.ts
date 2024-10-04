@@ -5,18 +5,25 @@ interface RuntimeConfig {
    * Defaults to `__modules`.
    */
   registryName?: string;
+  /**
+   * The context to be used as the global object is provided.
+   *
+   * Defaults to `global object` of current runtime context.
+   */
+  globalContext?: any;
 }
 
-const global = new Function('return this')();
+const _global = new Function('return this')();
 
 export function setup({
   registryName = '__modules',
+  globalContext = _global,
 }: RuntimeConfig = {}): void {
-  if (registryName in global) {
+  if (registryName in globalContext) {
     throw new Error('setup() should be called only once per runtime context');
   }
 
-  Object.defineProperty(global, registryName, {
+  Object.defineProperty(globalContext, registryName, {
     value: getGlobalModuleRegistry(),
   });
 }
