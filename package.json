@@ -1,5 +1,5 @@
 {
-  "name": "global-module",
+  "name": "global-modules",
   "packageManager": "yarn@4.5.0",
   "workspaces": [
     "packages/*"

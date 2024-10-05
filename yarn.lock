@@ -391,9 +391,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@global-module/runtime@workspace:packages/runtime":
+"@global-modules/runtime@workspace:packages/runtime":
   version: 0.0.0-use.local
-  resolution: "@global-module/runtime@workspace:packages/runtime"
+  resolution: "@global-modules/runtime@workspace:packages/runtime"
   dependencies:
     "@swc-node/register": "npm:^1.10.9"
     "@swc/core": "npm:1.7.x"
@@ -410,9 +410,9 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@global-module/swc-plugin@workspace:packages/swc-plugin":
+"@global-modules/swc-plugin@workspace:packages/swc-plugin":
   version: 0.0.0-use.local
-  resolution: "@global-module/swc-plugin@workspace:packages/swc-plugin"
+  resolution: "@global-modules/swc-plugin@workspace:packages/swc-plugin"
   dependencies:
     "@swc-node/register": "npm:^1.10.9"
     "@swc/core": "npm:1.7.x"
@@ -3334,9 +3334,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"global-module@workspace:.":
+"global-modules@workspace:.":
   version: 0.0.0-use.local
-  resolution: "global-module@workspace:."
+  resolution: "global-modules@workspace:."
   dependencies:
     "@types/node": "npm:^20"
     lerna: "npm:^8.1.8"

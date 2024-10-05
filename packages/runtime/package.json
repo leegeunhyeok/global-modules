@@ -1,5 +1,5 @@
 {
-  "name": "@global-module/runtime",
+  "name": "@global-modules/runtime",
   "version": "0.0.0",
   "packageManager": "yarn@4.5.0",
   "scripts": {

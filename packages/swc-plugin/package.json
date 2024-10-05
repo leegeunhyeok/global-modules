@@ -1,5 +1,5 @@
 {
-  "name": "@global-module/swc-plugin",
+  "name": "@global-modules/swc-plugin",
   "version": "0.0.0",
   "packageManager": "yarn@4.5.0",
   "scripts": {

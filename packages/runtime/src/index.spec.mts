@@ -5,7 +5,7 @@ import { describe, it, expect, beforeAll, vi, Mock } from 'vitest';
 import { DependencyGraph, isInternal } from 'esbuild-dependency-graph';
 import { setup } from './index.js';
 
-describe('@global-module/runtime', () => {
+describe('@global-modules/runtime', () => {
   const REGISTRY_NAME = '__modules';
   const GLOBAL_CONTEXT_NAME = 'testGlobal';
 
@@ -160,8 +160,6 @@ describe('@global-module/runtime', () => {
                 : [],
             };
           });
-
-        console.log(inverseDependencies);
 
         // Update reverse dependencies (parents)
         inverseDependencies.forEach(({ id, inverseDependencies }) => {
