@@ -77,13 +77,9 @@ describe('@global-module/runtime', () => {
 
       context = createSandboxContext();
       context.setup();
-      context.getGlobalModuleRegistry().define(
-        () => {
-          mockedLog('hello, world');
-        },
-        0,
-        {}
-      );
+      context.getGlobalModuleRegistry().define(() => {
+        mockedLog('hello, world');
+      }, 0);
     });
 
     it('should evaluate module immediately', () => {
@@ -159,21 +155,17 @@ describe('@global-module/runtime', () => {
 
             return {
               id: DEPENDENCY_IDS[path],
-              imports: isInternal(module)
-                ? module.imports.reduce(
-                    (prev, importMeta) => ({
-                      ...prev,
-                      [importMeta.original]: DEPENDENCY_IDS[importMeta.path],
-                    }),
-                    {}
-                  )
-                : {},
+              inverseDependencies: isInternal(module)
+                ? module.imports.map(({ path }) => DEPENDENCY_IDS[path])
+                : [],
             };
           });
 
+        console.log(inverseDependencies);
+
         // Update reverse dependencies (parents)
-        inverseDependencies.forEach(({ id, imports }) => {
-          update(id, imports);
+        inverseDependencies.forEach(({ id, inverseDependencies }) => {
+          update(id, inverseDependencies);
         });
       });
 

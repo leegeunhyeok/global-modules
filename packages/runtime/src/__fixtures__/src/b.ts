@@ -1,19 +1,15 @@
 import { c } from './c';
 
-var $deps = {
-  './c': () => ({ c }),
-};
-
 // @ts-ignore
 $$GLOBAL_CONTEXT.__modules.define(
   ($import, $exports) => {
-    const mod0 = $import('./c');
-    $exports.b = e0 = 20 + mod0.c;
+    const mod0 = $import(0);
+    $exports.b = _e0 = 20 + mod0.c;
   },
   2,
-  $deps
+  [{ c }]
 );
 
-var e0;
+var _e0;
 
-export { e0 as b };
+export { _e0 as b };

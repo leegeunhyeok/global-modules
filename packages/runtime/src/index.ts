@@ -32,14 +32,24 @@ function getGlobalModuleRegistry(): GlobalModuleRegistry {
   const registry: Record<ModuleId, ModuleContext> = {};
 
   function createImport(id: ModuleId): ModuleImport {
-    return (source: string) => {
-      const dependencyFactory = registry[id]?.$dependencyMap?.[source];
+    return (index: number) => {
+      // d: dependencyMap
+      const target = registry[id]?.d?.[index];
 
-      if (dependencyFactory == null) {
-        throw new Error(`'${source}' not found (id: ${id})`);
+      // Case 1: When the module is newly updated at runtime (eg. HMR)
+      if (typeof target === 'number') {
+        // x: exports
+        return registry[target].x;
       }
 
-      return dependencyFactory();
+      if (target == null) {
+        throw new Error(`module not found (id: ${id}, index: ${index})`);
+      }
+
+      // Case 2: When the defined module is evaluated for the first time.
+      return typeof target === 'function'
+        ? target() // CommonJS
+        : target; // ESM
     };
   }
 
@@ -48,15 +58,15 @@ function getGlobalModuleRegistry(): GlobalModuleRegistry {
   }
 
   return {
-    define: (factory, id, dependencyMap = {}) => {
+    define: (factory, id, dependencyMap) => {
       const $import = createImport(id);
       const $exports = createExports();
 
       registry[id] = {
-        factory,
-        $import,
-        $exports,
-        $dependencyMap: dependencyMap,
+        f: factory,
+        i: $import,
+        x: $exports,
+        d: dependencyMap,
       };
 
       factory($import, $exports);
@@ -68,14 +78,13 @@ function getGlobalModuleRegistry(): GlobalModuleRegistry {
         throw new Error(`module not found (id: ${id})`);
       }
 
-      Object.entries(dependencyIds ?? {}).forEach(([source, moduleId]) => {
-        targetModule.$dependencyMap[source] = () => registry[moduleId].$exports;
+      dependencyIds.forEach((moduleId, index) => {
+        // d: dependencyMap
+        targetModule.d[index] = moduleId;
       });
 
-      targetModule.factory(
-        targetModule.$import,
-        (targetModule.$exports = createExports())
-      );
+      // => factory(import, exports);
+      targetModule.f(targetModule.i, (targetModule.x = createExports()));
     },
   };
 }

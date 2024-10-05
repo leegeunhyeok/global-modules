@@ -1,14 +1,8 @@
-var $deps = {};
-
 // @ts-ignore
-$$GLOBAL_CONTEXT.__modules.define(
-  (_$import, $exports) => {
-    $exports.a = e0 = 10;
-  },
-  1,
-  $deps
-);
+$$GLOBAL_CONTEXT.__modules.define((_$import, $exports) => {
+  $exports.a = _e0 = 10;
+}, 1);
 
-var e0;
+var _e0;
 
-export { e0 as a };
+export { _e0 as a };
