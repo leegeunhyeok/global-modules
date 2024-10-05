@@ -2,12 +2,30 @@
   "name": "@global-modules/runtime",
   "version": "0.0.0",
   "packageManager": "yarn@4.5.0",
+  "types": "./dist/index.d.ts",
+  "main": "./dist/index.js",
+  "module": "./esm/index.mjs",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./esm/index.js",
+      "require": "./cjs/index.js",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "./dist/**/*.js",
+    "./cjs/**/*.cjs",
+    "./esm/**/*.mjs"
+  ],
   "scripts": {
+    "prepack": "yarn build",
     "start": "node --import @swc-node/register/esm-register src/index.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "lint": "oxlint --tsconfig tsconfig.json",
     "test": "vitest",
-    "build": "rm -rf dist && node build/index.mjs && tsc -p tsconfig.build.json"
+    "cleanup": "rm -rf dist cjs esm",
+    "build": "yarn cleanup && node build/index.mjs && tsc -p tsconfig.build.json"
   },
   "devDependencies": {
     "@swc-node/register": "^1.10.9",
