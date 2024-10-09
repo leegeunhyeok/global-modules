@@ -1,0 +1,7 @@
+# Library bundles
+**/dist/*
+**/cjs/*
+**/esm/*
+
+# Test fixtures
+**/__fixtures__/*

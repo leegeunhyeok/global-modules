@@ -143,8 +143,8 @@ describe('@global-modules/runtime', () => {
 
         // Module: d
         const targetModule = 'src/__fixtures__/src/d.ts';
-        define((_$import, $exports) => {
-          $exports.d = 100; // Change exports value (Before: 40)
+        define((exports, _require) => {
+          exports.d = 100; // Change exports value (Before: 40)
         }, DEPENDENCY_IDS[targetModule]);
 
         const inverseDependencies = graph

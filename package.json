@@ -5,6 +5,7 @@
     "packages/*"
   ],
   "scripts": {
+    "lint": "eslint ./packages",
     "build": "lerna run build"
   },
   "engines": {
@@ -12,7 +13,13 @@
   },
   "devDependencies": {
     "@types/node": "^20",
+    "@vercel/style-guide": "^6.0.0",
+    "eslint": "^8.0.0",
+    "eslint-import-resolver-typescript": "^3.6.3",
+    "eslint-plugin-prettier": "^5.2.1",
     "lerna": "^8.1.8",
+    "prettier": "^3.3.3",
     "typescript": "5.6.2"
-  }
+  },
+  "prettier": "@vercel/style-guide/prettier"
 }

@@ -1,3 +1,6 @@
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- allow
+type Global = any;
+
 interface RuntimeConfig {
   /**
    * Name of the module registry to be registered in the global object.
@@ -10,10 +13,11 @@ interface RuntimeConfig {
    *
    * Defaults to `global object` of current runtime context.
    */
-  globalContext?: any;
+  globalContext?: Global;
 }
 
-const _global = new Function('return this')();
+// eslint-disable-next-line no-new-func, @typescript-eslint/no-implied-eval -- allow for get global context tricky.
+const _global: Global = new Function('return this')();
 
 export function setup({
   registryName = '__modules',
@@ -29,62 +33,59 @@ export function setup({
 }
 
 function getGlobalModuleRegistry(): GlobalModuleRegistry {
-  const registry: Record<ModuleId, ModuleContext> = {};
+  const moduleRegistry: Record<ModuleId, Module> = {};
 
-  function createImport(id: ModuleId): ModuleImport {
-    return (index: number) => {
-      // d: dependencyMap
-      const target = registry[id]?.d?.[index];
+  function require(moduleId: ModuleId, index: number): ModuleExports {
+    const targetModule = moduleRegistry[moduleId];
 
-      // Case 1: When the module is newly updated at runtime (eg. HMR)
-      if (typeof target === 'number') {
-        // x: exports
-        return registry[target].x;
-      }
+    if (targetModule == null) {
+      throw new Error(`module not found: ${String(moduleId)}`);
+    }
 
-      if (target == null) {
-        throw new Error(`module not found (id: ${id}, index: ${index})`);
-      }
+    const dependency = targetModule.deps[index];
 
-      // Case 2: When the defined module is evaluated for the first time.
-      return typeof target === 'function'
-        ? target() // CommonJS
-        : target; // ESM
-    };
+    switch (typeof dependency) {
+      case 'number':
+        return moduleRegistry[dependency].exports;
+      
+      case 'object':
+        return dependency;
+
+      case 'function':
+        return dependency();
+
+      default:
+        throw new Error('invalid dependency');
+    }
   }
 
-  function createExports(): ModuleExports {
-    return Object.create(null);
+  function define(factory: (exports: ModuleExports, require: ModuleRequire) => void, id: ModuleId, deps: DependencyMap = []): void {
+    const module = factory as Module;
+
+    module.id = id;
+    module.exports = Object.create(null);
+    module.deps = deps;
+    module.ready = false;
+
+    moduleRegistry[id] = module;
+
+    // eslint-disable-next-line no-useless-call -- evaluate module
+    module.call(null, module.exports, require.bind(null, id));
+    module.ready = true;
   }
 
-  return {
-    define: (factory, id, dependencyMap) => {
-      const $import = createImport(id);
-      const $exports = createExports();
+  function update(id: ModuleId, deps: ModuleId[]): void {
+    const module = moduleRegistry[id];
 
-      registry[id] = {
-        f: factory,
-        i: $import,
-        x: $exports,
-        d: dependencyMap,
-      };
+    if (module == null) {
+      throw new Error(`module not found: ${String(id)}`);
+    }
 
-      factory($import, $exports);
-    },
-    update: (id, dependencyIds) => {
-      const targetModule = registry[id];
+    module.deps = deps;
 
-      if (targetModule == null) {
-        throw new Error(`module not found (id: ${id})`);
-      }
+    // eslint-disable-next-line no-useless-call -- Create new exports object and re-evaluate the module.
+    module.call(null, (module.exports = Object.create(null)), require.bind(null, id));
+  }
 
-      dependencyIds.forEach((moduleId, index) => {
-        // d: dependencyMap
-        targetModule.d[index] = moduleId;
-      });
-
-      // => factory(import, exports);
-      targetModule.f(targetModule.i, (targetModule.x = createExports()));
-    },
-  };
+  return { define, update };
 }

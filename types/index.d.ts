@@ -1,33 +1,16 @@
-type Module = any;
+interface Module {
+  (exports: ModuleExports, require: ModuleRequire, ): void;
+  id: ModuleId;
+  exports: ModuleExports;
+  deps: DependencyMap;
+  ready: boolean;
+}
+
 type ModuleId = number;
-type ModuleFactory = ($import: ModuleImport, $exports: ModuleExports) => void;
+type ModuleExports = Record<string, unknown>;
+type ModuleRequire = (index: number) => ModuleExports;
 
-type EsModule = Module;
-type CommonJsModule = () => Module;
-
-type ModuleImport = (index: number) => Module;
-type ModuleExports = Record<string, Module>;
-
-type DependencyMap = (EsModule | CommonJsModule | ModuleId)[];
-
-type ModuleContext = {
-  /**
-   * factory
-   */
-  f: ModuleFactory;
-  /**
-   * import
-   */
-  i: ModuleImport;
-  /**
-   * exports
-   */
-  x: ModuleExports;
-  /**
-   * dependency map
-   */
-  d: DependencyMap;
-};
+type DependencyMap = (ModuleId | ModuleExports | (() => ModuleExports) )[];
 
 interface GlobalModuleRegistry {
   /**
@@ -44,15 +27,15 @@ interface GlobalModuleRegistry {
    * **Case 1**
    *
    * ```ts
-   * define(($import, $exports) => {
-   *   const mod0 = $import(0); // foo
-   *   const mod1 = $import(1); // bar
-   *   const mod2 = $import(2); // baz
+   * define((exports, require) => {
+   *   const mod0 = require(0); // foo
+   *   const mod1 = require(1); // bar
+   *   const mod2 = require(2); // baz
    *
    *   // module body
    *
-   *   $exports.named = expr_1;
-   *   $exports.default = expr_2;
+   *   exports.named = expr_1;
+   *   exports.default = expr_2;
    * }, 1000, [
    *   foo,
    *   bar,
@@ -69,23 +52,23 @@ interface GlobalModuleRegistry {
    * define(..., 1002, []); // bar
    * define(..., 1003, []); // baz
    *
-   * define(($import, $exports) => {
-   *   const mod0 = $import(0); // foo
-   *   const mod1 = $import(1); // bar
-   *   const mod2 = $import(2); // baz
+   * define((exports, require) => {
+   *   const mod0 = require(0); // foo
+   *   const mod1 = require(1); // bar
+   *   const mod2 = require(2); // baz
    *
    *   // module body
    *
-   *   $exports.named = expr_1;
-   *   $exports.default = expr_2;
+   *   exports.named = expr_1;
+   *   exports.default = expr_2;
    * }, 1000, [1001, 1002, 1003]);
    * ```
    *
    */
   define: (
-    factory: ModuleFactory,
+    factory: (exports: ModuleExports, require: ModuleRequire) => void,
     id: ModuleId,
-    dependencyMap?: DependencyMap
+    deps?: DependencyMap
   ) => void;
   /**
    * Re-evaluates the specified defined module and creates a new exports object.

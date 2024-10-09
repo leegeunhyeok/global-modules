@@ -22,7 +22,6 @@
     "prepack": "yarn build",
     "start": "node --import @swc-node/register/esm-register src/index.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "lint": "oxlint --tsconfig tsconfig.json",
     "test": "vitest",
     "cleanup": "rm -rf dist cjs esm",
     "build": "yarn cleanup && node build/index.mjs && tsc -p tsconfig.build.json"
@@ -35,7 +34,6 @@
     "@types/node": "^20",
     "esbuild": "^0.24.0",
     "esbuild-dependency-graph": "^0.4.4",
-    "oxlint": "^0.9.9",
     "typescript": "5.6.2",
     "vite": "^5.4.8",
     "vitest": "^2.1.1",
