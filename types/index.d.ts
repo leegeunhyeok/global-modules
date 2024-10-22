@@ -1,5 +1,5 @@
 interface Module {
-  (exports: ModuleExports, require: ModuleRequire, ): void;
+  (exports: ModuleExports, require: ModuleRequire): void;
   id: ModuleId;
   exports: ModuleExports;
   deps: DependencyMap;
@@ -10,7 +10,7 @@ type ModuleId = number;
 type ModuleExports = Record<string, unknown>;
 type ModuleRequire = (index: number) => ModuleExports;
 
-type DependencyMap = (ModuleId | ModuleExports | (() => ModuleExports) )[];
+type DependencyMap = (ModuleId | ModuleExports | (() => ModuleExports))[];
 
 interface GlobalModuleRegistry {
   /**
@@ -68,7 +68,7 @@ interface GlobalModuleRegistry {
   define: (
     factory: (exports: ModuleExports, require: ModuleRequire) => void,
     id: ModuleId,
-    deps?: DependencyMap
+    deps?: DependencyMap,
   ) => void;
   /**
    * Re-evaluates the specified defined module and creates a new exports object.

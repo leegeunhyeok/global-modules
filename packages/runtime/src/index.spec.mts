@@ -2,7 +2,7 @@ import vm from 'node:vm';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { describe, it, expect, beforeAll, vi, Mock } from 'vitest';
-import { DependencyGraph, isInternal } from 'esbuild-dependency-graph';
+import { DependencyGraph } from 'esbuild-dependency-graph';
 import { setup } from './index.js';
 
 describe('@global-modules/runtime', () => {
@@ -24,8 +24,8 @@ describe('@global-modules/runtime', () => {
       setup: () => {
         return evaluate(
           `setup({ registryName: ${JSON.stringify(
-            REGISTRY_NAME
-          )}, globalContext: ${GLOBAL_CONTEXT_NAME} })`
+            REGISTRY_NAME,
+          )}, globalContext: ${GLOBAL_CONTEXT_NAME} })`,
         );
       },
       getGlobalModuleRegistry: () => {
@@ -117,7 +117,7 @@ describe('@global-modules/runtime', () => {
       const fixtureScript = (
         await fs.readFile(
           path.resolve(import.meta.dirname, '__fixtures__/dist/index.js'),
-          'utf-8'
+          'utf-8',
         )
       ).replaceAll('$$GLOBAL_CONTEXT', GLOBAL_CONTEXT_NAME);
 
@@ -135,7 +135,7 @@ describe('@global-modules/runtime', () => {
       beforeAll(async () => {
         const metafile = await fs.readFile(
           path.resolve(import.meta.dirname, '__fixtures__/dist/metafile.json'),
-          'utf-8'
+          'utf-8',
         );
         const graph = new DependencyGraph(metafile);
 
@@ -147,23 +147,18 @@ describe('@global-modules/runtime', () => {
           exports.d = 100; // Change exports value (Before: 40)
         }, DEPENDENCY_IDS[targetModule]);
 
-        const inverseDependencies = graph
+        const inverseDependenciesId = graph
           .inverseDependenciesOf(targetModule)
-          .filter((path) => path !== targetModule)
-          .map((path) => {
-            const module = graph.getModule(path);
-
-            return {
-              id: DEPENDENCY_IDS[path],
-              inverseDependencies: isInternal(module)
-                ? module.imports.map(({ path }) => DEPENDENCY_IDS[path])
-                : [],
-            };
-          });
+          .map((module) => ({
+            id: DEPENDENCY_IDS[module],
+            dependencies: graph
+              .dependenciesOf(module)
+              .map((module) => DEPENDENCY_IDS[module]),
+          }));
 
         // Update reverse dependencies (parents)
-        inverseDependencies.forEach(({ id, inverseDependencies }) => {
-          update(id, inverseDependencies);
+        inverseDependenciesId.forEach(({ id, dependencies }) => {
+          update(id, dependencies);
         });
       });
 

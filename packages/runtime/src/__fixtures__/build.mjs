@@ -15,5 +15,5 @@ const result = await esbuild.build({
 await fs.writeFile(
   path.join(outdir, 'metafile.json'),
   JSON.stringify(result.metafile, null, 2),
-  'utf-8'
+  'utf-8',
 );

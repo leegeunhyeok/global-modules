@@ -47,7 +47,7 @@ function getGlobalModuleRegistry(): GlobalModuleRegistry {
     switch (typeof dependency) {
       case 'number':
         return moduleRegistry[dependency].exports;
-      
+
       case 'object':
         return dependency;
 
@@ -59,7 +59,11 @@ function getGlobalModuleRegistry(): GlobalModuleRegistry {
     }
   }
 
-  function define(factory: (exports: ModuleExports, require: ModuleRequire) => void, id: ModuleId, deps: DependencyMap = []): void {
+  function define(
+    factory: (exports: ModuleExports, require: ModuleRequire) => void,
+    id: ModuleId,
+    deps: DependencyMap = [],
+  ): void {
     const module = factory as Module;
 
     module.id = id;
@@ -84,7 +88,11 @@ function getGlobalModuleRegistry(): GlobalModuleRegistry {
     module.deps = deps;
 
     // eslint-disable-next-line no-useless-call -- Create new exports object and re-evaluate the module.
-    module.call(null, (module.exports = Object.create(null)), require.bind(null, id));
+    module.call(
+      null,
+      (module.exports = Object.create(null)),
+      require.bind(null, id),
+    );
   }
 
   return { define, update };

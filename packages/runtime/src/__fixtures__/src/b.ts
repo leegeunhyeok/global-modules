@@ -7,7 +7,7 @@ $$GLOBAL_CONTEXT.__modules.define(
     exports.b = _e0 = 20 + mod0.c;
   },
   2,
-  [{ c }]
+  [{ c }],
 );
 
 var _e0;

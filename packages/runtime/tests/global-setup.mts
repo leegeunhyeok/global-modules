@@ -18,6 +18,6 @@ function runStep(description: string, step: () => Promise<void>) {
 export default async function () {
   await runStep(
     'Building fixtures...',
-    async () => void (await $`node src/__fixtures__/build.mjs`)
+    async () => void (await $`node src/__fixtures__/build.mjs`),
   );
 }

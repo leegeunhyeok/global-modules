@@ -11,5 +11,5 @@ $$GLOBAL_CONTEXT.__modules.define(
     print(mod0.a, mod1.b);
   },
   0,
-  [({ a }), ({ b })]
+  [{ a }, { b }],
 );
