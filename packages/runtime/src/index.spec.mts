@@ -90,11 +90,11 @@ describe('@global-modules/runtime', () => {
 
   describe('when define modules to global registry', () => {
     const DEPENDENCY_IDS = {
-      'src/__fixtures__/src/d.ts': 4,
-      'src/__fixtures__/src/c.ts': 3,
-      'src/__fixtures__/src/b.ts': 2,
-      'src/__fixtures__/src/a.ts': 1,
       'src/__fixtures__/src/index.ts': 0,
+      'src/__fixtures__/src/a.ts': 1,
+      'src/__fixtures__/src/b.ts': 2,
+      'src/__fixtures__/src/c.ts': 3,
+      'src/__fixtures__/src/d.ts': 4,
     } as const;
 
     let context: SandboxContext;
@@ -137,7 +137,11 @@ describe('@global-modules/runtime', () => {
           path.resolve(import.meta.dirname, '__fixtures__/dist/metafile.json'),
           'utf-8',
         );
-        const graph = new DependencyGraph(metafile);
+        const graph = new DependencyGraph();
+
+        // Add modules to ensure IDs order.
+        Object.keys(DEPENDENCY_IDS).forEach((path) => graph.addModule(path));
+        graph.load(metafile);
 
         const { define, update } = context.getGlobalModuleRegistry();
 
@@ -145,15 +149,15 @@ describe('@global-modules/runtime', () => {
         const targetModule = 'src/__fixtures__/src/d.ts';
         define((exports, _require) => {
           exports.d = 100; // Change exports value (Before: 40)
-        }, DEPENDENCY_IDS[targetModule]);
+        }, 4);
 
         const inverseDependenciesId = graph
           .inverseDependenciesOf(targetModule)
           .map((module) => ({
-            id: DEPENDENCY_IDS[module],
+            id: module.id,
             dependencies: graph
-              .dependenciesOf(module)
-              .map((module) => DEPENDENCY_IDS[module]),
+              .dependenciesOf(module.id)
+              .map((module) => module.id),
           }));
 
         // Update reverse dependencies (parents)

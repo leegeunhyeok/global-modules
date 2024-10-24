@@ -3,9 +3,10 @@
     "rootDir": ".",
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
+    "types": ["node"],
     "esModuleInterop": true,
     "strictNullChecks": true,
     "allowJs": false,
-    "types": ["node"]
+    "stripInternal": true
   }
 }

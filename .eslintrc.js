@@ -24,11 +24,14 @@ module.exports = {
   },
   overrides: [
     {
-      files: ['*.js', '*.ts'],
+      files: ['*.js', '*.ts', '*.mts'],
       rules: {
         semi: ['error', 'always'],
         quotes: ['error', 'single'],
         eqeqeq: 'off',
+        '@typescript-eslint/no-shadow': 'off',
+        '@typescript-eslint/no-confusing-void-expression': 'off',
+        '@typescript-eslint/prefer-promise-reject-errors': 'off',
         '@typescript-eslint/no-unnecessary-condition': 'off',
         '@typescript-eslint/no-unsafe-assignment': 'off',
       },
