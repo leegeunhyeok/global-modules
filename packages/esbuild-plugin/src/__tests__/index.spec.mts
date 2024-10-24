@@ -110,7 +110,7 @@ describe('@global-modules/esbuild-plugin', () => {
 
       // `src/__tests__/__fixtures__/a.ts`
       // `src/__tests__/__fixtures__/b.ts`
-      expect(entryModule.dependencies.size).toBe(2);
+      expect(entryModule.dependencies).toHaveLength(2);
     });
 
     it('addModule', async () => {
@@ -122,7 +122,7 @@ describe('@global-modules/esbuild-plugin', () => {
         'src/__tests__/__fixtures__/new-module.ts',
       );
 
-      expect(module.dependencies.size).toBe(0);
+      expect(module.dependencies).toHaveLength(0);
     });
 
     it('updateModule', async () => {
@@ -146,8 +146,8 @@ describe('@global-modules/esbuild-plugin', () => {
        *   new.ts (dependent count: 1)
        * ```
        */
-      expect(module.dependencies.size).toBe(0);
-      expect(module.dependents.size).toBe(1);
+      expect(module.dependencies).toHaveLength(0);
+      expect(module.dependents).toHaveLength(1);
     });
 
     it('syncModule', async () => {
@@ -173,7 +173,7 @@ describe('@global-modules/esbuild-plugin', () => {
        *   new-deps-2.ts
        * ```
        */
-      expect(targetModule.dependencies.size).toBe(2);
+      expect(targetModule.dependencies).toHaveLength(2);
 
       // Update imports
       await generateUpdatedModule();
@@ -199,7 +199,7 @@ describe('@global-modules/esbuild-plugin', () => {
        *   new-deps-3.ts
        * ```
        */
-      expect(targetModule.dependencies.size).toBe(3);
+      expect(targetModule.dependencies).toHaveLength(3);
     });
 
     it('removeModule', () => {

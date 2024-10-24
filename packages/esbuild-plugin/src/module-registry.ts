@@ -57,7 +57,7 @@ export class ModuleRegistry
       ? this.updateModule(
           actualPath,
           dependencies,
-          Array.from(this.getModule(actualPath).dependents),
+          this.getModule(actualPath).dependents,
         )
       : this.addModule(actualPath, dependencies, []);
   }

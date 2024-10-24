@@ -655,7 +655,7 @@ __metadata:
     "@swc/types": "npm:^0.1.12"
     "@types/node": "npm:^20"
     esbuild: "npm:^0.24.0"
-    esbuild-dependency-graph: "npm:^0.12.0"
+    esbuild-dependency-graph: "npm:^0.13.0"
     esresolve: "npm:^0.3.2"
     typescript: "npm:5.6.2"
     vite: "npm:^5.4.9"
@@ -676,7 +676,7 @@ __metadata:
     "@swc/types": "npm:^0.1.12"
     "@types/node": "npm:^20"
     esbuild: "npm:^0.24.0"
-    esbuild-dependency-graph: "npm:^0.12.0"
+    esbuild-dependency-graph: "npm:^0.13.0"
     typescript: "npm:5.6.2"
     vite: "npm:^5.4.8"
     vitest: "npm:^2.1.1"
@@ -3951,12 +3951,12 @@ __metadata:
   languageName: node
   linkType: hard
 
-"esbuild-dependency-graph@npm:^0.12.0":
-  version: 0.12.0
-  resolution: "esbuild-dependency-graph@npm:0.12.0"
+"esbuild-dependency-graph@npm:^0.13.0":
+  version: 0.13.0
+  resolution: "esbuild-dependency-graph@npm:0.13.0"
   peerDependencies:
     esbuild: "*"
-  checksum: 10c0/9dca04f9fc54ab9352fcf485b947f9680a7137e855e7aa0f025b3f616afdbe764fb68689a87b99865ddc935923e2f72f07c930d6223a8fde843f2df8d6ff7030
+  checksum: 10c0/df6d028f7369cd9b81198a878f42d3a2d31d89b7463c8186a92b5d54db246f2aba7232674ed65f08ba17a2f120baf33cac18ad71e6cf72236156779170fb7f09
   languageName: node
   linkType: hard
 

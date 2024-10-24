@@ -55,7 +55,7 @@ watcher.onChange(async (filePath) => {
         plugins: [
           [
             '@global-modules/swc-plugin',
-            { dependencies: Array.from(updatedModule.dependencies) },
+            { dependencies: updatedModule.dependencies },
           ],
         ],
       },
@@ -66,7 +66,7 @@ watcher.onChange(async (filePath) => {
   context.hot.send([
     result.code,
     ...inverseDependencies.forEach(({ id, dependencies }) => {
-      return `global.__modules.update(${id}, ${JSON.stringify(Array.from(dependencies))})`;
+      return `global.__modules.update(${id}, ${JSON.stringify(dependencies)})`;
     }),
   ]);
 });
