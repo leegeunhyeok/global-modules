@@ -33,10 +33,10 @@ export function setup({
 }
 
 function getGlobalModuleRegistry(): GlobalModuleRegistry {
-  const moduleRegistry: Record<ModuleId, Module> = {};
+  const moduleRegistry = new Map<ModuleId, Module>();
 
   function require(moduleId: ModuleId, index: number): ModuleExports {
-    const targetModule = moduleRegistry[moduleId];
+    const targetModule = moduleRegistry.get(moduleId);
 
     if (targetModule == null) {
       throw new Error(`module not found: ${String(moduleId)}`);
@@ -46,7 +46,7 @@ function getGlobalModuleRegistry(): GlobalModuleRegistry {
 
     switch (typeof dependency) {
       case 'number':
-        return moduleRegistry[dependency].exports;
+        return moduleRegistry.get(dependency)?.exports ?? {};
 
       case 'object':
         return dependency;
@@ -71,7 +71,7 @@ function getGlobalModuleRegistry(): GlobalModuleRegistry {
     module.deps = deps;
     module.ready = false;
 
-    moduleRegistry[id] = module;
+    moduleRegistry.set(id, module);
 
     // eslint-disable-next-line no-useless-call -- evaluate module
     module.call(null, module.exports, require.bind(null, id));
@@ -79,7 +79,7 @@ function getGlobalModuleRegistry(): GlobalModuleRegistry {
   }
 
   function update(id: ModuleId, deps: ModuleId[]): void {
-    const module = moduleRegistry[id];
+    const module = moduleRegistry.get(id);
 
     if (module == null) {
       throw new Error(`module not found: ${String(id)}`);
@@ -88,11 +88,7 @@ function getGlobalModuleRegistry(): GlobalModuleRegistry {
     module.deps = deps;
 
     // eslint-disable-next-line no-useless-call -- Create new exports object and re-evaluate the module.
-    module.call(
-      null,
-      (module.exports = {}),
-      require.bind(null, id),
-    );
+    module.call(null, (module.exports = {}), require.bind(null, id));
   }
 
   return { define, update };
