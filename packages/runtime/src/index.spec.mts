@@ -89,7 +89,7 @@ describe('@global-modules/runtime', () => {
     });
   });
 
-  describe('when define modules to global registry', () => {
+  describe('when define multiple modules to global registry', () => {
     const DEPENDENCY_IDS = {
       'src/__fixtures__/src/index.ts': 0,
       'src/__fixtures__/src/a.ts': 1,
@@ -171,6 +171,59 @@ describe('@global-modules/runtime', () => {
         // 2nd call
         expect(mockedPrint).toBeCalledTimes(2);
         expect(mockedPrint).toBeCalledWith(10, 150);
+      });
+    });
+  });
+
+  describe('module status', () => {
+    const MODULE_IDS = {
+      foo: 0,
+      bar: 1,
+    } as const;
+    let context: SandboxContext;
+
+    beforeAll(async () => {
+      context = createSandboxContext();
+      context.setup();
+    });
+
+    describe('when the module has been evaluated', () => {
+      it('should returns `ready`', () => {
+        const { define, status } = context.getGlobalModuleRegistry();
+
+        define((exports) => (exports.foo = 'foo'), MODULE_IDS.foo, [], true); // default behavior
+
+        expect(status(MODULE_IDS.foo)).toBe('ready');
+      });
+    });
+
+    describe('when the module has not been evaluated', () => {
+      it('should returns `idle`', () => {
+        const { define, status } = context.getGlobalModuleRegistry();
+
+        define((exports) => (exports.bar = 'bar'), MODULE_IDS.bar, [], false);
+
+        expect(status(MODULE_IDS.bar)).toBe('idle');
+      });
+    });
+
+    describe('when the module was updated and has been evaluated', () => {
+      it('should returns `ready`', () => {
+        const { update, status } = context.getGlobalModuleRegistry();
+
+        update(MODULE_IDS.foo, [], true); // default behavior
+
+        expect(status(MODULE_IDS.foo)).toBe('ready');
+      });
+    });
+
+    describe('when the module was updated and has not been evaluated', () => {
+      it('should returns `stale`', () => {
+        const { update, status } = context.getGlobalModuleRegistry();
+
+        update(MODULE_IDS.foo, [], false);
+
+        expect(status(MODULE_IDS.foo)).toBe('stale');
       });
     });
   });

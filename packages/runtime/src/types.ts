@@ -3,13 +3,18 @@ export interface Module {
   id: ModuleId;
   exports: ModuleExports;
   deps: DependencyMap;
-  ready: boolean;
+  status: ModuleStatus;
 }
 
+export type ModuleStatus = 'idle' | 'stale' | 'ready';
 export type ModuleExports = Record<string, unknown>;
 export type ModuleRequire = (index: number) => ModuleExports;
 
-export type DependencyMap = (ModuleId | ModuleExports | (() => ModuleExports))[];
+export type DependencyMap = (
+  | ModuleId
+  | ModuleExports
+  | (() => ModuleExports)
+)[];
 
 export interface GlobalModuleRegistry {
   /**
@@ -68,6 +73,7 @@ export interface GlobalModuleRegistry {
     factory: (exports: ModuleExports, require: ModuleRequire) => void,
     id: ModuleId,
     deps?: DependencyMap,
+    evaluate?: boolean,
   ) => void;
   /**
    * Re-evaluates the specified defined module and creates a new exports object.
@@ -79,7 +85,15 @@ export interface GlobalModuleRegistry {
    * update(1010, [1007, 1004, 1003]);
    * ```
    */
-  update: (id: ModuleId, inverseDependencies?: ModuleId[]) => void;
+  update: (
+    id: ModuleId,
+    inverseDependencies?: ModuleId[],
+    evaluate?: boolean,
+  ) => void;
+  /**
+   * Get module's status.
+   */
+  status: (id: ModuleId) => ModuleStatus;
   /**
    * Clear all modules from the registry.
    */

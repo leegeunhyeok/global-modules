@@ -4,6 +4,7 @@ import type {
   Module,
   ModuleExports,
   ModuleRequire,
+  ModuleStatus,
 } from './types';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- allow
@@ -71,22 +72,25 @@ function getGlobalModuleRegistry(): GlobalModuleRegistry {
     factory: (exports: ModuleExports, require: ModuleRequire) => void,
     id: ModuleId,
     deps: DependencyMap = [],
+    evaluate = true,
   ): void {
     const module = factory as Module;
 
     module.id = id;
     module.exports = {};
     module.deps = deps;
-    module.ready = false;
+    module.status = 'idle';
 
     moduleRegistry.set(id, module);
 
-    // eslint-disable-next-line no-useless-call -- evaluate module
-    module.call(null, module.exports, require.bind(null, id));
-    module.ready = true;
+    if (evaluate) {
+      // eslint-disable-next-line no-useless-call -- evaluate module
+      module.call(null, module.exports, require.bind(null, id));
+      module.status = 'ready';
+    }
   }
 
-  function update(id: ModuleId, deps: ModuleId[]): void {
+  function update(id: ModuleId, deps: ModuleId[], evaluate = true): void {
     const module = moduleRegistry.get(id);
 
     if (module == null) {
@@ -94,16 +98,30 @@ function getGlobalModuleRegistry(): GlobalModuleRegistry {
     }
 
     module.deps = deps;
+    module.status = 'stale';
 
-    // eslint-disable-next-line no-useless-call -- Create new exports object and re-evaluate the module.
-    module.call(null, (module.exports = {}), require.bind(null, id));
+    if (evaluate) {
+      // eslint-disable-next-line no-useless-call -- Create new exports object and re-evaluate the module.
+      module.call(null, (module.exports = {}), require.bind(null, id));
+      module.status = 'ready';
+    }
+  }
+
+  function status(id: ModuleId): ModuleStatus {
+    const module = moduleRegistry.get(id);
+
+    if (module == null) {
+      throw new Error(`module not found: ${String(id)}`);
+    }
+
+    return module.status;
   }
 
   function clear(): void {
     moduleRegistry.clear();
   }
 
-  return { define, update, clear };
+  return { define, update, status, clear };
 }
 
 export type { GlobalModuleRegistry };
