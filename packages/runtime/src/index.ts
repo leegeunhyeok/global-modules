@@ -1,3 +1,11 @@
+import type {
+  DependencyMap,
+  GlobalModuleRegistry,
+  Module,
+  ModuleExports,
+  ModuleRequire,
+} from './types';
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- allow
 type Global = any;
 
@@ -91,5 +99,11 @@ function getGlobalModuleRegistry(): GlobalModuleRegistry {
     module.call(null, (module.exports = {}), require.bind(null, id));
   }
 
-  return { define, update };
+  function clear(): void {
+    moduleRegistry.clear();
+  }
+
+  return { define, update, clear };
 }
+
+export type { GlobalModuleRegistry };

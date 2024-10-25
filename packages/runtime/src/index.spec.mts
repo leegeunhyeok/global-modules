@@ -4,6 +4,7 @@ import path from 'node:path';
 import { describe, it, expect, beforeAll, vi, Mock } from 'vitest';
 import { DependencyGraph } from 'esbuild-dependency-graph';
 import { setup } from './index.js';
+import { GlobalModuleRegistry } from './types.js';
 
 describe('@global-modules/runtime', () => {
   const REGISTRY_NAME = '__modules';
