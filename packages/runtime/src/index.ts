@@ -67,7 +67,7 @@ function getGlobalModuleRegistry(): GlobalModuleRegistry {
     const module = factory as Module;
 
     module.id = id;
-    module.exports = Object.create(null);
+    module.exports = {};
     module.deps = deps;
     module.ready = false;
 
@@ -90,7 +90,7 @@ function getGlobalModuleRegistry(): GlobalModuleRegistry {
     // eslint-disable-next-line no-useless-call -- Create new exports object and re-evaluate the module.
     module.call(
       null,
-      (module.exports = Object.create(null)),
+      (module.exports = {}),
       require.bind(null, id),
     );
   }
