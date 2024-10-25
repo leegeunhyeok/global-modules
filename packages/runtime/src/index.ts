@@ -44,14 +44,20 @@ export function setup({
 function getGlobalModuleRegistry(): GlobalModuleRegistry {
   const moduleRegistry = new Map<ModuleId, Module>();
 
-  function require(moduleId: ModuleId, index: number): ModuleExports {
-    const targetModule = moduleRegistry.get(moduleId);
+  // @internal
+  function __get(id: ModuleId): Module {
+    const module = moduleRegistry.get(id);
 
-    if (targetModule == null) {
-      throw new Error(`module not found: ${String(moduleId)}`);
+    if (module == null) {
+      throw new Error(`module not found: ${String(id)}`);
     }
 
-    const dependency = targetModule.deps[index];
+    return module;
+  }
+
+  // @internal
+  function __require(id: ModuleId, index: number): ModuleExports {
+    const dependency = __get(id).deps[index];
 
     switch (typeof dependency) {
       case 'number':
@@ -85,34 +91,26 @@ function getGlobalModuleRegistry(): GlobalModuleRegistry {
 
     if (evaluate) {
       // eslint-disable-next-line no-useless-call -- evaluate module
-      module.call(null, module.exports, require.bind(null, id));
+      module.call(null, module.exports, __require.bind(null, id));
       module.status = 'ready';
     }
   }
 
   function update(id: ModuleId, deps: ModuleId[], evaluate = true): void {
-    const module = moduleRegistry.get(id);
-
-    if (module == null) {
-      throw new Error(`module not found: ${String(id)}`);
-    }
+    const module = __get(id);
 
     module.deps = deps;
     module.status = 'stale';
 
     if (evaluate) {
       // eslint-disable-next-line no-useless-call -- Create new exports object and re-evaluate the module.
-      module.call(null, (module.exports = {}), require.bind(null, id));
+      module.call(null, (module.exports = {}), __require.bind(null, id));
       module.status = 'ready';
     }
   }
 
   function status(id: ModuleId): ModuleStatus {
-    const module = moduleRegistry.get(id);
-
-    if (module == null) {
-      throw new Error(`module not found: ${String(id)}`);
-    }
+    const module = __get(id);
 
     return module.status;
   }
