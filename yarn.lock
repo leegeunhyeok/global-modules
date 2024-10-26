@@ -688,11 +688,8 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@global-modules/swc-plugin@workspace:packages/swc-plugin"
   dependencies:
-    "@swc-node/register": "npm:^1.10.9"
-    "@swc/core": "npm:1.7.x"
-    "@swc/helpers": "npm:^0.5.13"
-    "@swc/types": "npm:^0.1.12"
     "@types/node": "npm:^20"
+    esbuild: "npm:^0.24.0"
     typescript: "npm:5.6.2"
   languageName: unknown
   linkType: soft

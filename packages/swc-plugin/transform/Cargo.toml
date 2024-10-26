@@ -1,0 +1,15 @@
+[package]
+name = "swc_global_module"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+regex = "1.10.4"
+serde = "1"
+swc_core = { version = "1.0.5", features = ["ecma_plugin_transform", "ecma_utils"] }
+tracing = "0.1.40"
+
+[dev-dependencies]
+swc_ecma_parser = "1.0.1"
+swc_ecma_transforms_testing = "1.0.0"
+testing = "1.0.0"

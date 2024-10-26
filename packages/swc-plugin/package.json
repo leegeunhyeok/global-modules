@@ -2,16 +2,29 @@
   "name": "@global-modules/swc-plugin",
   "version": "0.0.0",
   "packageManager": "yarn@4.5.0",
+  "types": "./dist/index.d.ts",
+  "main": "./dist/index.js",
+  "module": "./esm/index.mjs",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./esm/index.mjs",
+      "require": "./cjs/index.cjs",
+      "default": "./dist/index.js"
+    }
+  },
   "scripts": {
-    "start": "node --import @swc-node/register/esm-register src/index.ts",
-    "typecheck": "tsc -p tsconfig.json --noEmit"
+    "prepack": "yarn build",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "cargo test --all --verbose -- --include-ignored",
+    "cleanup": "rm -rf dist cjs esm",
+    "build": "yarn build:rust && yarn build:typescript",
+    "build:rust": "cargo build-wasi --release",
+    "build:typescript": "yarn cleanup && node build/index.mjs && tsc -p tsconfig.build.json"
   },
   "devDependencies": {
-    "@swc-node/register": "^1.10.9",
-    "@swc/core": "1.7.x",
-    "@swc/helpers": "^0.5.13",
-    "@swc/types": "^0.1.12",
     "@types/node": "^20",
+    "esbuild": "^0.24.0",
     "typescript": "5.6.2"
   }
 }
