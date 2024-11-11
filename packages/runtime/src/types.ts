@@ -1,20 +1,20 @@
 export interface Module {
   (exports: ModuleExports, require: ModuleRequire): void;
   id: ModuleId;
-  exports: ModuleExports;
+  exports: Exports;
   deps: DependencyMap;
   status: ModuleStatus;
 }
 
 export type ModuleStatus = 'idle' | 'stale' | 'ready';
-export type ModuleExports = Record<string, unknown>;
-export type ModuleRequire = (index: number) => ModuleExports;
+export type ModuleExports = (definitions: Exports) => void;
+export type ModuleRequire = (source: string) => ModuleExports;
+export type Exports = Record<string, unknown>;
 
-export type DependencyMap = (
-  | ModuleId
-  | ModuleExports
-  | (() => ModuleExports)
-)[];
+export type DependencyMap = Record<
+  string,
+  ModuleId | Exports | (() => Exports)
+>;
 
 export interface GlobalModuleRegistry {
   /**
@@ -32,19 +32,21 @@ export interface GlobalModuleRegistry {
    *
    * ```ts
    * define((exports, require) => {
-   *   const mod0 = require(0); // foo
-   *   const mod1 = require(1); // bar
-   *   const mod2 = require(2); // baz
+   *   const mod0 = require('./foo');
+   *   const mod1 = require('./bar');
+   *   const mod2 = require('./baz');
    *
    *   // module body
    *
-   *   exports.named = expr_1;
-   *   exports.default = expr_2;
-   * }, 1000, [
-   *   foo,
-   *   bar,
-   *   () => baz, // when CommonJS (for lazy evaluation)
-   * ]);
+   *   exports({
+   *     named: expr_1,
+   *     default: expr_2,
+   *   });
+   * }, 1000, {
+   *   './foo': foo,
+   *   './bar': bar,
+   *   './baz': () => baz, // when CommonJS or Dynamic imports (for lazy evaluation)
+   * });
    * ```
    *
    * ---
@@ -52,20 +54,22 @@ export interface GlobalModuleRegistry {
    * **Case 2**
    *
    * ```ts
-   * define(..., 1001, []); // foo
-   * define(..., 1002, []); // bar
-   * define(..., 1003, []); // baz
+   * define(..., 1001, {}); // foo
+   * define(..., 1002, {}); // bar
+   * define(..., 1003, {}); // baz
    *
    * define((exports, require) => {
-   *   const mod0 = require(0); // foo
-   *   const mod1 = require(1); // bar
-   *   const mod2 = require(2); // baz
+   *   const mod0 = require('./foo');
+   *   const mod1 = require('./bar');
+   *   const mod2 = require('./baz');
    *
    *   // module body
    *
-   *   exports.named = expr_1;
-   *   exports.default = expr_2;
-   * }, 1000, [1001, 1002, 1003]);
+   *   exports({
+   *     named: expr_1,
+   *     default: expr_2,
+   *   });
+   * }, 1000, { './foo': 1001, './bar': 1002, './baz': 1003 });
    * ```
    *
    */
@@ -81,15 +85,11 @@ export interface GlobalModuleRegistry {
    * It also propagates the changes to ensure that inverse dependency modules(parents) reference the new exports object.
    *
    * ```ts
-   * // Re-evaluates `1001` module and propagates the changes to `1007`, `1004`, `1003` modules.
-   * update(1010, [1007, 1004, 1003]);
+   * // Re-evaluates `1001` module with reference dependencies via id.
+   * update(1010, { './foo': 1007, './bar': 1004, './baz': 1003 });
    * ```
    */
-  update: (
-    id: ModuleId,
-    inverseDependencies?: ModuleId[],
-    evaluate?: boolean,
-  ) => void;
+  update: (id: ModuleId, deps?: DependencyMap, evaluate?: boolean) => void;
   /**
    * Get module's status.
    */

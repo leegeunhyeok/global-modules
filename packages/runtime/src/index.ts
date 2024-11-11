@@ -1,5 +1,6 @@
 import type {
   DependencyMap,
+  Exports,
   GlobalModuleRegistry,
   Module,
   ModuleExports,
@@ -56,8 +57,21 @@ function getGlobalModuleRegistry(): GlobalModuleRegistry {
   }
 
   // @internal
-  function __require(id: ModuleId, index: number): ModuleExports {
-    const dependency = __get(id).deps[index];
+  function __exports(id: ModuleId, definitions: Record<string, unknown>): void {
+    const module = __get(id);
+    for (const key in definitions) {
+      if (Object.prototype.hasOwnProperty.call(definitions, key)) {
+        Object.defineProperty(module.exports, key, {
+          enumerable: true,
+          get: () => definitions[key],
+        });
+      }
+    }
+  }
+
+  // @internal
+  function __require(id: ModuleId, source: string): Exports {
+    const dependency = __get(id).deps[source];
 
     switch (typeof dependency) {
       case 'number':
@@ -77,7 +91,7 @@ function getGlobalModuleRegistry(): GlobalModuleRegistry {
   function define(
     factory: (exports: ModuleExports, require: ModuleRequire) => void,
     id: ModuleId,
-    deps: DependencyMap = [],
+    deps: DependencyMap = {},
     evaluate = true,
   ): void {
     const module = factory as Module;
@@ -91,20 +105,21 @@ function getGlobalModuleRegistry(): GlobalModuleRegistry {
 
     if (evaluate) {
       // eslint-disable-next-line no-useless-call -- evaluate module
-      module.call(null, module.exports, __require.bind(null, id));
+      module.call(null, __exports.bind(null, id), __require.bind(null, id));
       module.status = 'ready';
     }
   }
 
-  function update(id: ModuleId, deps: ModuleId[], evaluate = true): void {
+  function update(id: ModuleId, deps: DependencyMap, evaluate = true): void {
     const module = __get(id);
 
     module.deps = deps;
+    module.exports = {};
     module.status = 'stale';
 
     if (evaluate) {
       // eslint-disable-next-line no-useless-call -- Create new exports object and re-evaluate the module.
-      module.call(null, (module.exports = {}), __require.bind(null, id));
+      module.call(null, __exports.bind(null, id), __require.bind(null, id));
       module.status = 'ready';
     }
   }
