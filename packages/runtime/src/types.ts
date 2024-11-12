@@ -11,10 +11,7 @@ export type ModuleExports = (definitions: Exports) => void;
 export type ModuleRequire = (source: string) => ModuleExports;
 export type Exports = Record<string, unknown>;
 
-export type DependencyMap = Record<
-  string,
-  ModuleId | Exports | (() => Exports)
->;
+export type DependencyMap = Record<string, ModuleId | (() => Exports)>;
 
 export interface GlobalModuleRegistry {
   /**

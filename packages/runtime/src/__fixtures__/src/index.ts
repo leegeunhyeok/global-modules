@@ -2,8 +2,8 @@ import { a } from './a';
 import { b } from './b';
 
 var deps = {
-  './a': { a },
-  './b': { b },
+  './a': () => ({ a }),
+  './b': () => ({ b }),
 };
 
 // @ts-ignore

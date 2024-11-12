@@ -77,9 +77,6 @@ function getGlobalModuleRegistry(): GlobalModuleRegistry {
       case 'number':
         return moduleRegistry.get(dependency)?.exports ?? {};
 
-      case 'object':
-        return dependency;
-
       case 'function':
         return dependency();
 

@@ -1,6 +1,6 @@
 import { d } from './d';
 
-var deps = { './d': { d } };
+var deps = { './d': () => ({ d }) };
 var _e0;
 
 // @ts-ignore
