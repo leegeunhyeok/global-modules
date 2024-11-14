@@ -140,27 +140,28 @@ impl ModuleCollector {
     /// var { core } = __require('@app/core');
     /// ```
     pub fn get_require_deps_items(&self) -> Vec<ModuleItem> {
-        self.mods
-            .iter()
-            .map(|(key, value)| {
-                match value {
-                    ModuleRef::Import(imp) => {
-                        let props = imp
-                            .members
-                            .iter()
-                            .map(|imp_member| match &imp_member.alias {
-                                Some(alias_ident) => ObjectPatProp::KeyValue(KeyValuePatProp {
-                                    key: PropName::Ident(alias_ident.clone().into()),
-                                    value: Box::new(Pat::Ident(imp_member.ident.clone().into())),
-                                }),
-                                None => ObjectPatProp::Assign(AssignPatProp {
-                                    key: imp_member.ident.clone().into(),
-                                    value: None,
-                                    span: DUMMY_SP,
-                                }),
-                            })
-                            .collect::<Vec<ObjectPatProp>>();
+        let mut module_items: Vec<ModuleItem> = Vec::new();
 
+        self.mods.iter().for_each(|(key, value)| {
+            match value {
+                ModuleRef::Import(imp) => {
+                    let props = imp
+                        .members
+                        .iter()
+                        .map(|imp_member| match &imp_member.alias {
+                            Some(alias_ident) => ObjectPatProp::KeyValue(KeyValuePatProp {
+                                key: PropName::Ident(imp_member.ident.clone().into()),
+                                value: Box::new(Pat::Ident(alias_ident.clone().into())),
+                            }),
+                            None => ObjectPatProp::Assign(AssignPatProp {
+                                key: imp_member.ident.clone().into(),
+                                value: None,
+                                span: DUMMY_SP,
+                            }),
+                        })
+                        .collect::<Vec<ObjectPatProp>>();
+
+                    module_items.push(
                         VarDecl {
                             kind: VarDeclKind::Var,
                             decls: vec![VarDeclarator {
@@ -177,19 +178,14 @@ impl ModuleCollector {
                             }],
                             ..Default::default()
                         }
-                        .into()
-                    }
-                    ModuleRef::DynImport(dyn_imp) => {
-                        // TODO
-                        ModuleItem::Stmt(Stmt::Empty(EmptyStmt { span: DUMMY_SP }))
-                    }
-                    ModuleRef::Require => {
-                        // TODO
-                        ModuleItem::Stmt(Stmt::Empty(EmptyStmt { span: DUMMY_SP }))
-                    }
+                        .into(),
+                    );
                 }
-            })
-            .collect::<Vec<ModuleItem>>()
+                ModuleRef::DynImport(_) | ModuleRef::Require => { /* noop */ }
+            }
+        });
+
+        module_items
     }
 
     fn get_require_expr(&self, src: &Atom) -> Expr {
@@ -210,8 +206,8 @@ impl ModuleCollector {
         specifiers.iter().for_each(|spec| match spec {
             ImportSpecifier::Default(ImportDefaultSpecifier { local, .. }) => {
                 members.push(ModuleMember::default(
-                    local,
-                    Some(quote_ident!("default").into()),
+                    &quote_ident!("default").into(),
+                    Some(local.clone()),
                 ));
             }
             ImportSpecifier::Named(ImportNamedSpecifier {
