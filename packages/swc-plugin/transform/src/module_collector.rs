@@ -12,7 +12,7 @@ use swc_core::{
 
 use crate::{
     constants::{DEPS, EXPORTS, EXPORTS_ARG, REQUIRE_ARG},
-    utils::{get_expr_from_decl, get_require_expr, wrap_with_fn},
+    utils::{get_expr_from_decl, get_expr_from_default_decl, get_require_expr, wrap_with_fn},
 };
 
 #[derive(Debug)]
@@ -351,13 +351,25 @@ impl VisitMut for ModuleCollector {
                         };
 
                         *item = assign_expr.into_stmt().into();
+
+                        // TODO: add exports
                     }
                     // Default exports with declarations
                     //
                     // - `export default function foo() { ... }`
                     // - `export default class Foo { ... }`
                     ModuleDecl::ExportDefaultDecl(export_default_decl) => {
-                        // TODO
+                        let ident = private_ident!(EXPORTS);
+                        let assign_expr = AssignExpr {
+                            left: AssignTarget::Simple(SimpleAssignTarget::Ident(ident.into())),
+                            right: Box::new(get_expr_from_default_decl(&export_default_decl.decl)),
+                            op: AssignOp::Assign,
+                            ..Default::default()
+                        };
+
+                        *item = assign_expr.into_stmt().into();
+
+                        // TODO: add exports
                     }
                     // Named exports
                     //

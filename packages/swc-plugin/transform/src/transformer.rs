@@ -77,8 +77,6 @@ impl VisitMut for GlobalModuleTransformer {
                 },
             });
 
-
-
         let (deps_ident, deps_decl, deps_require) = collector.get_deps_ast();
         let scoped_body: Vec<ModuleItem> = self.get_register_expr(
             [deps_require, body].concat(),

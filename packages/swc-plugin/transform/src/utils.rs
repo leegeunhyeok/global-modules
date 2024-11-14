@@ -50,6 +50,14 @@ pub fn get_expr_from_decl(decl: &Decl) -> Expr {
     }
 }
 
+pub fn get_expr_from_default_decl(default_decl: &DefaultDecl) -> Expr {
+    match default_decl {
+        DefaultDecl::Class(class_expr) => Expr::Class(class_expr.clone()),
+        DefaultDecl::Fn(fn_expr) => Expr::Fn(fn_expr.clone()),
+        _ => panic!("not implemented"),
+    }
+}
+
 /// Wrap expression with function.
 ///
 /// ```js
