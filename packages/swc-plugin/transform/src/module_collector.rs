@@ -1,16 +1,18 @@
+use core::panic;
+
 use swc_core::{
     atoms::Atom,
-    common::collections::AHashMap,
+    common::{collections::AHashMap, DUMMY_SP},
     ecma::{
         ast::*,
-        utils::{private_ident, quote_ident},
+        utils::{private_ident, quote_ident, ExprFactory},
         visit::{noop_visit_mut_type, VisitMut, VisitMutWith},
     },
 };
 
 use crate::{
-    constants::{EXPORTS_ARG, REQUIRE_ARG},
-    expr_utils::get_require_expr,
+    constants::{EXPORTS, EXPORTS_ARG, REQUIRE_ARG},
+    utils::{get_expr_from_decl, get_require_expr},
 };
 
 #[derive(Debug)]
@@ -53,7 +55,7 @@ impl DynImport {
 }
 
 #[derive(Debug)]
-struct ModuleMember {
+pub struct ModuleMember {
     // `import { foo } from 'foo'`;
     // => foo
     ident: Ident,
@@ -64,6 +66,39 @@ struct ModuleMember {
     // `import * as foo from 'foo';`
     // => true
     is_ns: bool,
+}
+
+#[derive(Debug)]
+pub enum ExportRef {
+    EsModule(EsModuleExport),
+}
+
+#[derive(Debug)]
+struct EsModuleExport {
+    // Temporary ident for exports.
+    exp_ident: Ident,
+    // `export { foo }`;
+    // `export { x as foo }`;
+    // `export { foo } from './foo';`
+    // `export * as foo from './foo';`
+    // => foo
+    exported: Atom,
+    // `export * from './foo';`
+    // `export * as foo from './foo';`
+    re_export: Option<ReExport>,
+}
+
+#[derive(Debug)]
+enum ReExport {
+    Named(NamedReExport),
+    Star,
+}
+
+#[derive(Debug)]
+struct NamedReExport {
+    // `export { foo } from './foo';
+    // => foo
+    ident: Ident,
 }
 
 impl ModuleMember {
@@ -91,11 +126,84 @@ pub struct ModuleCollector {
     // key: './foo'
     // value: Dep
     pub mods: AHashMap<Atom, ModuleRef>,
+    pub exps: Vec<ModuleRef>,
     pub exports_ident: Ident,
     pub require_ident: Ident,
 }
 
 impl ModuleCollector {
+    /// Returns a list of require call expressions that reference modules from global registry.
+    ///
+    /// ```js
+    /// // Examples
+    /// var { default: React, useState, useCallback } = __require('react');
+    /// var { core } = __require('@app/core');
+    /// ```
+    pub fn get_require_deps_items(&self) -> Vec<ModuleItem> {
+        self.mods
+            .iter()
+            .map(|(key, value)| {
+                match value {
+                    ModuleRef::Import(imp) => {
+                        let props = imp
+                            .members
+                            .iter()
+                            .map(|imp_member| match &imp_member.alias {
+                                Some(alias_ident) => ObjectPatProp::KeyValue(KeyValuePatProp {
+                                    key: PropName::Ident(alias_ident.clone().into()),
+                                    value: Box::new(Pat::Ident(imp_member.ident.clone().into())),
+                                }),
+                                None => ObjectPatProp::Assign(AssignPatProp {
+                                    key: imp_member.ident.clone().into(),
+                                    value: None,
+                                    span: DUMMY_SP,
+                                }),
+                            })
+                            .collect::<Vec<ObjectPatProp>>();
+
+                        VarDecl {
+                            kind: VarDeclKind::Var,
+                            decls: vec![VarDeclarator {
+                                name: ObjectPat {
+                                    props,
+                                    optional: false,
+                                    type_ann: None,
+                                    span: DUMMY_SP,
+                                }
+                                .into(),
+                                span: DUMMY_SP,
+                                definite: false,
+                                init: Some(Box::new(self.get_require_expr(key))),
+                            }],
+                            ..Default::default()
+                        }
+                        .into()
+                    }
+                    ModuleRef::DynImport(dyn_imp) => {
+                        // TODO
+                        ModuleItem::Stmt(Stmt::Empty(EmptyStmt { span: DUMMY_SP }))
+                    }
+                    ModuleRef::Require => {
+                        // TODO
+                        ModuleItem::Stmt(Stmt::Empty(EmptyStmt { span: DUMMY_SP }))
+                    }
+                }
+            })
+            .collect::<Vec<ModuleItem>>()
+    }
+
+    fn get_require_expr(&self, src: &Atom) -> Expr {
+        let src_lit = Lit::Str(Str {
+            raw: None,
+            span: DUMMY_SP,
+            value: src.clone(),
+        });
+
+        self.require_ident
+            .clone()
+            .as_call(DUMMY_SP, vec![src_lit.as_arg()])
+    }
+
     fn to_import_members(&self, specifiers: &Vec<ImportSpecifier>) -> Vec<ModuleMember> {
         let mut members = Vec::with_capacity(specifiers.len());
 
@@ -132,6 +240,7 @@ impl Default for ModuleCollector {
     fn default() -> Self {
         ModuleCollector {
             mods: AHashMap::default(),
+            exps: Vec::default(),
             exports_ident: private_ident!(EXPORTS_ARG),
             require_ident: private_ident!(REQUIRE_ARG),
         }
@@ -144,8 +253,16 @@ impl VisitMut for ModuleCollector {
     fn visit_mut_module_items(&mut self, items: &mut Vec<ModuleItem>) {
         for item in items.iter_mut() {
             match item {
+                // Statements (It can include CommonJS modules)
                 ModuleItem::Stmt(_) => item.visit_mut_children_with(self),
+                // Import & Exports (ESModules)
                 ModuleItem::ModuleDecl(module_decl) => match module_decl {
+                    // Imports
+                    //
+                    // - `import foo from './foo';`
+                    // - `import { foo } from './foo';`
+                    // - `import { foo as bar } from './foo';`
+                    // - `import * as foo from './foo';`
                     ModuleDecl::Import(import) => {
                         let members = self.to_import_members(&import.specifiers);
                         let src = import.src.value.clone();
@@ -159,6 +276,51 @@ impl VisitMut for ModuleCollector {
                             );
                         }
                     }
+                    // Named exports with declarations
+                    //
+                    // - `export const foo = ...;`
+                    // - `export function foo() { ... }`
+                    // - `export class Foo { ... }`
+                    ModuleDecl::ExportDecl(export_decl) => {
+                        let ident = private_ident!(EXPORTS);
+                        let assign_expr = AssignExpr {
+                            left: AssignTarget::Simple(SimpleAssignTarget::Ident(ident.into())),
+                            right: Box::new(get_expr_from_decl(&export_decl.decl)),
+                            op: AssignOp::Assign,
+                            ..Default::default()
+                        };
+
+                        *item = assign_expr.into_stmt().into();
+                    }
+                    // Default exports with declarations
+                    //
+                    // - `export default function foo() { ... }`
+                    // - `export default class Foo { ... }`
+                    ModuleDecl::ExportDefaultDecl(export_default_decl) => {
+                        // TODO
+                    }
+                    // Named exports
+                    //
+                    // - `export { foo };`
+                    // - `export { foo as bar };`
+                    // - `export { foo } from './foo';` (Re-exports)
+                    // - `export { foo as bar } from './foo';` (Re-exports)
+                    ModuleDecl::ExportNamed(export_named) => {
+                        // TODO
+                    }
+                    // Default exports
+                    //
+                    // - `export default expr;`
+                    ModuleDecl::ExportDefaultExpr(export_default_expr) => {
+                        // TODO
+                    }
+                    // Re-exports specified modules
+                    //
+                    // - `export * from './foo';`
+                    // - `export * as bar from './foo';`
+                    ModuleDecl::ExportAll(export_all) => {
+                        // TODO
+                    }
                     _ => { /* TODO */ }
                 },
             }
@@ -168,6 +330,9 @@ impl VisitMut for ModuleCollector {
     fn visit_mut_expr(&mut self, expr: &mut Expr) {
         match expr {
             Expr::Call(call_expr) => match call_expr {
+                // Collect CommonJS modules.
+                //
+                // `require('...');`
                 CallExpr {
                     args,
                     callee: Callee::Expr(callee_expr),
@@ -177,13 +342,17 @@ impl VisitMut for ModuleCollector {
                     let src = args.get(0).unwrap();
 
                     match &*src.expr {
+                        // The first argument of the `require` function must be a string type only.
                         Expr::Lit(Lit::Str(str)) => {
                             self.mods.insert(str.value.clone(), ModuleRef::Require);
-                            *expr = get_require_expr(&self.require_ident, &src.expr);
+                            *expr = get_require_expr(&self.require_ident, &str.value);
                         }
-                        _ => panic!("invalid `require()` call expression"),
+                        _ => panic!("invalid `require` call expression"),
                     }
                 }
+                // Collect ESM (Dynamic imports)
+                //
+                // `import('...', {});`
                 CallExpr {
                     args,
                     callee: Callee::Import(_),
@@ -194,25 +363,15 @@ impl VisitMut for ModuleCollector {
                     let options = args.get(1).and_then(|arg| Some(*arg.expr.clone()));
 
                     match &*src.expr {
-                        Expr::Ident(Ident {
-                            sym,
-                            optional: false,
-                            ..
-                        }) => {
-                            self.mods.insert(
-                                sym.clone(),
-                                ModuleRef::DynImport(DynImport::new(&*src.expr, options)),
-                            );
-                            *expr = get_require_expr(&self.require_ident, &src.expr);
-                        }
+                        // The first argument of the `import` function must be a string type only.
                         Expr::Lit(Lit::Str(str)) => {
                             self.mods.insert(
                                 str.value.clone(),
                                 ModuleRef::DynImport(DynImport::new(&*src.expr, options)),
                             );
-                            *expr = get_require_expr(&self.require_ident, &src.expr);
+                            *expr = get_require_expr(&self.require_ident, &str.value);
                         }
-                        _ => {}
+                        _ => panic!("unsupported dynamic import usage"),
                     }
                 }
                 _ => expr.visit_mut_children_with(self),

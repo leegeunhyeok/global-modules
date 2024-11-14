@@ -87,9 +87,12 @@ impl VisitMut for GlobalModuleTransformer {
                 },
             });
 
+
+
         let deps_ident = private_ident!(DEPS);
+        let deps_require = collector.get_require_deps_items();
         let scoped_body = self.get_register_expr(
-            body,
+            [deps_require, body].concat(),
             &collector.require_ident,
             &collector.exports_ident,
             &deps_ident,
