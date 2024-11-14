@@ -11,18 +11,31 @@ use swc_core::{
 };
 
 use crate::{
-    constants::{EXPORTS, EXPORTS_ARG, REQUIRE_ARG},
-    utils::{get_expr_from_decl, get_require_expr},
+    constants::{DEPS, EXPORTS, EXPORTS_ARG, REQUIRE_ARG},
+    utils::{get_expr_from_decl, get_require_expr, wrap_with_fn},
 };
 
 #[derive(Debug)]
 pub enum ModuleRef {
     // `require('...');`
-    Require,
+    Require(Require),
     // `import ... from '...';`
     Import(Import),
     // `import('...');`
     DynImport(DynImport),
+}
+
+#[derive(Debug)]
+pub struct Require {
+    pub orig_expr: Expr,
+}
+
+impl Require {
+    fn new(orig_expr: &Expr) -> Self {
+        Require {
+            orig_expr: orig_expr.clone(),
+        }
+    }
 }
 
 #[derive(Debug)]
@@ -34,22 +47,13 @@ pub struct Import {
 
 #[derive(Debug)]
 pub struct DynImport {
-    // `import('./foo');`
-    // => Expr::Lit(Lit:Str)
-    //
-    // `import(expr);`
-    // => Expr::Ident
-    pub src_expr: Expr,
-    // import('./foo', { with: ... });
-    // => { with: ... }
-    pub options: Option<Expr>,
+    pub orig_expr: Expr,
 }
 
 impl DynImport {
-    fn new(src_expr: &Expr, options: Option<Expr>) -> Self {
+    fn new(orig_expr: &Expr) -> Self {
         DynImport {
-            src_expr: src_expr.clone(),
-            options,
+            orig_expr: orig_expr.clone(),
         }
     }
 }
@@ -132,6 +136,35 @@ pub struct ModuleCollector {
 }
 
 impl ModuleCollector {
+    pub fn get_deps_ast(&self) -> (Ident, Vec<ModuleItem>, Vec<ModuleItem>) {
+        let deps_ident = private_ident!(DEPS);
+        let mut dep_props: Vec<PropOrSpread> = Vec::new();
+        let mut require_stmts: Vec<ModuleItem> = Vec::new();
+
+        self.mods.iter().for_each(|(key, value)| {
+            if let Some(item) = self.to_require_dep(key, value) {
+                require_stmts.push(item);
+            }
+
+            dep_props.push(PropOrSpread::Prop(Box::new(Prop::KeyValue(KeyValueProp {
+                key: PropName::Str(Str {
+                    raw: None,
+                    span: DUMMY_SP,
+                    value: key.clone(),
+                }),
+                value: Box::new(self.to_dep_obj(value)),
+            }))));
+        });
+
+        let deps_decl = Expr::Object(ObjectLit {
+            props: dep_props,
+            ..Default::default()
+        })
+        .into_var_decl(VarDeclKind::Var, deps_ident.clone().into());
+
+        (deps_ident, vec![deps_decl.into()], require_stmts)
+    }
+
     /// Returns a list of require call expressions that reference modules from global registry.
     ///
     /// ```js
@@ -139,53 +172,84 @@ impl ModuleCollector {
     /// var { default: React, useState, useCallback } = __require('react');
     /// var { core } = __require('@app/core');
     /// ```
-    pub fn get_require_deps_items(&self) -> Vec<ModuleItem> {
-        let mut module_items: Vec<ModuleItem> = Vec::new();
-
-        self.mods.iter().for_each(|(key, value)| {
-            match value {
-                ModuleRef::Import(imp) => {
-                    let props = imp
-                        .members
-                        .iter()
-                        .map(|imp_member| match &imp_member.alias {
-                            Some(alias_ident) => ObjectPatProp::KeyValue(KeyValuePatProp {
-                                key: PropName::Ident(imp_member.ident.clone().into()),
-                                value: Box::new(Pat::Ident(alias_ident.clone().into())),
-                            }),
-                            None => ObjectPatProp::Assign(AssignPatProp {
+    fn to_dep_obj(&self, mod_ref: &ModuleRef) -> Expr {
+        match mod_ref {
+            ModuleRef::Import(imp) => {
+                let props = imp
+                    .members
+                    .iter()
+                    .map(|imp_member| match &imp_member.alias {
+                        Some(alias_ident) => {
+                            PropOrSpread::Prop(Box::new(Prop::KeyValue(KeyValueProp {
                                 key: imp_member.ident.clone().into(),
-                                value: None,
-                                span: DUMMY_SP,
-                            }),
-                        })
-                        .collect::<Vec<ObjectPatProp>>();
-
-                    module_items.push(
-                        VarDecl {
-                            kind: VarDeclKind::Var,
-                            decls: vec![VarDeclarator {
-                                name: ObjectPat {
-                                    props,
-                                    optional: false,
-                                    type_ann: None,
-                                    span: DUMMY_SP,
-                                }
-                                .into(),
-                                span: DUMMY_SP,
-                                definite: false,
-                                init: Some(Box::new(self.get_require_expr(key))),
-                            }],
-                            ..Default::default()
+                                value: Box::new(alias_ident.clone().into()),
+                            })))
                         }
-                        .into(),
-                    );
-                }
-                ModuleRef::DynImport(_) | ModuleRef::Require => { /* noop */ }
-            }
-        });
+                        None => {
+                            PropOrSpread::Prop(Box::new(Prop::Shorthand(imp_member.ident.clone())))
+                        }
+                    })
+                    .collect::<Vec<PropOrSpread>>();
 
-        module_items
+                wrap_with_fn(&Expr::Object(ObjectLit {
+                    span: DUMMY_SP,
+                    props,
+                }))
+            }
+            ModuleRef::DynImport(dyn_imp) => wrap_with_fn(&dyn_imp.orig_expr),
+            ModuleRef::Require(req) => wrap_with_fn(&req.orig_expr),
+        }
+    }
+
+    /// Returns a list of require call expressions that reference modules from global registry.
+    ///
+    /// ```js
+    /// // Examples
+    /// var { default: React, useState, useCallback } = __require('react');
+    /// var { core } = __require('@app/core');
+    /// ```
+    fn to_require_dep(&self, src: &Atom, mod_ref: &ModuleRef) -> Option<ModuleItem> {
+        match mod_ref {
+            ModuleRef::Import(imp) => {
+                let props = imp
+                    .members
+                    .iter()
+                    .map(|imp_member| match &imp_member.alias {
+                        Some(alias_ident) => ObjectPatProp::KeyValue(KeyValuePatProp {
+                            key: PropName::Ident(imp_member.ident.clone().into()),
+                            value: Box::new(Pat::Ident(alias_ident.clone().into())),
+                        }),
+                        None => ObjectPatProp::Assign(AssignPatProp {
+                            key: imp_member.ident.clone().into(),
+                            value: None,
+                            span: DUMMY_SP,
+                        }),
+                    })
+                    .collect::<Vec<ObjectPatProp>>();
+
+                Some(
+                    VarDecl {
+                        kind: VarDeclKind::Var,
+                        decls: vec![VarDeclarator {
+                            name: ObjectPat {
+                                props,
+                                optional: false,
+                                type_ann: None,
+                                span: DUMMY_SP,
+                            }
+                            .into(),
+                            span: DUMMY_SP,
+                            definite: false,
+                            init: Some(Box::new(self.get_require_expr(src))),
+                        }],
+                        ..Default::default()
+                    }
+                    .into(),
+                )
+            }
+            // Skips AST generation because it has already been replaced during the visit phases.
+            ModuleRef::DynImport(_) | ModuleRef::Require(_) => None,
+        }
     }
 
     fn get_require_expr(&self, src: &Atom) -> Expr {
@@ -324,6 +388,7 @@ impl VisitMut for ModuleCollector {
     }
 
     fn visit_mut_expr(&mut self, expr: &mut Expr) {
+        let orig_expr = expr.clone();
         match expr {
             Expr::Call(call_expr) => match call_expr {
                 // Collect CommonJS modules.
@@ -340,7 +405,10 @@ impl VisitMut for ModuleCollector {
                     match &*src.expr {
                         // The first argument of the `require` function must be a string type only.
                         Expr::Lit(Lit::Str(str)) => {
-                            self.mods.insert(str.value.clone(), ModuleRef::Require);
+                            self.mods.insert(
+                                str.value.clone(),
+                                ModuleRef::Require(Require::new(&orig_expr)),
+                            );
                             *expr = get_require_expr(&self.require_ident, &str.value);
                         }
                         _ => panic!("invalid `require` call expression"),
@@ -356,14 +424,13 @@ impl VisitMut for ModuleCollector {
                     ..
                 } if args.len() >= 1 => {
                     let src = args.get(0).unwrap();
-                    let options = args.get(1).and_then(|arg| Some(*arg.expr.clone()));
 
                     match &*src.expr {
                         // The first argument of the `import` function must be a string type only.
                         Expr::Lit(Lit::Str(str)) => {
                             self.mods.insert(
                                 str.value.clone(),
-                                ModuleRef::DynImport(DynImport::new(&*src.expr, options)),
+                                ModuleRef::DynImport(DynImport::new(&orig_expr)),
                             );
                             *expr = get_require_expr(&self.require_ident, &str.value);
                         }

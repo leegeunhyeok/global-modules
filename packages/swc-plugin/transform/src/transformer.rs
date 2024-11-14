@@ -54,16 +54,6 @@ impl GlobalModuleTransformer {
             .into_stmt()
             .into()]
     }
-
-    fn get_deps_expr(&self, deps_ident: &Ident) -> Vec<ModuleItem> {
-        let obj_lit_expr = Expr::Object(ObjectLit {
-            ..Default::default()
-        });
-
-        vec![obj_lit_expr
-            .into_var_decl(VarDeclKind::Var, deps_ident.clone().into())
-            .into()]
-    }
 }
 
 impl VisitMut for GlobalModuleTransformer {
@@ -89,17 +79,14 @@ impl VisitMut for GlobalModuleTransformer {
 
 
 
-        let deps_ident = private_ident!(DEPS);
-        let deps_require = collector.get_require_deps_items();
-        let scoped_body = self.get_register_expr(
+        let (deps_ident, deps_decl, deps_require) = collector.get_deps_ast();
+        let scoped_body: Vec<ModuleItem> = self.get_register_expr(
             [deps_require, body].concat(),
             &collector.require_ident,
             &collector.exports_ident,
             &deps_ident,
         );
 
-        let deps_expr = self.get_deps_expr(&deps_ident);
-
-        module.body = [imports, deps_expr, scoped_body, exports].concat();
+        module.body = [imports, deps_decl, scoped_body, exports].concat();
     }
 }

@@ -3,7 +3,10 @@ use core::panic;
 use swc_core::{
     atoms::Atom,
     common::DUMMY_SP,
-    ecma::{ast::*, utils::ExprFactory},
+    ecma::{
+        ast::*,
+        utils::{ExprFactory, FunctionFactory},
+    },
 };
 
 pub fn get_require_expr(require_ident: &Ident, src: &Atom) -> Expr {
@@ -45,4 +48,25 @@ pub fn get_expr_from_decl(decl: &Decl) -> Expr {
         }
         _ => panic!("not implemented"),
     }
+}
+
+/// Wrap expression with function.
+///
+/// ```js
+/// function () {
+///   return /* expr */;
+/// }
+/// ```
+pub fn wrap_with_fn(expr: &Expr) -> Expr {
+    Function {
+        body: Some(BlockStmt {
+            stmts: vec![Stmt::Return(ReturnStmt {
+                arg: Some(Box::new(expr.clone())),
+                ..Default::default()
+            })],
+            ..Default::default()
+        }),
+        ..Default::default()
+    }
+    .into()
 }
