@@ -133,6 +133,7 @@ pub struct ModuleCollector {
     // key: './foo'
     // value: Dep
     pub mods: AHashMap<Atom, ModuleRef>,
+    pub mods_idx: Vec<Atom>,
     pub exps: Vec<ModuleRef>,
     pub exports_ident: Ident,
     pub require_ident: Ident,
@@ -144,7 +145,9 @@ impl ModuleCollector {
         let mut dep_props: Vec<PropOrSpread> = Vec::new();
         let mut require_stmts: Vec<ModuleItem> = Vec::new();
 
-        self.mods.iter().for_each(|(key, value)| {
+        for key in self.mods_idx.iter() {
+            let value = self.mods.get(key).unwrap();
+
             if let Some(stmts) = self.to_require_deps(key, value) {
                 require_stmts.extend(stmts);
             }
@@ -157,7 +160,7 @@ impl ModuleCollector {
                 }),
                 value: Box::new(self.to_dep_obj(value)),
             }))));
-        });
+        }
 
         let deps_decl = Expr::Object(ObjectLit {
             props: dep_props,
@@ -166,6 +169,11 @@ impl ModuleCollector {
         .into_var_decl(VarDeclKind::Var, deps_ident.clone().into());
 
         (deps_ident, vec![deps_decl.into()], require_stmts)
+    }
+
+    fn register_mod(&mut self, src: Atom, module: ModuleRef) {
+        self.mods.insert(src.clone(), module);
+        self.mods_idx.push(src);
     }
 
     /// Returns a list of require call expressions that reference modules from global registry.
@@ -315,6 +323,7 @@ impl Default for ModuleCollector {
     fn default() -> Self {
         ModuleCollector {
             mods: AHashMap::default(),
+            mods_idx: Vec::default(),
             exps: Vec::default(),
             exports_ident: private_ident!(EXPORTS_ARG),
             require_ident: private_ident!(REQUIRE_ARG),
@@ -345,10 +354,10 @@ impl VisitMut for ModuleCollector {
                         if let Some(ModuleRef::Import(mod_ref)) = self.mods.get_mut(&src) {
                             mod_ref.members.extend(members.into_iter());
                         } else {
-                            self.mods.insert(
+                            self.register_mod(
                                 import.src.value.clone(),
                                 ModuleRef::Import(Import { members }),
-                            );
+                            )
                         }
                     }
                     // Named exports with declarations
