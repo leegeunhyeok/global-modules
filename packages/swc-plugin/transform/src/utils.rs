@@ -103,3 +103,12 @@ pub fn wrap_with_fn(expr: &Expr) -> Expr {
     }
     .into()
 }
+
+pub fn get_assign_expr(ident: Ident, expr: Expr) -> AssignExpr {
+    AssignExpr {
+        left: AssignTarget::Simple(SimpleAssignTarget::Ident(ident.into())),
+        right: expr.into(),
+        op: AssignOp::Assign,
+        ..Default::default()
+    }
+}

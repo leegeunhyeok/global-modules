@@ -14,8 +14,8 @@ use tracing::debug;
 use crate::{
     constants::{DEPS, EXPORTS, EXPORTS_ARG, REQUIRE_ARG},
     utils::{
-        get_expr_from_decl, get_expr_from_default_decl, get_require_call_stmt, get_require_expr,
-        wrap_with_fn,
+        get_assign_expr, get_expr_from_decl, get_expr_from_default_decl, get_require_call_stmt,
+        get_require_expr, wrap_with_fn,
     },
 };
 
@@ -358,14 +358,10 @@ impl VisitMut for ModuleCollector {
                     // - `export class Foo { ... }`
                     ModuleDecl::ExportDecl(export_decl) => {
                         let ident = private_ident!(EXPORTS);
-                        let assign_expr = AssignExpr {
-                            left: AssignTarget::Simple(SimpleAssignTarget::Ident(ident.into())),
-                            right: Box::new(get_expr_from_decl(&export_decl.decl)),
-                            op: AssignOp::Assign,
-                            ..Default::default()
-                        };
 
-                        *item = assign_expr.into_stmt().into();
+                        *item = get_assign_expr(ident, get_expr_from_decl(&export_decl.decl))
+                            .into_stmt()
+                            .into();
 
                         // TODO: add exports
                     }
@@ -375,14 +371,13 @@ impl VisitMut for ModuleCollector {
                     // - `export default class Foo { ... }`
                     ModuleDecl::ExportDefaultDecl(export_default_decl) => {
                         let ident = private_ident!(EXPORTS);
-                        let assign_expr = AssignExpr {
-                            left: AssignTarget::Simple(SimpleAssignTarget::Ident(ident.into())),
-                            right: Box::new(get_expr_from_default_decl(&export_default_decl.decl)),
-                            op: AssignOp::Assign,
-                            ..Default::default()
-                        };
 
-                        *item = assign_expr.into_stmt().into();
+                        *item = get_assign_expr(
+                            ident,
+                            get_expr_from_default_decl(&export_default_decl.decl),
+                        )
+                        .into_stmt()
+                        .into();
 
                         // TODO: add exports
                     }
