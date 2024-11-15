@@ -14,8 +14,8 @@ use tracing::debug;
 use crate::{
     constants::{DEPS, EXPORTS, EXPORTS_ARG, REQUIRE_ARG},
     utils::{
-        get_expr_from_decl, get_expr_from_default_decl, get_ns_require_call_expr,
-        get_require_call_expr, get_require_expr, wrap_with_fn,
+        get_expr_from_decl, get_expr_from_default_decl, get_require_call_stmt, get_require_expr,
+        wrap_with_fn,
     },
 };
 
@@ -47,9 +47,6 @@ pub struct Import {
     // `import def, { foo, bar as baz } from '...'`;
     // => def, foo, bar (alias: baz)
     pub members: Vec<ModuleMember>,
-    // `import * as foo from '...';`
-    // => foo
-    pub ns: Vec<ModuleMember>,
 }
 
 #[derive(Debug)]
@@ -74,6 +71,8 @@ pub struct ModuleMember {
     // `import { foo as bar } from 'foo'`;
     // => bar
     pub alias: Option<Ident>,
+    // `true` if name spaced import.
+    pub is_ns: bool,
 }
 
 #[derive(Debug)]
@@ -114,6 +113,15 @@ impl ModuleMember {
         ModuleMember {
             ident: ident.clone(),
             alias,
+            is_ns: false,
+        }
+    }
+
+    fn ns(ident: &Ident) -> Self {
+        ModuleMember {
+            ident: ident.clone(),
+            alias: None,
+            is_ns: true,
         }
     }
 }
@@ -137,7 +145,10 @@ impl ModuleCollector {
         let mut require_stmts: Vec<ModuleItem> = Vec::new();
 
         self.mods.iter().for_each(|(key, value)| {
-            require_stmts.extend(self.to_require_deps(key, value));
+            if let Some(stmts) = self.to_require_deps(key, value) {
+                require_stmts.extend(stmts);
+            }
+
             dep_props.push(PropOrSpread::Prop(Box::new(Prop::KeyValue(KeyValueProp {
                 key: PropName::Str(Str {
                     raw: None,
@@ -171,28 +182,29 @@ impl ModuleCollector {
     /// ```
     fn to_dep_obj(&self, mod_ref: &ModuleRef) -> Expr {
         match mod_ref {
-            ModuleRef::Import(Import { members, ns }) => {
-                let mut props = members
+            ModuleRef::Import(Import { members }) => {
+                let props = members
                     .iter()
-                    .map(|imp_member| match &imp_member.alias {
-                        Some(alias_ident) => {
-                            PropOrSpread::Prop(Box::new(Prop::KeyValue(KeyValueProp {
-                                key: imp_member.ident.clone().into(),
-                                value: Box::new(alias_ident.clone().into()),
-                            })))
-                        }
-                        None => {
-                            PropOrSpread::Prop(Box::new(Prop::Shorthand(imp_member.ident.clone())))
-                        }
+                    .map(|imp_member| match imp_member {
+                        ModuleMember {
+                            ident, is_ns: true, ..
+                        } => PropOrSpread::Spread(SpreadElement {
+                            dot3_token: DUMMY_SP,
+                            expr: ident.clone().into(),
+                        }),
+                        ModuleMember {
+                            ident,
+                            alias: Some(alias_ident),
+                            ..
+                        } => PropOrSpread::Prop(Box::new(Prop::KeyValue(KeyValueProp {
+                            key: ident.clone().into(),
+                            value: Box::new(alias_ident.clone().into()),
+                        }))),
+                        ModuleMember {
+                            ident, alias: None, ..
+                        } => PropOrSpread::Prop(Box::new(Prop::Shorthand(ident.clone()))),
                     })
                     .collect::<Vec<PropOrSpread>>();
-
-                ns.iter().for_each(|ns| {
-                    props.push(PropOrSpread::Spread(SpreadElement {
-                        dot3_token: DUMMY_SP,
-                        expr: ns.ident.clone().into(),
-                    }));
-                });
 
                 wrap_with_fn(&Expr::Object(ObjectLit {
                     span: DUMMY_SP,
@@ -211,32 +223,64 @@ impl ModuleCollector {
     /// var { default: React, useState, useCallback } = __require('react');
     /// var { core } = __require('@app/core');
     /// ```
-    fn to_require_deps(&self, src: &Atom, mod_ref: &ModuleRef) -> Vec<ModuleItem> {
+    fn to_require_deps(&self, src: &Atom, mod_ref: &ModuleRef) -> Option<Vec<ModuleItem>> {
         let mut requires: Vec<ModuleItem> = Vec::new();
+        let mut dep_props: Vec<ObjectPatProp> = Vec::new();
 
         match mod_ref {
-            ModuleRef::Import(Import { members, ns }) => {
-                ns.iter().for_each(|module| {
-                    requires.push(get_ns_require_call_expr(&self.require_ident, src, module));
-                });
+            ModuleRef::Import(Import { members }) => {
+                debug!("{:#?}", members);
 
-                if members.len() > 0 {
-                    requires.push(get_require_call_expr(&self.require_ident, src, members));
-                }
+                members
+                    .iter()
+                    .for_each(|module_member| match module_member {
+                        ModuleMember { is_ns: true, .. } => requires.push(get_require_call_stmt(
+                            &self.require_ident,
+                            src,
+                            module_member.ident.clone().into(),
+                            true,
+                        )),
+                        ModuleMember {
+                            ident,
+                            alias: Some(alias_ident),
+                            ..
+                        } => dep_props.push(ObjectPatProp::KeyValue(KeyValuePatProp {
+                            key: PropName::Ident(ident.clone().into()),
+                            value: Box::new(Pat::Ident(alias_ident.clone().into())),
+                        })),
+                        ModuleMember {
+                            ident, alias: None, ..
+                        } => dep_props.push(ObjectPatProp::Assign(AssignPatProp {
+                            key: ident.clone().into(),
+                            value: None,
+                            span: DUMMY_SP,
+                        })),
+                    });
             }
             // Skips AST generation because it has already been replaced during the visit phases.
-            ModuleRef::DynImport(_) | ModuleRef::Require(_) => {}
+            ModuleRef::DynImport(_) | ModuleRef::Require(_) => return None,
         };
 
-        requires
+        if dep_props.len() > 0 {
+            requires.push(get_require_call_stmt(
+                &self.require_ident,
+                src,
+                ObjectPat {
+                    props: dep_props,
+                    optional: false,
+                    type_ann: None,
+                    span: DUMMY_SP,
+                }
+                .into(),
+                false,
+            ));
+        }
+
+        requires.into()
     }
 
-    fn to_import_members(
-        &self,
-        specifiers: &Vec<ImportSpecifier>,
-    ) -> (Vec<ModuleMember>, Vec<ModuleMember>) {
+    fn to_import_members(&self, specifiers: &Vec<ImportSpecifier>) -> Vec<ModuleMember> {
         let mut members = Vec::with_capacity(specifiers.len());
-        let mut ns = Vec::with_capacity(specifiers.len());
 
         specifiers.iter().for_each(|spec| match spec {
             ImportSpecifier::Default(ImportDefaultSpecifier { local, .. }) => {
@@ -258,12 +302,12 @@ impl ModuleCollector {
                 }
             }
             ImportSpecifier::Namespace(ImportStarAsSpecifier { local, .. }) => {
-                ns.push(ModuleMember::default(local, None));
+                members.push(ModuleMember::ns(local));
             }
             _ => {}
         });
 
-        (members, ns)
+        members
     }
 }
 
@@ -295,16 +339,15 @@ impl VisitMut for ModuleCollector {
                     // - `import { foo as bar } from './foo';`
                     // - `import * as foo from './foo';`
                     ModuleDecl::Import(import) => {
-                        let (members, ns) = self.to_import_members(&import.specifiers);
+                        let members = self.to_import_members(&import.specifiers);
                         let src = import.src.value.clone();
 
                         if let Some(ModuleRef::Import(mod_ref)) = self.mods.get_mut(&src) {
                             mod_ref.members.extend(members.into_iter());
-                            mod_ref.ns.extend(ns.into_iter());
                         } else {
                             self.mods.insert(
                                 import.src.value.clone(),
-                                ModuleRef::Import(Import { members, ns }),
+                                ModuleRef::Import(Import { members }),
                             );
                         }
                     }

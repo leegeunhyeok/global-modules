@@ -3,61 +3,21 @@ use core::panic;
 use swc_core::{
     atoms::Atom,
     common::DUMMY_SP,
-    ecma::{
-        ast::*,
-        utils::{ExprFactory, FunctionFactory},
-    },
+    ecma::{ast::*, utils::ExprFactory},
 };
 
-use crate::module_collector::ModuleMember;
-
 /// ```js
-/// var { foo, bar, default: baz } = __require('./foo', false);
+/// var { foo, bar, default: baz } = __require('./foo'); // is_ns: false
+/// var { foo, bar, default: baz } = __require('./foo', true); // is_ns: true
 /// ```
-pub fn get_require_call_expr(
+pub fn get_require_call_stmt(
     require_ident: &Ident,
     src: &Atom,
-    modules: &Vec<ModuleMember>,
+    pat: Pat,
+    is_ns: bool,
 ) -> ModuleItem {
-    let deps_props = modules
-        .iter()
-        .map(|imp_member| match &imp_member.alias {
-            Some(alias_ident) => ObjectPatProp::KeyValue(KeyValuePatProp {
-                key: PropName::Ident(imp_member.ident.clone().into()),
-                value: Box::new(Pat::Ident(alias_ident.clone().into())),
-            }),
-            None => ObjectPatProp::Assign(AssignPatProp {
-                key: imp_member.ident.clone().into(),
-                value: None,
-                span: DUMMY_SP,
-            }),
-        })
-        .collect::<Vec<ObjectPatProp>>();
-
-    get_require_expr(require_ident, src, false)
-        .into_var_decl(
-            VarDeclKind::Var,
-            ObjectPat {
-                props: deps_props,
-                optional: false,
-                type_ann: None,
-                span: DUMMY_SP,
-            }
-            .into(),
-        )
-        .into()
-}
-
-/// ```js
-/// var foo = __require('./foo', true);
-/// ```
-pub fn get_ns_require_call_expr(
-    require_ident: &Ident,
-    src: &Atom,
-    module: &ModuleMember,
-) -> ModuleItem {
-    get_require_expr(&require_ident, &src, true)
-        .into_var_decl(VarDeclKind::Var, module.ident.clone().into())
+    get_require_expr(require_ident, src, is_ns)
+        .into_var_decl(VarDeclKind::Var, pat)
         .into()
 }
 
