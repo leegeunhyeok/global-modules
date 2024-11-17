@@ -1,6 +1,9 @@
 use std::mem;
 
-use crate::{constants::DEPS, module_collector::ModuleCollector};
+use crate::{
+    constants::DEPS,
+    module_collector::{ModuleAst, ModuleCollector},
+};
 use swc_core::{
     common::{collections::AHashMap, DUMMY_SP},
     ecma::{
@@ -77,14 +80,21 @@ impl VisitMut for GlobalModuleTransformer {
                 },
             });
 
-        let (deps_ident, deps_decl, deps_require) = collector.get_deps_ast();
-        let scoped_body: Vec<ModuleItem> = self.get_register_expr(
-            [deps_require, body].concat(),
+        let ModuleAst {
+            imp_stmts,
+            deps_ident,
+            deps_decl,
+            deps_requires,
+            exps_call,
+        } = collector.get_module_ast();
+
+        let scoped_body = self.get_register_expr(
+            [deps_requires, body, exps_call].concat(),
             &collector.require_ident,
             &collector.exports_ident,
             &deps_ident,
         );
 
-        module.body = [imports, deps_decl, scoped_body, exports].concat();
+        module.body = [imports, imp_stmts, deps_decl, scoped_body, exports].concat();
     }
 }

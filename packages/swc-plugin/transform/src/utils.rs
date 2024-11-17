@@ -40,38 +40,50 @@ pub fn get_require_expr(require_ident: &Ident, src: &Atom, is_star: bool) -> Exp
     require_ident.clone().as_call(DUMMY_SP, require_args)
 }
 
-pub fn get_expr_from_decl(decl: &Decl) -> Expr {
+pub fn get_expr_from_decl(decl: &Decl) -> (Ident, Expr) {
     match decl {
         Decl::Class(ClassDecl {
             class,
             ident,
             declare: false,
-        }) => ClassExpr {
-            class: class.clone(),
-            ident: Some(ident.clone()),
-        }
-        .into(),
+        }) => (
+            ident.clone(),
+            ClassExpr {
+                class: class.clone(),
+                ident: Some(ident.clone()),
+            }
+            .into(),
+        ),
         Decl::Fn(FnDecl {
             function,
             ident,
             declare: false,
-        }) => FnExpr {
-            function: function.clone(),
-            ident: Some(ident.clone()),
-        }
-        .into(),
+        }) => (
+            ident.clone(),
+            FnExpr {
+                function: function.clone(),
+                ident: Some(ident.clone()),
+            }
+            .into(),
+        ),
         Decl::Var(val_decl) => {
             if val_decl.decls.len() != 1 {
                 panic!("invalid named exports");
             }
 
-            if let Some(init) = &val_decl.decls.get(0).unwrap().init {
-                *init.clone()
-            } else {
-                panic!("invalid");
+            let var_decl = val_decl.decls.get(0).unwrap();
+
+            match var_decl {
+                VarDeclarator {
+                    name: Pat::Ident(BindingIdent { id, type_ann: None }),
+                    init: Some(expr),
+                    definite: false,
+                    ..
+                } => (id.clone(), *expr.clone()),
+                _ => panic!("invalid"),
             }
         }
-        _ => panic!("not implemented"),
+        _ => panic!("invalid"),
     }
 }
 
