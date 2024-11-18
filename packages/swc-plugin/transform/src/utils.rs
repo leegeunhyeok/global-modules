@@ -2,7 +2,10 @@ pub mod ast {
     use swc_core::{
         atoms::Atom,
         common::DUMMY_SP,
-        ecma::{ast::*, utils::ExprFactory},
+        ecma::{
+            ast::*,
+            utils::{member_expr, ExprFactory},
+        },
     };
 
     pub fn kv_prop(key: &Atom, value: Expr) -> PropOrSpread {
@@ -70,7 +73,7 @@ pub mod ast {
     }
 
     pub fn import_star(ident: &Ident, src: &Atom) -> ModuleItem {
-        ModuleItem::ModuleDecl(ModuleDecl::Import(ImportDecl {
+        ModuleDecl::Import(ImportDecl {
             phase: ImportPhase::Evaluation,
             specifiers: vec![ImportSpecifier::Namespace(ImportStarAsSpecifier {
                 local: ident.clone(),
@@ -80,19 +83,15 @@ pub mod ast {
             type_only: false,
             with: None,
             span: DUMMY_SP,
-        }))
+        })
+        .into()
     }
 
     /// ```js
     /// var { foo, bar, default: baz } = __require('./foo'); // is_ns: false
     /// var { foo, bar, default: baz } = __require('./foo', true); // is_ns: true
     /// ```
-    pub fn require_call_stmt(
-        require_ident: &Ident,
-        src: &Atom,
-        pat: Pat,
-        is_ns: bool,
-    ) -> ModuleItem {
+    pub fn require_call_stmt(require_ident: &Ident, src: &Atom, pat: Pat, is_ns: bool) -> Stmt {
         require_expr(require_ident, src, is_ns)
             .into_var_decl(VarDeclKind::Var, pat)
             .into()
@@ -115,6 +114,48 @@ pub mod ast {
         }
 
         require_ident.clone().as_call(DUMMY_SP, require_args)
+    }
+
+    /// Wraps the module body with an expression to register it as a global module.
+    ///
+    /// ```js
+    /// global.__module.register(function (__require, __exports) {
+    ///   /* body */
+    /// }, id, __deps);
+    /// ```
+    pub fn wrap_module(
+        body: Vec<Stmt>,
+        id: &u64,
+        require_ident: &Ident,
+        exports_ident: &Ident,
+        deps_ident: &Ident,
+    ) -> Vec<ModuleItem> {
+        let register_expr = member_expr!(Default::default(), DUMMY_SP, global.__modules.register);
+        let scoped_fn = Expr::Fn(FnExpr {
+            function: Box::new(Function {
+                body: Some(BlockStmt {
+                    stmts: body,
+                    ..Default::default()
+                }),
+                params: vec![require_ident.clone().into(), exports_ident.clone().into()],
+                ..Default::default()
+            }),
+            ..Default::default()
+        });
+
+        let id = Expr::Lit(Lit::Num(Number {
+            span: DUMMY_SP,
+            value: *id as f64,
+            raw: None,
+        }));
+
+        vec![register_expr
+            .as_call(
+                DUMMY_SP,
+                vec![scoped_fn.as_arg(), id.as_arg(), deps_ident.clone().as_arg()],
+            )
+            .into_stmt()
+            .into()]
     }
 }
 

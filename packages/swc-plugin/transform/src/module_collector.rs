@@ -43,9 +43,9 @@ pub struct ModuleAst {
     pub imp_stmts: Vec<ModuleItem>,
     pub deps_ident: Ident,
     pub deps_decl: Vec<ModuleItem>,
-    pub deps_requires: Vec<ModuleItem>,
-    pub exps_assigns: Vec<ModuleItem>,
-    pub exps_call: Vec<ModuleItem>,
+    pub deps_requires: Vec<Stmt>,
+    pub exps_assigns: Vec<Stmt>,
+    pub exps_call: Vec<Stmt>,
     pub exps_decl: Vec<ModuleItem>,
 }
 
@@ -54,8 +54,8 @@ impl ModuleAst {
         imp_stmts: Vec<ModuleItem>,
         deps_ident: Ident,
         deps_decl: VarDecl,
-        deps_requires: Vec<ModuleItem>,
-        exps_assigns: Vec<ModuleItem>,
+        deps_requires: Vec<Stmt>,
+        exps_assigns: Vec<Stmt>,
         exps_call: Expr,
         exps_decl: VarDecl,
     ) -> Self {
@@ -90,8 +90,8 @@ impl ModuleCollector {
         let mut dep_props: Vec<PropOrSpread> = Vec::new();
         let mut exp_props: Vec<PropOrSpread> = Vec::new();
         let mut imp_stmts: Vec<ModuleItem> = Vec::new();
-        let mut require_stmts: Vec<ModuleItem> = Vec::new();
-        let mut exps_assigns: Vec<ModuleItem> = Vec::new();
+        let mut require_stmts: Vec<Stmt> = Vec::new();
+        let mut exps_assigns: Vec<Stmt> = Vec::new();
         let mut exps_decls: Vec<VarDeclarator> = Vec::new();
 
         for key in self.mods_idx.iter() {
@@ -106,14 +106,14 @@ impl ModuleCollector {
 
         self.exps.iter().for_each(|exp_ref| match exp_ref {
             ExportRef::Named(NamedExportRef { members }) => members.iter().for_each(|member| {
-                exps_assigns.push(ModuleItem::Stmt(Stmt::Expr(ExprStmt {
+                exps_assigns.push(Stmt::Expr(ExprStmt {
                     span: DUMMY_SP,
                     expr: member
                         .orig_ident
                         .clone()
                         .make_assign_to(AssignOp::Assign, member.exp_ident.clone().into())
                         .into(),
-                })));
+                }));
                 exp_props.push(kv_prop(&member.name, member.exp_ident.clone().into()));
                 exps_decls.push(var_declarator(&member.exp_ident));
             }),
@@ -263,8 +263,8 @@ impl ModuleCollector {
     /// var { default: React, useState, useCallback } = __require('react');
     /// var { core } = __require('@app/core');
     /// ```
-    fn to_require_deps(&self, src: &Atom, mod_ref: &ModuleRef) -> Option<Vec<ModuleItem>> {
-        let mut requires: Vec<ModuleItem> = Vec::new();
+    fn to_require_deps(&self, src: &Atom, mod_ref: &ModuleRef) -> Option<Vec<Stmt>> {
+        let mut requires: Vec<Stmt> = Vec::new();
         let mut dep_props: Vec<ObjectPatProp> = Vec::new();
 
         match mod_ref {
