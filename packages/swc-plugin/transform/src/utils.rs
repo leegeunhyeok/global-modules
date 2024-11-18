@@ -91,10 +91,23 @@ pub mod ast {
     /// var { foo, bar, default: baz } = __require('./foo'); // is_ns: false
     /// var { foo, bar, default: baz } = __require('./foo', true); // is_ns: true
     /// ```
-    pub fn require_call_stmt(require_ident: &Ident, src: &Atom, pat: Pat, is_ns: bool) -> Stmt {
-        require_expr(require_ident, src, is_ns)
+    pub fn decl_required_deps_stmt(require_ident: &Ident, src: &Atom, pat: Pat) -> Stmt {
+        require_expr(require_ident, src, false)
             .into_var_decl(VarDeclKind::Var, pat)
             .into()
+    }
+
+    /// ```js
+    /// var { foo, bar, default: baz } = __require('./foo'); // is_ns: false
+    /// var { foo, bar, default: baz } = __require('./foo', true); // is_ns: true
+    /// ```
+    pub fn assign_required_deps_stmt(require_ident: &Ident, src: &Atom, exp_ident: &Ident) -> Stmt {
+        require_expr(require_ident, src, true)
+            .make_assign_to(
+                AssignOp::Assign,
+                AssignTarget::Simple(SimpleAssignTarget::Ident(exp_ident.clone().into())),
+            )
+            .into_stmt()
     }
 
     /// ```js

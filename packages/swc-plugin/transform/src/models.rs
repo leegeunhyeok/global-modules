@@ -3,7 +3,7 @@ use swc_core::{
     ecma::{ast::*, utils::private_ident},
 };
 
-use crate::constants::EXPORTS;
+use crate::constants::{EXPORTS, RE_EXPORTS};
 
 #[derive(Debug)]
 pub enum ModuleRef {
@@ -55,7 +55,13 @@ impl DynImportRef {
 }
 
 #[derive(Debug)]
-pub struct ImportMember {
+pub enum ImportMember {
+    Named(ImportNamedMember),
+    Namespace(ImportNamespaceMember),
+}
+
+#[derive(Debug)]
+pub struct ImportNamedMember {
     // `import { foo } from 'foo';`
     // `import * as foo from 'foo';`
     // => foo
@@ -63,32 +69,81 @@ pub struct ImportMember {
     // `import { foo as bar } from 'foo'`;
     // => bar
     pub alias: Option<Ident>,
-    // `true` if name spaced import.
-    pub is_ns: bool,
 }
 
-impl ImportMember {
-    pub fn default(ident: &Ident, alias: Option<Ident>) -> Self {
-        ImportMember {
+impl ImportNamedMember {
+    pub fn new(ident: &Ident, alias: Option<Ident>) -> Self {
+        ImportNamedMember {
             ident: ident.clone(),
             alias,
-            is_ns: false,
+        }
+    }
+}
+
+#[derive(Debug)]
+pub struct ImportNamespaceMember {
+    /// A reference variable that points to the export target.
+    ///
+    /// ```js
+    /// __x = actualExportMember;
+    /// // => __x
+    /// ```
+    pub exp_ident: Ident,
+    /// A reference identifier for the import statement used in re-export handling.
+    ///
+    /// ```js
+    /// import * as __rx from './foo';
+    /// // => __rx
+    /// ```
+    pub mod_ident: Ident,
+    /// Alias identifier.
+    ///
+    /// ```js
+    /// export * as foo from './foo';
+    /// // => Some(foo)
+    ///
+    /// export * from './foo';
+    /// // => None
+    /// ```
+    pub ident: Option<Ident>,
+}
+
+impl ImportNamespaceMember {
+    pub fn alias(ident: &Ident) -> Self {
+        ImportNamespaceMember {
+            exp_ident: private_ident!(EXPORTS),
+            mod_ident: private_ident!(RE_EXPORTS),
+            ident: Some(ident.clone()),
         }
     }
 
-    pub fn ns(ident: &Ident) -> Self {
-        ImportMember {
-            ident: ident.clone(),
-            alias: None,
-            is_ns: true,
+    pub fn anonymous() -> Self {
+        ImportNamespaceMember {
+            exp_ident: private_ident!(EXPORTS),
+            mod_ident: private_ident!(RE_EXPORTS),
+            ident: None,
         }
     }
 }
 
 #[derive(Debug)]
 pub enum ExportRef {
+    /// ```js
+    /// export { foo, bar };
+    /// export const ...;
+    /// export function ...;
+    /// export class ...;
+    /// export default ...; // named as 'default'.
+    /// ```
     Named(NamedExportRef),
+    /// ```js
+    /// export { foo, bar } from './foo';
+    /// ```
     NamedReExport(NamedReExportRef),
+    /// ```js
+    /// export * from './foo';
+    /// export * as foo from './foo';
+    /// ```
     ReExportAll(ReExportAllRef),
 }
 
@@ -105,8 +160,21 @@ impl NamedExportRef {
 
 #[derive(Debug)]
 pub struct ExportMember {
+    /// A reference variable that points to the export target.
+    ///
+    /// ```js
+    /// __x = actualExportMember;
+    /// // => __x
+    /// ```
     pub exp_ident: Ident,
-    pub orig_ident: Ident,
+    /// The identifier of the actual export target.
+    ///
+    /// ```js
+    /// __x = actualExportMember;
+    /// // => actualExportMember
+    /// ```
+    pub orig_ident: Option<Ident>,
+    /// Export name.
     pub name: Atom,
 }
 
@@ -120,17 +188,15 @@ impl ExportMember {
 
         ExportMember {
             exp_ident: private_ident!(EXPORTS),
-            orig_ident: orig_ident.clone(),
+            orig_ident: Some(orig_ident.clone()),
             name: exp_name,
         }
     }
 
     pub fn anonymous(name: Atom) -> Self {
-        let ident = private_ident!(EXPORTS);
-
         ExportMember {
-            exp_ident: ident.clone(),
-            orig_ident: ident,
+            exp_ident: private_ident!(EXPORTS),
+            orig_ident: None,
             name,
         }
     }
@@ -138,14 +204,74 @@ impl ExportMember {
 
 #[derive(Debug)]
 pub struct NamedReExportRef {
+    /// A reference identifier for the import statement used in re-export handling.
+    ///
+    /// ```js
+    /// import * as __rx from './foo';
+    /// // => __rx
+    /// ```
+    pub mod_ident: Ident,
+    /// A reference variable that points to the export target.
+    ///
+    /// ```js
+    /// __x = actualExportMember;
+    /// // => __x
+    /// ```
     pub ident: Ident,
+    /// Source of the referenced module.
     pub src: Atom,
+    /// Exported members.
     pub members: Vec<ExportMember>,
+}
+
+impl NamedReExportRef {
+    pub fn new(mod_ident: &Ident, ident: &Ident, src: &Atom, members: Vec<ExportMember>) -> Self {
+        NamedReExportRef {
+            mod_ident: mod_ident.clone(),
+            ident: ident.clone(),
+            src: src.clone(),
+            members,
+        }
+    }
 }
 
 #[derive(Debug)]
 pub struct ReExportAllRef {
+    /// A reference identifier for the import statement used in re-export handling.
+    ///
+    /// ```js
+    /// import * as __rx from './foo';
+    /// // => __rx
+    /// ```
+    pub mod_ident: Ident,
+    /// A reference variable that points to the export target.
+    ///
+    /// ```js
+    /// __x = actualExportMember;
+    /// // => __x
+    /// ```
     pub ident: Ident,
+    /// Source of the referenced module.
     pub src: Atom,
+    /// Alias name.
+    ///
+    /// ```js
+    /// export * as foo from './foo';
+    /// // => Some(foo)
+    ///
+    /// export * from './foo';
+    /// // => None
+    /// ```
     pub name: Option<Atom>,
+}
+
+impl ReExportAllRef {
+    pub fn new(mod_ident: &Ident, ident: &Ident, src: &Atom, name: Option<Atom>) -> Self {
+        ReExportAllRef {
+            mod_ident: mod_ident.clone(),
+            ident: ident.clone(),
+            src: src.clone(),
+            name,
+        }
+    }
 }

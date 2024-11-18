@@ -12,15 +12,16 @@ use swc_core::{
 use tracing::debug;
 
 use crate::{
-    constants::{DEPS, EXPORTS, EXPORTS_ARG, REQUIRE_ARG},
+    constants::{DEPS, EXPORTS_ARG, REQUIRE_ARG},
     models::{
-        DynImportRef, ExportMember, ExportRef, ImportMember, ImportRef, ModuleRef, NamedExportRef,
-        NamedReExportRef, ReExportAllRef, RequireRef,
+        DynImportRef, ExportMember, ExportRef, ImportMember, ImportNamedMember,
+        ImportNamespaceMember, ImportRef, ModuleRef, NamedExportRef, NamedReExportRef,
+        ReExportAllRef, RequireRef,
     },
     utils::{
         ast::{
-            assign_expr, import_star, kv_prop, lazy_eval_expr, obj_lit_expr, require_call_stmt,
-            require_expr, spread_prop, var_declarator,
+            assign_expr, assign_required_deps_stmt, decl_required_deps_stmt, import_star, kv_prop,
+            lazy_eval_expr, obj_lit_expr, require_expr, spread_prop, var_declarator,
         },
         parse::{get_expr_from_decl, get_expr_from_default_decl},
     },
@@ -106,18 +107,21 @@ impl ModuleCollector {
 
         self.exps.iter().for_each(|exp_ref| match exp_ref {
             ExportRef::Named(NamedExportRef { members }) => members.iter().for_each(|member| {
-                exps_assigns.push(Stmt::Expr(ExprStmt {
-                    span: DUMMY_SP,
-                    expr: member
-                        .orig_ident
-                        .clone()
-                        .make_assign_to(AssignOp::Assign, member.exp_ident.clone().into())
-                        .into(),
-                }));
+                if let Some(orig_ident) = &member.orig_ident {
+                    exps_assigns.push(Stmt::Expr(ExprStmt {
+                        span: DUMMY_SP,
+                        expr: orig_ident
+                            .clone()
+                            .make_assign_to(AssignOp::Assign, member.exp_ident.clone().into())
+                            .into(),
+                    }));
+                }
+
                 exp_props.push(kv_prop(&member.name, member.exp_ident.clone().into()));
                 exps_decls.push(var_declarator(&member.exp_ident));
             }),
             ExportRef::NamedReExport(NamedReExportRef {
+                mod_ident,
                 ident,
                 src,
                 members,
@@ -130,15 +134,20 @@ impl ModuleCollector {
                     exps_decls.push(var_declarator(&member.exp_ident));
                 });
 
-                imp_stmts.push(import_star(ident, src));
+                imp_stmts.push(import_star(mod_ident, src));
             }
-            ExportRef::ReExportAll(ReExportAllRef { ident, src, name }) => {
+            ExportRef::ReExportAll(ReExportAllRef {
+                mod_ident,
+                ident,
+                src,
+                name,
+            }) => {
                 exp_props.push(match name {
                     Some(exp_name) => kv_prop(exp_name, ident.clone().into()),
                     None => spread_prop(ident.clone().into()),
                 });
                 exps_decls.push(var_declarator(&ident));
-                imp_stmts.push(import_star(ident, src));
+                imp_stmts.push(import_star(mod_ident, src));
             }
         });
 
@@ -201,19 +210,20 @@ impl ModuleCollector {
                         // Before
                         //
                         // ```js
-                        // export * from './foo';
+                        // export { foo as bar } from './foo';
                         // ```
                         //
                         // After
                         //
                         // ```js
-                        // import * as __x from './foo';
+                        // import { foo as __x } from './foo';
                         //
-                        // { ...__x };
+                        // { "bar": __x };
                         // ```
-                        ImportMember {
-                            ident, is_ns: true, ..
-                        } => spread_prop(ident.clone().into()),
+                        ImportMember::Named(ImportNamedMember {
+                            ident,
+                            alias: Some(alias_ident),
+                        }) => kv_prop(&ident.sym, alias_ident.clone().into()),
                         // Before
                         //
                         // ```js
@@ -227,32 +237,32 @@ impl ModuleCollector {
                         //
                         // { "bar": __x };
                         // ```
-                        ImportMember {
-                            ident,
-                            alias: Some(alias_ident),
-                            ..
-                        } => kv_prop(&ident.sym, alias_ident.clone().into()),
+                        ImportMember::Named(ImportNamedMember { ident, alias: None }) => {
+                            PropOrSpread::Prop(Box::new(Prop::Shorthand(ident.clone())))
+                        }
                         // Before
                         //
                         // ```js
-                        // export { foo } from './foo';
+                        // export * from './foo';
                         // ```
                         //
                         // After
                         //
                         // ```js
-                        // { "foo": foo };
+                        // import * as __x from './foo';
+                        //
+                        // { ...__x };
                         // ```
-                        ImportMember {
-                            ident, alias: None, ..
-                        } => PropOrSpread::Prop(Box::new(Prop::Shorthand(ident.clone()))),
+                        ImportMember::Namespace(ImportNamespaceMember { mod_ident, .. }) => {
+                            spread_prop(mod_ident.clone().into())
+                        }
                     })
                     .collect::<Vec<PropOrSpread>>();
 
                 lazy_eval_expr(&obj_lit_expr(props))
             }
             ModuleRef::DynImport(dyn_imp) => lazy_eval_expr(&dyn_imp.orig_expr),
-            ModuleRef::Require(req) => lazy_eval_expr(&req.orig_expr),
+            ModuleRef::Require(require) => lazy_eval_expr(&require.orig_expr),
         }
     }
 
@@ -262,6 +272,9 @@ impl ModuleCollector {
     /// // Examples
     /// var { default: React, useState, useCallback } = __require('react');
     /// var { core } = __require('@app/core');
+    /// __x = __require('./foo');
+    /// __x1 = __require('./bar');
+    /// __x2 = __require('./baz');
     /// ```
     fn to_require_deps(&self, src: &Atom, mod_ref: &ModuleRef) -> Option<Vec<Stmt>> {
         let mut requires: Vec<Stmt> = Vec::new();
@@ -272,27 +285,37 @@ impl ModuleCollector {
                 members
                     .iter()
                     .for_each(|module_member| match module_member {
-                        ImportMember { is_ns: true, .. } => requires.push(require_call_stmt(
-                            &self.require_ident,
-                            src,
-                            module_member.ident.clone().into(),
-                            true,
-                        )),
-                        ImportMember {
+                        ImportMember::Named(ImportNamedMember {
                             ident,
                             alias: Some(alias_ident),
-                            ..
-                        } => dep_props.push(ObjectPatProp::KeyValue(KeyValuePatProp {
+                        }) => dep_props.push(ObjectPatProp::KeyValue(KeyValuePatProp {
                             key: PropName::Ident(ident.clone().into()),
                             value: Box::new(Pat::Ident(alias_ident.clone().into())),
                         })),
-                        ImportMember {
-                            ident, alias: None, ..
-                        } => dep_props.push(ObjectPatProp::Assign(AssignPatProp {
-                            key: ident.clone().into(),
-                            value: None,
-                            span: DUMMY_SP,
-                        })),
+                        ImportMember::Named(ImportNamedMember { ident, alias: None }) => {
+                            dep_props.push(ObjectPatProp::Assign(AssignPatProp {
+                                key: ident.clone().into(),
+                                value: None,
+                                span: DUMMY_SP,
+                            }));
+                        }
+                        ImportMember::Namespace(ImportNamespaceMember {
+                            ident: Some(ident),
+                            ..
+                        }) => requires.push(decl_required_deps_stmt(
+                            &self.require_ident,
+                            src,
+                            Pat::Ident(ident.clone().into()),
+                        )),
+                        ImportMember::Namespace(ImportNamespaceMember {
+                            exp_ident,
+                            ident: None,
+                            ..
+                        }) => requires.push(assign_required_deps_stmt(
+                            &self.require_ident,
+                            src,
+                            &exp_ident,
+                        )),
                     });
             }
             // Skips AST generation because it has already been replaced during the visit phases.
@@ -300,7 +323,7 @@ impl ModuleCollector {
         };
 
         if dep_props.len() > 0 {
-            requires.push(require_call_stmt(
+            requires.push(decl_required_deps_stmt(
                 &self.require_ident,
                 src,
                 ObjectPat {
@@ -310,7 +333,6 @@ impl ModuleCollector {
                     span: DUMMY_SP,
                 }
                 .into(),
-                false,
             ));
         }
 
@@ -322,10 +344,10 @@ impl ModuleCollector {
 
         specifiers.iter().for_each(|spec| match spec {
             ImportSpecifier::Default(ImportDefaultSpecifier { local, .. }) => {
-                members.push(ImportMember::default(
+                members.push(ImportMember::Named(ImportNamedMember::new(
                     &quote_ident!("default").into(),
                     Some(local.clone()),
-                ));
+                )));
             }
             ImportSpecifier::Named(ImportNamedSpecifier {
                 local,
@@ -334,13 +356,16 @@ impl ModuleCollector {
                 ..
             }) => {
                 if let Some(ModuleExportName::Ident(ident)) = imported {
-                    members.push(ImportMember::default(ident, Some(local.clone())));
+                    members.push(ImportMember::Named(ImportNamedMember::new(
+                        ident,
+                        Some(local.clone()),
+                    )));
                 } else {
-                    members.push(ImportMember::default(local, None));
+                    members.push(ImportMember::Named(ImportNamedMember::new(local, None)));
                 }
             }
             ImportSpecifier::Namespace(ImportStarAsSpecifier { local, .. }) => {
-                members.push(ImportMember::ns(local));
+                members.push(ImportMember::Namespace(ImportNamespaceMember::alias(local)));
             }
             _ => {}
         });
@@ -467,40 +492,44 @@ impl VisitMut for ModuleCollector {
                                     .specifiers
                                     .get(0)
                                     .expect("invalid named re-export all");
-                                let ident = private_ident!(EXPORTS);
-                                let src = src_str.clone().value;
 
-                                self.reg_import(&src, vec![ImportMember::ns(&ident)]);
+                                let src = src_str.clone().value;
+                                let member = ImportNamespaceMember::anonymous();
 
                                 match specifier {
-                                    // Re-export without alias name.
-                                    //
-                                    // ```js
-                                    // export * from './foo';
-                                    // ```
-                                    ExportSpecifier::Namespace(named_exp) => {
-                                        self.exps.push(ExportRef::ReExportAll(ReExportAllRef {
-                                            ident,
-                                            src,
-                                            name: Some(named_exp.name.atom().clone()),
-                                        }));
-                                    }
-                                    // Re-export with alias name.
+                                    // Re-export all.
                                     //
                                     // ```js
                                     // export * as foo from './foo';
                                     // ```
+                                    ExportSpecifier::Namespace(named_exp) => {
+                                        self.exps.push(ExportRef::ReExportAll(
+                                            ReExportAllRef::new(
+                                                &member.mod_ident,
+                                                &member.exp_ident,
+                                                &src,
+                                                Some(named_exp.name.atom().clone()),
+                                            ),
+                                        ));
+                                    }
+                                    // Re-export with specified members.
+                                    //
+                                    // ```js
+                                    // export { foo, bar, baz } from './foo';
+                                    // ```
                                     _ => {
                                         self.exps.push(ExportRef::NamedReExport(
-                                            NamedReExportRef {
-                                                ident,
-                                                src,
-                                                members: self
-                                                    .to_export_members(&export_named.specifiers),
-                                            },
+                                            NamedReExportRef::new(
+                                                &member.mod_ident,
+                                                &member.exp_ident,
+                                                &src,
+                                                self.to_export_members(&export_named.specifiers),
+                                            ),
                                         ));
                                     }
                                 }
+
+                                self.reg_import(&src, vec![ImportMember::Namespace(member)]);
                             }
                             // Named export
                             None => {
@@ -531,15 +560,17 @@ impl VisitMut for ModuleCollector {
                         with: None,
                         ..
                     }) => {
-                        let ident = private_ident!(EXPORTS);
                         let src = src.clone().value;
+                        let member = ImportNamespaceMember::anonymous();
 
-                        self.reg_import(&src, vec![ImportMember::ns(&ident)]);
-                        self.exps.push(ExportRef::ReExportAll(ReExportAllRef {
-                            src,
-                            ident: ident.clone(),
-                            name: None,
-                        }));
+                        self.exps.push(ExportRef::ReExportAll(ReExportAllRef::new(
+                            &member.mod_ident,
+                            &member.exp_ident,
+                            &src,
+                            None,
+                        )));
+
+                        self.reg_import(&src, vec![ImportMember::Namespace(member)]);
                     }
                     _ => {}
                 },
