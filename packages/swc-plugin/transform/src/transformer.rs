@@ -85,16 +85,26 @@ impl VisitMut for GlobalModuleTransformer {
             deps_ident,
             deps_decl,
             deps_requires,
+            exps_assigns,
             exps_call,
+            exps_decl,
         } = collector.get_module_ast();
 
         let scoped_body = self.get_register_expr(
-            [deps_requires, body, exps_call].concat(),
+            [deps_requires, body, exps_assigns, exps_call].concat(),
             &collector.require_ident,
             &collector.exports_ident,
             &deps_ident,
         );
 
-        module.body = [imports, imp_stmts, deps_decl, scoped_body, exports].concat();
+        module.body = [
+            imports,
+            imp_stmts,
+            deps_decl,
+            scoped_body,
+            exps_decl,
+            exports,
+        ]
+        .concat();
     }
 }
