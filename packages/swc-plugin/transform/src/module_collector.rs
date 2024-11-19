@@ -94,7 +94,7 @@ impl<'a> ModuleCollector<'a> {
         //   },
         // };
         // ```
-        let mut dep_props: Vec<PropOrSpread> = Vec::new();
+        let mut dep_props: Vec<PropOrSpread> = Vec::with_capacity(self.mods.len());
 
         // Object properties to be passed to the Global module's export API."
         let mut export_props: Vec<PropOrSpread> = Vec::new();

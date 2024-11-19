@@ -73,9 +73,9 @@ impl VisitMut for GlobalModuleTransformer {
     noop_visit_mut_type!();
 
     fn visit_mut_module(&mut self, module: &mut Module) {
-        let mut imports = Vec::new();
-        let mut exports = Vec::new();
-        let mut body = Vec::new();
+        let mut imports = Vec::with_capacity(module.body.len());
+        let mut exports = Vec::with_capacity(module.body.len());
+        let mut body = Vec::with_capacity(module.body.len());
         let mut collector = ModuleCollector::new(&self.exports_ident, &self.require_ident);
 
         module.visit_mut_children_with(&mut collector);
