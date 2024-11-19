@@ -184,6 +184,10 @@ impl ModuleCollector {
         }
     }
 
+    fn reg_export(&mut self, export: ExportRef) {
+        self.exps.push(export);
+    }
+
     fn reg_dep(&mut self, src: &Atom, mod_ref: ModuleRef) {
         self.mods.insert(src.clone(), mod_ref);
         self.mods_idx.push(src.clone());
@@ -467,6 +471,8 @@ impl VisitMut for ModuleCollector {
                     ModuleDecl::ExportDefaultDecl(export_default_decl) => {
                         let member = ExportMember::anonymous(Atom::new("default"));
 
+                        // Rewrite exports statements to `__x = <...>;`
+                        // and register `__x` to export refs.
                         *item = assign_expr(
                             &member.exp_ident,
                             get_expr_from_default_decl(&export_default_decl.decl),
@@ -493,7 +499,7 @@ impl VisitMut for ModuleCollector {
                                     .get(0)
                                     .expect("invalid named re-export all");
 
-                                let src = src_str.clone().value;
+                                let src: Atom = src_str.clone().value;
                                 let member = ImportNamespaceMember::anonymous();
 
                                 match specifier {
@@ -503,7 +509,7 @@ impl VisitMut for ModuleCollector {
                                     // export * as foo from './foo';
                                     // ```
                                     ExportSpecifier::Namespace(named_exp) => {
-                                        self.exps.push(ExportRef::ReExportAll(
+                                        self.reg_export(ExportRef::ReExportAll(
                                             ReExportAllRef::new(
                                                 &member.mod_ident,
                                                 &member.exp_ident,
@@ -518,7 +524,7 @@ impl VisitMut for ModuleCollector {
                                     // export { foo, bar, baz } from './foo';
                                     // ```
                                     _ => {
-                                        self.exps.push(ExportRef::NamedReExport(
+                                        self.reg_export(ExportRef::NamedReExport(
                                             NamedReExportRef::new(
                                                 &member.mod_ident,
                                                 &member.exp_ident,
@@ -563,7 +569,7 @@ impl VisitMut for ModuleCollector {
                         let src = src.clone().value;
                         let member = ImportNamespaceMember::anonymous();
 
-                        self.exps.push(ExportRef::ReExportAll(ReExportAllRef::new(
+                        self.reg_export(ExportRef::ReExportAll(ReExportAllRef::new(
                             &member.mod_ident,
                             &member.exp_ident,
                             &src,
