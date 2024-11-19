@@ -77,7 +77,7 @@ impl VisitMut for GlobalModuleTransformer {
         let mut imports = Vec::new();
         let mut exports = Vec::new();
         let mut body = Vec::new();
-        let mut collector = ModuleCollector::default();
+        let mut collector = ModuleCollector::new(&self.exports_ident, &self.require_ident);
 
         module.visit_mut_children_with(&mut collector);
 

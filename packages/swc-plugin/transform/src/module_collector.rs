@@ -60,7 +60,9 @@ impl ModuleAst {
     }
 }
 
-pub struct ModuleCollector {
+pub struct ModuleCollector<'a> {
+    exports_ident: &'a Ident,
+    require_ident: &'a Ident,
     // `import ... from './foo'`;
     // `require('./foo')`;
     //
@@ -69,11 +71,9 @@ pub struct ModuleCollector {
     mods: AHashMap<Atom, ModuleRef>,
     mods_idx: Vec<Atom>,
     exps: Vec<ExportRef>,
-    exports_ident: Ident,
-    require_ident: Ident,
 }
 
-impl ModuleCollector {
+impl<'a> ModuleCollector<'a> {
     /// Returns the AST structure based on the collected module and export data.
     pub fn get_module_ast(&self) -> ModuleAst {
         // Ident for declare dependencies.
@@ -515,19 +515,19 @@ impl ModuleCollector {
     }
 }
 
-impl Default for ModuleCollector {
-    fn default() -> Self {
+impl<'a> ModuleCollector<'a> {
+    pub fn new(exports_ident: &'a Ident, require_ident: &'a Ident) -> Self {
         ModuleCollector {
+            exports_ident,
+            require_ident,
             mods: AHashMap::default(),
             mods_idx: Vec::default(),
             exps: Vec::default(),
-            exports_ident: private_ident!(EXPORTS_ARG),
-            require_ident: private_ident!(REQUIRE_ARG),
         }
     }
 }
 
-impl VisitMut for ModuleCollector {
+impl<'a> VisitMut for ModuleCollector<'a> {
     noop_visit_mut_type!();
 
     fn visit_mut_module_items(&mut self, items: &mut Vec<ModuleItem>) {
