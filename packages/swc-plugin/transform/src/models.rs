@@ -88,7 +88,7 @@ pub struct ImportNamespaceMember {
     /// __x = actualExportMember;
     /// // => __x
     /// ```
-    pub exp_ident: Ident,
+    pub export_ident: Ident,
     /// A reference identifier for the import statement used in re-export handling.
     ///
     /// ```js
@@ -111,7 +111,7 @@ pub struct ImportNamespaceMember {
 impl ImportNamespaceMember {
     pub fn alias(ident: &Ident) -> Self {
         ImportNamespaceMember {
-            exp_ident: private_ident!(EXPORTS),
+            export_ident: private_ident!(EXPORTS),
             mod_ident: private_ident!(RE_EXPORTS),
             ident: Some(ident.clone()),
         }
@@ -119,7 +119,7 @@ impl ImportNamespaceMember {
 
     pub fn anonymous() -> Self {
         ImportNamespaceMember {
-            exp_ident: private_ident!(EXPORTS),
+            export_ident: private_ident!(EXPORTS),
             mod_ident: private_ident!(RE_EXPORTS),
             ident: None,
         }
@@ -137,7 +137,9 @@ pub enum ExportRef {
     /// ```
     Named(NamedExportRef),
     /// ```js
-    /// export { foo, bar } from './foo';
+    /// export { foo, bar as baz } from './foo';
+    /// export { default } from './foo';
+    /// export { default as foo } from './foo';
     /// ```
     NamedReExport(NamedReExportRef),
     /// ```js
@@ -166,7 +168,7 @@ pub struct ExportMember {
     /// __x = actualExportMember;
     /// // => __x
     /// ```
-    pub exp_ident: Ident,
+    pub export_ident: Ident,
     /// The identifier of the actual export target.
     ///
     /// ```js
@@ -187,7 +189,7 @@ impl ExportMember {
         };
 
         ExportMember {
-            exp_ident: private_ident!(EXPORTS),
+            export_ident: private_ident!(EXPORTS),
             orig_ident: Some(orig_ident.clone()),
             name: exp_name,
         }
@@ -195,7 +197,7 @@ impl ExportMember {
 
     pub fn anonymous(name: Atom) -> Self {
         ExportMember {
-            exp_ident: private_ident!(EXPORTS),
+            export_ident: private_ident!(EXPORTS),
             orig_ident: None,
             name,
         }
@@ -217,7 +219,7 @@ pub struct NamedReExportRef {
     /// __x = actualExportMember;
     /// // => __x
     /// ```
-    pub ident: Ident,
+    pub exp_ident: Ident,
     /// Source of the referenced module.
     pub src: Atom,
     /// Exported members.
@@ -225,10 +227,10 @@ pub struct NamedReExportRef {
 }
 
 impl NamedReExportRef {
-    pub fn new(mod_ident: &Ident, ident: &Ident, src: &Atom, members: Vec<ExportMember>) -> Self {
+    pub fn new(mod_ident: &Ident, exp_ident: &Ident, src: &Atom, members: Vec<ExportMember>) -> Self {
         NamedReExportRef {
             mod_ident: mod_ident.clone(),
-            ident: ident.clone(),
+            exp_ident: exp_ident.clone(),
             src: src.clone(),
             members,
         }
@@ -250,7 +252,7 @@ pub struct ReExportAllRef {
     /// __x = actualExportMember;
     /// // => __x
     /// ```
-    pub ident: Ident,
+    pub exp_ident: Ident,
     /// Source of the referenced module.
     pub src: Atom,
     /// Alias name.
@@ -266,10 +268,10 @@ pub struct ReExportAllRef {
 }
 
 impl ReExportAllRef {
-    pub fn new(mod_ident: &Ident, ident: &Ident, src: &Atom, name: Option<Atom>) -> Self {
+    pub fn new(mod_ident: &Ident, exp_ident: &Ident, src: &Atom, name: Option<Atom>) -> Self {
         ReExportAllRef {
             mod_ident: mod_ident.clone(),
-            ident: ident.clone(),
+            exp_ident: exp_ident.clone(),
             src: src.clone(),
             name,
         }
