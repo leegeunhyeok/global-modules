@@ -35,6 +35,14 @@ pub mod ast {
         })
     }
 
+    pub fn num_lit_expr(num: f64) -> Expr {
+        Expr::Lit(Lit::Num(Number {
+            span: DUMMY_SP,
+            value: num,
+            raw: None,
+        }))
+    }
+
     pub fn var_declarator(ident: &Ident) -> VarDeclarator {
         VarDeclarator {
             name: Pat::Ident(ident.clone().into()),

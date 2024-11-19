@@ -3,6 +3,7 @@ use std::mem;
 use crate::{
     constants::*,
     module_collector::{ModuleAst, ModuleCollector},
+    utils::ast::num_lit_expr,
 };
 use swc_core::{
     common::{collections::AHashMap, DUMMY_SP},
@@ -37,7 +38,7 @@ impl GlobalModuleTransformer {
     ///   /* body */
     /// }, id, __deps);
     /// ```
-    fn as_global_module(&self, body: Vec<Stmt>, id: &u64, deps_ident: &Ident) -> Vec<ModuleItem> {
+    fn as_global_module(&self, body: Vec<Stmt>, deps_ident: Ident) -> Vec<ModuleItem> {
         let register_expr = member_expr!(Default::default(), DUMMY_SP, global.__modules.register);
         let scoped_fn = Expr::Fn(FnExpr {
             function: Box::new(Function {
@@ -54,16 +55,14 @@ impl GlobalModuleTransformer {
             ..Default::default()
         });
 
-        let id = Expr::Lit(Lit::Num(Number {
-            span: DUMMY_SP,
-            value: *id as f64,
-            raw: None,
-        }));
-
         vec![register_expr
             .as_call(
                 DUMMY_SP,
-                vec![scoped_fn.as_arg(), id.as_arg(), deps_ident.clone().as_arg()],
+                vec![
+                    scoped_fn.as_arg(),
+                    num_lit_expr(self.id as f64).as_arg(),
+                    deps_ident.as_arg(),
+                ],
             )
             .into_stmt()
             .into()]
@@ -92,27 +91,26 @@ impl VisitMut for GlobalModuleTransformer {
             });
 
         let ModuleAst {
-            imp_stmts,
+            import_stmts,
             deps_ident,
             deps_decl,
             deps_requires,
-            exps_assigns,
-            exps_call,
-            exps_decl,
+            export_assigns,
+            export_call,
+            export_decls,
         } = collector.get_module_ast();
 
         let scoped_body = self.as_global_module(
-            [deps_requires, body, exps_assigns, exps_call].concat(),
-            &self.id,
-            &deps_ident,
+            [deps_requires, body, export_assigns, export_call].concat(),
+            deps_ident,
         );
 
         module.body = [
             imports,
-            imp_stmts,
+            import_stmts,
             deps_decl,
             scoped_body,
-            exps_decl,
+            export_decls,
             exports,
         ]
         .concat();
