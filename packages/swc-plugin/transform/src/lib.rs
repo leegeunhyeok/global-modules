@@ -10,6 +10,6 @@ pub fn global_module(id: u64, deps_id: Option<AHashMap<String, u64>>) -> impl Vi
 
 mod constants;
 mod models;
-mod module_collector;
+mod module_processor;
 mod transformer;
 mod utils;

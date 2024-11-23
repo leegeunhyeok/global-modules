@@ -2,7 +2,7 @@ use std::mem;
 
 use crate::{
     constants::*,
-    module_collector::{ModuleAst, ModuleCollector},
+    module_processor::{GlobalModuleProcessor, ModuleAst},
     utils::ast::num_lit_expr,
 };
 use swc_core::{
@@ -76,9 +76,9 @@ impl VisitMut for GlobalModuleTransformer {
         let mut imports = Vec::with_capacity(module.body.len());
         let mut exports = Vec::with_capacity(module.body.len());
         let mut body = Vec::with_capacity(module.body.len());
-        let mut collector = ModuleCollector::new(&self.exports_ident, &self.require_ident);
+        let mut processor = GlobalModuleProcessor::new(&self.exports_ident, &self.require_ident);
 
-        module.visit_mut_children_with(&mut collector);
+        module.visit_mut_children_with(&mut processor);
 
         mem::take(&mut module.body)
             .into_iter()
@@ -98,7 +98,7 @@ impl VisitMut for GlobalModuleTransformer {
             export_assigns,
             export_call,
             export_decls,
-        } = collector.get_module_ast();
+        } = processor.get_module_ast();
 
         let scoped_body = self.as_global_module(
             [deps_requires, body, export_assigns, export_call].concat(),

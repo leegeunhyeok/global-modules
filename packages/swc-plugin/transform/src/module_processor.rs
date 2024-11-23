@@ -60,7 +60,7 @@ impl ModuleAst {
     }
 }
 
-pub struct ModuleCollector<'a> {
+pub struct GlobalModuleProcessor<'a> {
     exports_ident: &'a Ident,
     require_ident: &'a Ident,
     // `import ... from './foo'`;
@@ -73,7 +73,7 @@ pub struct ModuleCollector<'a> {
     exports: Vec<ExportRef>,
 }
 
-impl<'a> ModuleCollector<'a> {
+impl<'a> GlobalModuleProcessor<'a> {
     /// Returns the AST structure based on the collected module and export data.
     pub fn get_module_ast(&self) -> ModuleAst {
         // Ident for declare dependencies.
@@ -515,9 +515,9 @@ impl<'a> ModuleCollector<'a> {
     }
 }
 
-impl<'a> ModuleCollector<'a> {
+impl<'a> GlobalModuleProcessor<'a> {
     pub fn new(exports_ident: &'a Ident, require_ident: &'a Ident) -> Self {
-        ModuleCollector {
+        GlobalModuleProcessor {
             exports_ident,
             require_ident,
             mods: AHashMap::default(),
@@ -527,7 +527,7 @@ impl<'a> ModuleCollector<'a> {
     }
 }
 
-impl<'a> VisitMut for ModuleCollector<'a> {
+impl<'a> VisitMut for GlobalModuleProcessor<'a> {
     noop_visit_mut_type!();
 
     fn visit_mut_module_items(&mut self, items: &mut Vec<ModuleItem>) {
