@@ -226,7 +226,7 @@ impl<'a> GlobalModuleProcessor<'a> {
     }
 
     /// Register export reference.
-    fn reg_export(&mut self, export: ExportRef) {
+    fn register_export(&mut self, export: ExportRef) {
         self.exports.push(export);
     }
 
@@ -573,7 +573,7 @@ impl<'a> VisitMut for GlobalModuleProcessor<'a> {
                                 .into_stmt()
                                 .into();
 
-                            self.reg_export(ExportRef::Named(NamedExportRef::new(vec![member])));
+                            self.register_export(ExportRef::Named(NamedExportRef::new(vec![member])));
                         }
                         // Default export statements with declarations.
                         //
@@ -593,7 +593,7 @@ impl<'a> VisitMut for GlobalModuleProcessor<'a> {
                             .into_stmt()
                             .into();
 
-                            self.reg_export(ExportRef::Named(NamedExportRef::new(vec![member])));
+                            self.register_export(ExportRef::Named(NamedExportRef::new(vec![member])));
                         }
                         // Named export statements.
                         //
@@ -623,7 +623,7 @@ impl<'a> VisitMut for GlobalModuleProcessor<'a> {
                                         // ```js
                                         // export * as foo from './foo';
                                         // ```
-                                        self.reg_export(ExportRef::ReExportAll(
+                                        self.register_export(ExportRef::ReExportAll(
                                             ReExportAllRef::new(
                                                 &import_member.mod_ident,
                                                 &import_member.export_ident,
@@ -639,7 +639,7 @@ impl<'a> VisitMut for GlobalModuleProcessor<'a> {
                                         // export { default } from './foo';
                                         // export { default as named } from './foo';
                                         // ```
-                                        self.reg_export(ExportRef::NamedReExport(
+                                        self.register_export(ExportRef::NamedReExport(
                                             NamedReExportRef::new(
                                                 &import_member.mod_ident,
                                                 &import_member.export_ident,
@@ -670,7 +670,7 @@ impl<'a> VisitMut for GlobalModuleProcessor<'a> {
                                 // Named export
                                 None => {
                                     let members = self.to_export_members(&export_named.specifiers);
-                                    self.reg_export(ExportRef::Named(NamedExportRef::new(members)));
+                                    self.register_export(ExportRef::Named(NamedExportRef::new(members)));
                                 }
                             }
                         }
@@ -688,7 +688,7 @@ impl<'a> VisitMut for GlobalModuleProcessor<'a> {
                             let src = src.clone().value;
                             let member = ImportNamespaceMember::anonymous();
 
-                            self.reg_export(ExportRef::ReExportAll(ReExportAllRef::new(
+                            self.register_export(ExportRef::ReExportAll(ReExportAllRef::new(
                                 &member.mod_ident,
                                 &member.export_ident,
                                 &src,
@@ -713,7 +713,7 @@ impl<'a> VisitMut for GlobalModuleProcessor<'a> {
                                 .into_stmt()
                                 .into();
 
-                            self.reg_export(ExportRef::Named(NamedExportRef::new(vec![member])));
+                            self.register_export(ExportRef::Named(NamedExportRef::new(vec![member])));
                         }
                         _ => {}
                     }
