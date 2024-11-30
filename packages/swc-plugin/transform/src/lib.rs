@@ -4,12 +4,16 @@ use swc_core::{
 };
 use transformer::GlobalModuleTransformer;
 
-pub fn global_module(id: u64, deps_id: Option<AHashMap<String, u64>>) -> impl VisitMut + Fold {
-    as_folder(GlobalModuleTransformer::new(id, deps_id))
+pub fn global_module(
+    id: u32,
+    phase: u32,
+    deps_id: Option<AHashMap<String, u32>>,
+) -> impl VisitMut + Fold {
+    as_folder(GlobalModuleTransformer::new(id, phase.into(), deps_id))
 }
 
 mod constants;
 mod models;
-mod module_processor;
+mod phase;
 mod transformer;
 mod utils;

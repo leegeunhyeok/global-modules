@@ -9,8 +9,9 @@ use swc_global_module::global_module;
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct GlobalModuleOptions {
-    id: u64,
-    dependencies: Option<AHashMap<String, u64>>,
+    id: u32,
+    phase: u32,
+    dependencies: Option<AHashMap<String, u32>>,
 }
 
 #[plugin_transform]
@@ -18,9 +19,13 @@ pub fn global_module_plugin(program: Program, metadata: TransformPluginProgramMe
     let config = serde_json::from_str::<GlobalModuleOptions>(
         &metadata
             .get_transform_plugin_config()
-            .expect("failed to get plugin config for @global-module/swc-plugin"),
+            .expect("failed to get plugin config for @global-modules/swc-plugin"),
     )
-    .expect("invalid config for @global-module/swc-plugin");
+    .expect("invalid config for @global-modules/swc-plugin");
 
-    program.fold_with(&mut global_module(config.id, config.dependencies))
+    program.fold_with(&mut global_module(
+        config.id,
+        config.phase,
+        config.dependencies,
+    ))
 }

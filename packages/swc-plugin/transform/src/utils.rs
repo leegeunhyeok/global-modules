@@ -35,10 +35,10 @@ pub mod ast {
         })
     }
 
-    pub fn num_lit_expr(num: f64) -> Expr {
+    pub fn num_lit_expr(num: u32) -> Expr {
         Expr::Lit(Lit::Num(Number {
             span: DUMMY_SP,
-            value: num,
+            value: num as f64,
             raw: None,
         }))
     }
@@ -65,6 +65,13 @@ pub mod ast {
             span: DUMMY_SP,
         })
         .into()
+    }
+
+    pub fn to_module_item(stmts: Vec<Stmt>) -> Vec<ModuleItem> {
+        stmts
+            .into_iter()
+            .map(|stmt| stmt.into())
+            .collect::<Vec<ModuleItem>>()
     }
 }
 

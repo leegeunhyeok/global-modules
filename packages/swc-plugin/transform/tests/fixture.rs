@@ -14,7 +14,7 @@ fn fixture(input: PathBuf) {
             tsx: filename.ends_with(".tsx"),
             ..Default::default()
         }),
-        &|_| global_module(0, None),
+        &|_| global_module(0, 0, None),
         &input,
         &output,
         Default::default(),

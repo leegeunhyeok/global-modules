@@ -1,8 +1,8 @@
+/// Global module's context variable ident name.
+pub const CTX_IDENT: &str = "__ctx";
+
 /// Global module's export argument name.
 pub const EXPORTS_ARG: &str = "$_exports";
-
-/// Global module's require argument name.
-pub const REQUIRE_ARG: &str = "$_require";
 
 /// Dependencies variable name.
 pub const DEPS: &str = "__d";
