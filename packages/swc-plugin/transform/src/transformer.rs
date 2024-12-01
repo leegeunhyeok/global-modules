@@ -352,6 +352,12 @@ impl GlobalModuleTransformer {
                 members
                     .iter()
                     .for_each(|module_member| match module_member {
+                        ImportMember::Default(ImportDefaultMember { ident }) => {
+                            dep_props.push(ObjectPatProp::KeyValue(KeyValuePatProp {
+                                key: PropName::Ident(quote_ident!("default").into()),
+                                value: Box::new(Pat::Ident(ident.clone().into())),
+                            }))
+                        }
                         ImportMember::Named(ImportNamedMember {
                             ident,
                             alias: Some(alias_ident),

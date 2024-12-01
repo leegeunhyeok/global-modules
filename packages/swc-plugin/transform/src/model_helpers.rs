@@ -1,4 +1,4 @@
-use swc_core::ecma::{ast::*, utils::quote_ident};
+use swc_core::ecma::ast::*;
 
 use crate::models::*;
 
@@ -6,10 +6,7 @@ use crate::models::*;
 
 impl From<&ImportDefaultSpecifier> for ImportMember {
     fn from(value: &ImportDefaultSpecifier) -> Self {
-        ImportMember::Named(ImportNamedMember::new(
-            &quote_ident!("default").into(),
-            Some(value.local.clone()),
-        ))
+        ImportMember::Default(ImportDefaultMember::new(&value.local))
     }
 }
 

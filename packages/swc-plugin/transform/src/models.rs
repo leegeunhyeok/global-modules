@@ -54,8 +54,24 @@ impl DynImportRef {
 
 #[derive(Debug)]
 pub enum ImportMember {
+    Default(ImportDefaultMember),
     Named(ImportNamedMember),
     Namespace(ImportNamespaceMember),
+}
+
+#[derive(Debug)]
+pub struct ImportDefaultMember {
+    // `import foo from 'foo';`
+    // => foo
+    pub ident: Ident,
+}
+
+impl ImportDefaultMember {
+    pub fn new(ident: &Ident) -> Self {
+        ImportDefaultMember {
+            ident: ident.clone(),
+        }
+    }
 }
 
 #[derive(Debug)]
