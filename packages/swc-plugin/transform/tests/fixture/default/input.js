@@ -12,7 +12,10 @@ export default function () {
   //
 }
 
+const value = 'val';
+
 export const named = 1;
+export { value as value2 };
 export { foo, foo2 };
 export { baz, baz as baz2 };
 export * from './re-exp';

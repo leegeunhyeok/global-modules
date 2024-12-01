@@ -227,7 +227,12 @@ pub struct NamedReExportRef {
 }
 
 impl NamedReExportRef {
-    pub fn new(mod_ident: &Ident, exp_ident: &Ident, src: &Atom, members: Vec<ExportMember>) -> Self {
+    pub fn new(
+        mod_ident: &Ident,
+        exp_ident: &Ident,
+        src: &Atom,
+        members: Vec<ExportMember>,
+    ) -> Self {
         NamedReExportRef {
             mod_ident: mod_ident.clone(),
             exp_ident: exp_ident.clone(),

@@ -1,7 +1,6 @@
 use std::mem;
 
 use crate::{
-    constants::*,
     models::*,
     phase::ModulePhase,
     utils::{
@@ -189,7 +188,7 @@ impl GlobalModuleTransformer {
 
     /// Register module reference if not registered yet.
     fn register_mod(&mut self, src: &Atom, module_ref: ModuleRef) {
-        if self.mods.get_mut(src).is_none() {
+        if self.mods.get(src).is_none() {
             self.insert_mod(src, module_ref);
         }
     }
@@ -210,30 +209,14 @@ impl GlobalModuleTransformer {
         let mut members = Vec::with_capacity(specifiers.len());
 
         specifiers.iter().for_each(|spec| match spec {
-            ImportSpecifier::Default(ImportDefaultSpecifier { local, .. }) => {
-                members.push(ImportMember::Named(ImportNamedMember::new(
-                    &quote_ident!("default").into(),
-                    Some(local.clone()),
-                )));
-            }
-            ImportSpecifier::Named(ImportNamedSpecifier {
-                local,
-                imported,
-                is_type_only: false,
-                ..
-            }) => {
-                if let Some(ModuleExportName::Ident(ident)) = imported {
-                    members.push(ImportMember::Named(ImportNamedMember::new(
-                        ident,
-                        Some(local.clone()),
-                    )));
-                } else {
-                    members.push(ImportMember::Named(ImportNamedMember::new(local, None)));
-                }
-            }
-            ImportSpecifier::Namespace(ImportStarAsSpecifier { local, .. }) => {
-                members.push(ImportMember::Namespace(ImportNamespaceMember::alias(local)));
-            }
+            ImportSpecifier::Named(
+                specifier @ ImportNamedSpecifier {
+                    is_type_only: false,
+                    ..
+                },
+            ) => members.push(specifier.into()),
+            ImportSpecifier::Namespace(specifier) => members.push(specifier.into()),
+            ImportSpecifier::Default(specifier) => members.push(specifier.into()),
             _ => {}
         });
 
@@ -245,26 +228,12 @@ impl GlobalModuleTransformer {
         let mut members = Vec::with_capacity(specifiers.len());
 
         specifiers.iter().for_each(|spec| match spec {
-            ExportSpecifier::Named(ExportNamedSpecifier {
-                orig,
-                exported,
-                is_type_only: false,
-                ..
-            }) => match orig {
-                ModuleExportName::Ident(orig_ident) => {
-                    let export_name =
-                        if let Some(ModuleExportName::Ident(exported_ident)) = exported {
-                            exported_ident
-                        } else {
-                            orig_ident
-                        }
-                        .sym
-                        .clone();
-
-                    members.push(ExportMember::new(orig_ident, Some(export_name)));
-                }
-                ModuleExportName::Str(_) => unimplemented!("TODO"),
-            },
+            ExportSpecifier::Named(
+                specifier @ ExportNamedSpecifier {
+                    is_type_only: false,
+                    ..
+                },
+            ) => members.push(specifier.into()),
             _ => {}
         });
 
@@ -368,7 +337,7 @@ impl GlobalModuleTransformer {
     /// __exports.ns(<expr>);
     /// ```
     fn to_ns_export(&self, expr: Expr) -> Expr {
-        Ident::from(quote_ident!("ns"))
+        Ident::from(quote_ident!("ns")) // TODO
             .make_member(quote_ident!("ns"))
             .as_call(DUMMY_SP, vec![expr.into()])
     }
@@ -748,3 +717,16 @@ impl VisitMut for GlobalModuleTransformer {
         }
     }
 }
+
+// export { a as b };
+// "type": "ExportNamedDeclaration"
+// ExportSpecifier
+// orig: a
+// exported b
+
+// "type": "ExportNamedDeclaration",
+// export { foo as bar } from './baz';
+// ExportSpecifier
+// orig: foo
+// exported bar
+// source: "./baz"
