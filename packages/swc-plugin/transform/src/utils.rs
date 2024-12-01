@@ -66,13 +66,6 @@ pub mod ast {
         })
         .into()
     }
-
-    pub fn to_module_item(stmts: Vec<Stmt>) -> Vec<ModuleItem> {
-        stmts
-            .into_iter()
-            .map(|stmt| stmt.into())
-            .collect::<Vec<ModuleItem>>()
-    }
 }
 
 pub mod parse {

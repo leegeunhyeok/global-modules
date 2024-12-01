@@ -310,27 +310,6 @@ impl GlobalModuleTransformer {
             .into()
     }
 
-    /// Wrap expression with function for lazy evaluation.
-    ///
-    /// ```js
-    /// function () {
-    ///   return /* expr */;
-    /// }
-    /// ```
-    fn to_lazy(&self, expr: &Expr) -> Expr {
-        Function {
-            body: Some(BlockStmt {
-                stmts: vec![Stmt::Return(ReturnStmt {
-                    arg: Some(Box::new(expr.clone())),
-                    ..Default::default()
-                })],
-                ..Default::default()
-            }),
-            ..Default::default()
-        }
-        .into()
-    }
-
     /// Wraps the given expression with a __exports.ns function call expression.
     ///
     /// ```js

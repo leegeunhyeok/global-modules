@@ -3,8 +3,6 @@ use swc_core::{
     ecma::{ast::*, utils::private_ident},
 };
 
-use crate::constants::{EXPORTS, RE_EXPORTS};
-
 #[derive(Debug)]
 pub enum ModuleRef {
     // `require('...');`
@@ -111,16 +109,16 @@ pub struct ImportNamespaceMember {
 impl ImportNamespaceMember {
     pub fn alias(ident: &Ident) -> Self {
         ImportNamespaceMember {
-            export_ident: private_ident!(EXPORTS),
-            mod_ident: private_ident!(RE_EXPORTS),
+            export_ident: private_ident!("__x"),
+            mod_ident: private_ident!("__rx"),
             ident: Some(ident.clone()),
         }
     }
 
     pub fn anonymous() -> Self {
         ImportNamespaceMember {
-            export_ident: private_ident!(EXPORTS),
-            mod_ident: private_ident!(RE_EXPORTS),
+            export_ident: private_ident!("__x"),
+            mod_ident: private_ident!("__rx"),
             ident: None,
         }
     }
@@ -189,7 +187,7 @@ impl ExportMember {
         };
 
         ExportMember {
-            export_ident: private_ident!(EXPORTS),
+            export_ident: private_ident!("__x"),
             orig_ident: Some(orig_ident.clone()),
             name: exp_name,
         }
@@ -197,7 +195,7 @@ impl ExportMember {
 
     pub fn anonymous(name: Atom) -> Self {
         ExportMember {
-            export_ident: private_ident!(EXPORTS),
+            export_ident: private_ident!("__x"),
             orig_ident: None,
             name,
         }
