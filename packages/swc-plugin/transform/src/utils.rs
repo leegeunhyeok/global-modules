@@ -126,3 +126,45 @@ pub mod parse {
         }
     }
 }
+
+pub mod collections {
+    use swc_core::common::collections::AHashMap;
+
+    /// Ordered HashMap
+    pub struct OHashMap<K, V> {
+        map: AHashMap<K, V>,
+        keys: Vec<K>,
+    }
+
+    impl<K: std::cmp::Eq + std::hash::Hash + Clone, V> OHashMap<K, V> {
+        pub fn contains_key(&self, key: &K) -> bool {
+            self.map.contains_key(key)
+        }
+
+        pub fn get_mut(&mut self, key: &K) -> Option<&mut V> {
+            self.map.get_mut(key)
+        }
+
+        pub fn insert(&mut self, key: &K, value: V) {
+            if !self.map.contains_key(&key) {
+                self.keys.push(key.clone());
+            }
+            self.map.insert(key.clone(), value);
+        }
+
+        pub fn iter(&self) -> impl Iterator<Item = (&K, &V)> {
+            self.keys
+                .iter()
+                .filter_map(move |key| self.map.get(key).map(|value| (key, value)))
+        }
+    }
+
+    impl<K: std::cmp::Eq + std::hash::Hash + Clone, V> Default for OHashMap<K, V> {
+        fn default() -> Self {
+            Self {
+                map: AHashMap::default(),
+                keys: Vec::new(),
+            }
+        }
+    }
+}

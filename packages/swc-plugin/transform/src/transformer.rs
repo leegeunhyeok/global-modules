@@ -8,6 +8,7 @@ use crate::{
             assign_expr, import_star, kv_prop, num_lit_expr, obj_lit_expr, spread_prop,
             var_declarator,
         },
+        collections::OHashMap,
         parse::{get_expr_from_decl, get_expr_from_default_decl},
     },
 };
@@ -31,8 +32,7 @@ pub struct GlobalModuleTransformer {
     //
     // key: './foo'
     // value: Dep
-    mods: AHashMap<Atom, ModuleRef>,
-    mods_idx: Vec<Atom>,
+    deps: OHashMap<Atom, ModuleRef>,
     exports: Vec<ExportRef>,
 }
 
@@ -74,8 +74,7 @@ impl GlobalModuleTransformer {
         // ```
         let mut export_decls: Vec<VarDeclarator> = Vec::new();
 
-        self.mods_idx.iter().for_each(|src| {
-            let value = self.mods.get(src).unwrap();
+        self.deps.iter().for_each(|(src, value)| {
             if let Some(stmts) = self.to_require_dep_stmts(src, value) {
                 deps_requires.extend(stmts);
             }
@@ -184,30 +183,26 @@ impl GlobalModuleTransformer {
 
     /// Register module reference by members.
     fn register_mod_by_members(&mut self, src: &Atom, members: Vec<ImportMember>) {
-        if let Some(ModuleRef::Import(mod_ref)) = self.mods.get_mut(&src) {
+        if let Some(ModuleRef::Import(mod_ref)) = self.deps.get_mut(&src) {
             mod_ref.members.extend(members.into_iter());
         } else {
-            let new_import = ModuleRef::Import(ImportRef::new(members));
-            self.insert_mod(src, new_import);
+            self.deps
+                .insert(src, ModuleRef::Import(ImportRef::new(members)));
         }
     }
 
     /// Register module reference if not registered yet.
     fn register_mod(&mut self, src: &Atom, module_ref: ModuleRef) {
-        if self.mods.get(src).is_none() {
-            self.insert_mod(src, module_ref);
+        if self.deps.contains_key(src) {
+            return;
         }
+
+        self.deps.insert(src, module_ref);
     }
 
     /// Register export reference.
     fn register_export(&mut self, export: ExportRef) {
         self.exports.push(export);
-    }
-
-    /// Inserts the module reference while ensuring the insertion order.
-    fn insert_mod(&mut self, src: &Atom, module_ref: ModuleRef) {
-        self.mods.insert(src.clone(), module_ref);
-        self.mods_idx.push(src.clone());
     }
 
     /// Convert `ImportSpecifier` into `ImportMember`.
@@ -425,8 +420,7 @@ impl GlobalModuleTransformer {
             deps_id,
             phase,
             ctx_ident: private_ident!("__ctx"),
-            mods: AHashMap::default(),
-            mods_idx: Vec::default(),
+            deps: OHashMap::default(),
             exports: Vec::default(),
         }
     }
