@@ -137,10 +137,6 @@ pub mod collections {
     }
 
     impl<K: std::cmp::Eq + std::hash::Hash + Clone, V> OHashMap<K, V> {
-        pub fn contains_key(&self, key: &K) -> bool {
-            self.map.contains_key(key)
-        }
-
         pub fn get_mut(&mut self, key: &K) -> Option<&mut V> {
             self.map.get_mut(key)
         }

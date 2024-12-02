@@ -4,51 +4,15 @@ use swc_core::{
 };
 
 #[derive(Debug)]
-pub enum ModuleRef {
-    // `require('...');`
-    Require(RequireRef),
-    // `import ... from '...';`
-    Import(ImportRef),
-    // `import('...');`
-    DynImport(DynImportRef),
-}
-
-#[derive(Debug)]
-pub struct RequireRef {
-    pub orig_expr: Expr,
-}
-
-impl RequireRef {
-    pub fn new(orig_expr: &Expr) -> Self {
-        RequireRef {
-            orig_expr: orig_expr.clone(),
-        }
-    }
-}
-
-#[derive(Debug)]
-pub struct ImportRef {
+pub struct ModuleRef {
     // `import def, { foo, bar as baz } from '...'`;
     // => def, foo, bar (alias: baz)
     pub members: Vec<ImportMember>,
 }
 
-impl ImportRef {
+impl ModuleRef {
     pub fn new(members: Vec<ImportMember>) -> Self {
-        ImportRef { members }
-    }
-}
-
-#[derive(Debug)]
-pub struct DynImportRef {
-    pub orig_expr: Expr,
-}
-
-impl DynImportRef {
-    pub fn new(orig_expr: &Expr) -> Self {
-        DynImportRef {
-            orig_expr: orig_expr.clone(),
-        }
+        ModuleRef { members }
     }
 }
 

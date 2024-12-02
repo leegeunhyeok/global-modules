@@ -183,21 +183,11 @@ impl GlobalModuleTransformer {
 
     /// Register module reference by members.
     fn register_mod_by_members(&mut self, src: &Atom, members: Vec<ImportMember>) {
-        if let Some(ModuleRef::Import(mod_ref)) = self.deps.get_mut(&src) {
+        if let Some(mod_ref) = self.deps.get_mut(&src) {
             mod_ref.members.extend(members.into_iter());
         } else {
-            self.deps
-                .insert(src, ModuleRef::Import(ImportRef::new(members)));
+            self.deps.insert(src, ModuleRef::new(members));
         }
-    }
-
-    /// Register module reference if not registered yet.
-    fn register_mod(&mut self, src: &Atom, module_ref: ModuleRef) {
-        if self.deps.contains_key(src) {
-            return;
-        }
-
-        self.deps.insert(src, module_ref);
     }
 
     /// Register export reference.
@@ -348,50 +338,42 @@ impl GlobalModuleTransformer {
         let mut requires: Vec<ModuleItem> = Vec::new();
         let mut dep_props: Vec<ObjectPatProp> = Vec::new();
 
-        match module_ref {
-            ModuleRef::Import(ImportRef { members }) => {
-                members
-                    .iter()
-                    .for_each(|module_member| match module_member {
-                        ImportMember::Default(ImportDefaultMember { ident }) => {
-                            dep_props.push(ObjectPatProp::KeyValue(KeyValuePatProp {
-                                key: PropName::Ident(quote_ident!("default").into()),
-                                value: Box::new(Pat::Ident(ident.clone().into())),
-                            }))
-                        }
-                        ImportMember::Named(ImportNamedMember {
-                            ident,
-                            alias: Some(alias_ident),
-                        }) => dep_props.push(ObjectPatProp::KeyValue(KeyValuePatProp {
-                            key: PropName::Ident(ident.clone().into()),
-                            value: Box::new(Pat::Ident(alias_ident.clone().into())),
-                        })),
-                        ImportMember::Named(ImportNamedMember { ident, alias: None }) => {
-                            dep_props.push(ObjectPatProp::Assign(AssignPatProp {
-                                key: ident.clone().into(),
-                                value: None,
-                                span: DUMMY_SP,
-                            }));
-                        }
-                        ImportMember::Namespace(ImportNamespaceMember {
-                            ident: Some(ident),
-                            ..
-                        }) => requires.push(
-                            self.decl_required_deps_stmt(src, Pat::Ident(ident.clone().into()))
-                                .into(),
-                        ),
-                        ImportMember::Namespace(ImportNamespaceMember {
-                            export_ident,
-                            ident: None,
-                            ..
-                        }) => {
-                            requires.push(self.assign_required_deps_stmt(src, &export_ident).into())
-                        }
-                    });
-            }
-            // Skips AST generation because it has already been replaced during the visit phases.
-            ModuleRef::DynImport(_) | ModuleRef::Require(_) => return None,
-        };
+        module_ref
+            .members
+            .iter()
+            .for_each(|module_member| match module_member {
+                ImportMember::Default(ImportDefaultMember { ident }) => {
+                    dep_props.push(ObjectPatProp::KeyValue(KeyValuePatProp {
+                        key: PropName::Ident(quote_ident!("default").into()),
+                        value: Box::new(Pat::Ident(ident.clone().into())),
+                    }))
+                }
+                ImportMember::Named(ImportNamedMember {
+                    ident,
+                    alias: Some(alias_ident),
+                }) => dep_props.push(ObjectPatProp::KeyValue(KeyValuePatProp {
+                    key: PropName::Ident(ident.clone().into()),
+                    value: Box::new(Pat::Ident(alias_ident.clone().into())),
+                })),
+                ImportMember::Named(ImportNamedMember { ident, alias: None }) => {
+                    dep_props.push(ObjectPatProp::Assign(AssignPatProp {
+                        key: ident.clone().into(),
+                        value: None,
+                        span: DUMMY_SP,
+                    }));
+                }
+                ImportMember::Namespace(ImportNamespaceMember {
+                    ident: Some(ident), ..
+                }) => requires.push(
+                    self.decl_required_deps_stmt(src, Pat::Ident(ident.clone().into()))
+                        .into(),
+                ),
+                ImportMember::Namespace(ImportNamespaceMember {
+                    export_ident,
+                    ident: None,
+                    ..
+                }) => requires.push(self.assign_required_deps_stmt(src, &export_ident).into()),
+            });
 
         if dep_props.len() > 0 {
             requires.push(
@@ -642,8 +624,6 @@ impl VisitMut for GlobalModuleTransformer {
     }
 
     fn visit_mut_expr(&mut self, expr: &mut Expr) {
-        let orig_expr = expr.clone();
-
         match expr {
             Expr::Call(call_expr) => match call_expr {
                 // Collect CommonJS requires.
@@ -662,10 +642,6 @@ impl VisitMut for GlobalModuleTransformer {
                     match &*src.expr {
                         // The first argument of the `require` function must be a string type only.
                         Expr::Lit(Lit::Str(str)) => {
-                            self.register_mod(
-                                &str.value,
-                                ModuleRef::Require(RequireRef::new(&orig_expr)),
-                            );
                             *expr = self.require_call(&str.value, None);
                         }
                         _ => panic!("invalid `require` call expression"),
@@ -687,10 +663,6 @@ impl VisitMut for GlobalModuleTransformer {
                     match &*src.expr {
                         // The first argument of the `import` function must be a string type only.
                         Expr::Lit(Lit::Str(str)) => {
-                            self.register_mod(
-                                &str.value,
-                                ModuleRef::DynImport(DynImportRef::new(&orig_expr)),
-                            );
                             *expr = self.require_call(&str.value, None);
                         }
                         _ => panic!("unsupported dynamic import usage"),

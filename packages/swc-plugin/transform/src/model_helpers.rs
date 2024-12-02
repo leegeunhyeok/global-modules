@@ -1,5 +1,4 @@
 use swc_core::ecma::ast::*;
-use tracing::debug;
 
 use crate::models::*;
 
@@ -13,7 +12,6 @@ impl From<&ImportDefaultSpecifier> for ImportMember {
 
 impl From<&ImportNamedSpecifier> for ImportMember {
     fn from(value: &ImportNamedSpecifier) -> Self {
-        debug!("{:#?}", value);
         if let Some(ModuleExportName::Ident(ident)) = &value.imported {
             ImportMember::Named(ImportNamedMember::new(&ident, Some(value.local.clone())))
         } else {
