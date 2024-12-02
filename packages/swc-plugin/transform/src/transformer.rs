@@ -108,7 +108,13 @@ impl GlobalModuleTransformer {
                         &member.name,
                         exp_ident
                             .clone()
-                            .make_member(member.name.clone().into())
+                            .make_member(
+                                (member.orig_ident.as_ref().map_or_else(
+                                    || member.name.clone(),
+                                    |orig_ident| orig_ident.sym.clone(),
+                                ))
+                                .into(),
+                            )
                             .into(),
                     )
                 }));
@@ -516,7 +522,7 @@ impl VisitMut for GlobalModuleTransformer {
                             match &export_named.src {
                                 // Re-exports
                                 Some(src_str) => {
-                                    let src: Atom = src_str.clone().value;
+                                    let src = src_str.clone().value;
                                     let import_member = ImportNamespaceMember::anonymous();
                                     let specifier = export_named.specifiers.get(0).unwrap();
 

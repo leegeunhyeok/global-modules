@@ -22,3 +22,4 @@ export * from './re-exp';
 export * as rx from './re-exp-2';
 export { rx2 } from './re-exp-3';
 export { rx3 as rx4 } from './re-exp-4';
+export { default as rx5 } from './re-exp-5';
