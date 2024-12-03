@@ -131,6 +131,7 @@ pub mod collections {
     use swc_core::common::collections::AHashMap;
 
     /// Ordered HashMap
+    #[derive(Debug)]
     pub struct OHashMap<K, V> {
         map: AHashMap<K, V>,
         keys: Vec<K>,

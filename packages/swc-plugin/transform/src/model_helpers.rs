@@ -22,7 +22,7 @@ impl From<&ImportNamedSpecifier> for ImportMember {
 
 impl From<&ImportStarAsSpecifier> for ImportMember {
     fn from(value: &ImportStarAsSpecifier) -> Self {
-        ImportMember::Namespace(ImportNamespaceMember::alias(&value.local))
+        ImportMember::Namespace(ImportNamespaceMember::new(&value.local))
     }
 }
 
@@ -31,14 +31,14 @@ impl From<&ImportStarAsSpecifier> for ImportMember {
 impl From<&ExportNamedSpecifier> for ExportMember {
     fn from(value: &ExportNamedSpecifier) -> Self {
         match &value.orig {
-            ModuleExportName::Ident(orig_ident) => ExportMember::new(
+            ModuleExportName::Ident(orig_ident) => ExportMember::Actual(ActualExportMember::new(
                 &orig_ident,
                 if let Some(ModuleExportName::Ident(exported_ident)) = &value.exported {
                     Some(exported_ident.sym.clone())
                 } else {
                     None
                 },
-            ),
+            )),
             ModuleExportName::Str(_) => unimplemented!("TODO"),
         }
     }

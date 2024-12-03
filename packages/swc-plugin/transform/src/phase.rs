@@ -1,6 +1,7 @@
+#[derive(PartialEq)]
 pub enum ModulePhase {
-    Register,
-    Runtime,
+    Register = 0,
+    Runtime = 1,
 }
 
 impl From<u32> for ModulePhase {
