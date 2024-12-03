@@ -64,11 +64,9 @@ impl GlobalModuleTransformer {
         // ```
         let mut export_decls: Vec<VarDeclarator> = Vec::new();
 
-        if self.phase == ModulePhase::Runtime {
-            self.deps.iter().for_each(|(src, value)| {
-                deps_requires.extend(self.to_require_dep_stmts(src, value));
-            });
-        }
+        self.deps.iter().for_each(|(src, value)| {
+            deps_requires.extend(self.to_require_dep_stmts(src, value));
+        });
 
         self.exports.iter().for_each(|export_ref| match export_ref {
             ExportRef::Named(NamedExportRef { members }) => {
@@ -125,9 +123,11 @@ impl GlobalModuleTransformer {
                     additional_imports.push(import_star(mod_ident, src));
                 }
 
+                let ns_call = self.to_ns_export(mod_ident.clone().into());
+
                 export_props.push(match name {
-                    Some(exp_name) => kv_prop(exp_name, mod_ident.clone().into()),
-                    None => spread_prop(self.to_ns_export(mod_ident.clone().into())),
+                    Some(exp_name) => kv_prop(exp_name, ns_call),
+                    None => spread_prop(ns_call),
                 });
             }
         });
@@ -607,6 +607,10 @@ impl VisitMut for GlobalModuleTransformer {
     }
 
     fn visit_mut_import_decl(&mut self, import_decl: &mut ImportDecl) {
+        if self.phase == ModulePhase::Register {
+            return;
+        }
+
         let members = self.to_import_members(&import_decl.specifiers);
         let src = import_decl.src.value.clone();
 
