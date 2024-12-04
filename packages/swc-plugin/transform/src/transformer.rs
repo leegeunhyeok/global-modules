@@ -34,11 +34,12 @@ pub struct GlobalModuleTransformer {
     // value: Dep
     deps: OHashMap<Atom, ModuleRef>,
     exports: Vec<ExportRef>,
+    stmts: Vec<Stmt>,
 }
 
 impl GlobalModuleTransformer {
     /// Returns the AST structure based on the collected module and export data.
-    pub fn get_module_body(&self, orig_body: Vec<ModuleItem>) -> Vec<ModuleItem> {
+    pub fn get_module_body(&mut self, orig_body: Vec<ModuleItem>) -> Vec<ModuleItem> {
         let (imports, body, exports) = self.partition_by_module_item(orig_body);
 
         // Object properties to be passed to the Global module's export API."
@@ -56,7 +57,7 @@ impl GlobalModuleTransformer {
         // ```
         let mut deps_requires: Vec<ModuleItem> = Vec::new();
 
-        // A list of export variable declarators,
+        // A list of binding variable declarators,
         //
         // ```js
         // var __x, __x1, __x2;
@@ -166,7 +167,9 @@ impl GlobalModuleTransformer {
             );
             new_body.extend(deps_requires);
         }
+        let stmts = mem::take(&mut self.stmts);
         new_body.extend(body);
+        new_body.extend(stmts.into_iter().map(|stmt| stmt.into()));
         new_body.push(exports_call.into_stmt().into());
         new_body.push(exports_decl.into());
 
@@ -201,6 +204,11 @@ impl GlobalModuleTransformer {
         });
 
         (imports, body, exports)
+    }
+
+    /// Register additional statements.
+    fn register_stmt(&mut self, stmt: Stmt) {
+        self.stmts.push(stmt);
     }
 
     /// Register module reference by members.
@@ -405,6 +413,7 @@ impl GlobalModuleTransformer {
             ctx_ident: private_ident!("__ctx"),
             deps: OHashMap::default(),
             exports: Vec::default(),
+            stmts: Vec::default(),
         }
     }
 }
@@ -450,12 +459,28 @@ impl VisitMut for GlobalModuleTransformer {
                         // ```
                         ModuleDecl::ExportDecl(export_decl) => {
                             let (orig_ident, decl_expr) = get_expr_from_decl(&export_decl.decl);
-                            let binding_export = BindingExportMember::new(orig_ident.sym);
+                            let binding_export = BindingExportMember::new(orig_ident.sym.clone());
 
-                            *item = assign_expr(&binding_export.bind_ident, decl_expr)
-                                .into_stmt()
-                                .into();
+                            *item = ModuleItem::ModuleDecl(ModuleDecl::ExportNamed(NamedExport {
+                                specifiers: vec![ExportSpecifier::Named(ExportNamedSpecifier {
+                                    orig: ModuleExportName::Ident(
+                                        binding_export.bind_ident.clone(),
+                                    ),
+                                    exported: Some(ModuleExportName::Ident(orig_ident.clone())),
+                                    is_type_only: false,
+                                    span: DUMMY_SP,
+                                })],
+                                src: None,
+                                with: None,
+                                type_only: false,
+                                span: DUMMY_SP,
+                            }));
 
+                            self.register_stmt(
+                                assign_expr(&binding_export.bind_ident, decl_expr)
+                                    .into_stmt()
+                                    .into(),
+                            );
                             self.register_export(ExportRef::Named(NamedExportRef::new(vec![
                                 ExportMember::Binding(binding_export),
                             ])));
@@ -470,12 +495,16 @@ impl VisitMut for GlobalModuleTransformer {
                             let binding_export = BindingExportMember::new("default".into());
 
                             // Rewrite exports statements to `__x = <decl>;` and register `__x`.
-                            *item = assign_expr(
-                                &binding_export.bind_ident,
-                                get_expr_from_default_decl(&export_default_decl.decl),
-                            )
-                            .into_stmt()
-                            .into();
+                            *item = ModuleItem::ModuleDecl(ModuleDecl::ExportDefaultExpr(
+                                ExportDefaultExpr {
+                                    expr: assign_expr(
+                                        &binding_export.bind_ident,
+                                        get_expr_from_default_decl(&export_default_decl.decl),
+                                    )
+                                    .into(),
+                                    span: DUMMY_SP,
+                                },
+                            ));
 
                             self.register_export(ExportRef::Named(NamedExportRef::new(vec![
                                 ExportMember::Binding(binding_export),
@@ -587,13 +616,12 @@ impl VisitMut for GlobalModuleTransformer {
                         // ```js
                         // export default <expr>;
                         // ```
-                        ModuleDecl::ExportDefaultExpr(ExportDefaultExpr { expr, .. }) => {
-                            let orig_expr = *expr.clone();
+                        ModuleDecl::ExportDefaultExpr(export_default_decl) => {
+                            let orig_expr = (*export_default_decl.expr).clone();
                             let binding_export = BindingExportMember::new("default".into());
 
-                            *item = assign_expr(&binding_export.bind_ident, orig_expr)
-                                .into_stmt()
-                                .into();
+                            export_default_decl.expr =
+                                assign_expr(&binding_export.bind_ident, orig_expr).into();
 
                             self.register_export(ExportRef::Named(NamedExportRef::new(vec![
                                 ExportMember::Binding(binding_export),
