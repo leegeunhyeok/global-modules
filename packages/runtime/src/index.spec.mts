@@ -149,16 +149,27 @@ describe('@global-modules/runtime', () => {
         // Module: d
         const targetModule = 'src/__fixtures__/src/d.ts';
         define((exports, _require) => {
-          exports.d = 100; // Change exports value (Before: 40)
+          exports({ d: 100 }); // Change exports value (Before: 40)
         }, 4);
+
+        function toOriginSource(modulePath: string): string {
+          const basename = path.basename(modulePath);
+          const extension = path.extname(basename);
+
+          return './' + basename.replace(new RegExp(`${extension}$`), '');
+        }
 
         const inverseDependenciesId = graph
           .inverseDependenciesOf(targetModule)
           .map((module) => ({
             id: module.id,
-            dependencies: graph
-              .dependenciesOf(module.id)
-              .map((module) => module.id),
+            dependencies: graph.dependenciesOf(module.id).reduce(
+              (prev, module) => ({
+                ...prev,
+                [toOriginSource(module.path)]: module.id,
+              }),
+              {},
+            ),
           }));
 
         // Update reverse dependencies (parents)
@@ -191,7 +202,9 @@ describe('@global-modules/runtime', () => {
       it('should returns `ready`', () => {
         const { define, status } = context.getGlobalModuleRegistry();
 
-        define((exports) => (exports.foo = 'foo'), MODULE_IDS.foo, [], true); // default behavior
+        define((exports) => {
+          exports({ foo: 'foo'})
+        }, MODULE_IDS.foo, {}, true); // default behavior
 
         expect(status(MODULE_IDS.foo)).toBe('ready');
       });
@@ -201,7 +214,9 @@ describe('@global-modules/runtime', () => {
       it('should returns `idle`', () => {
         const { define, status } = context.getGlobalModuleRegistry();
 
-        define((exports) => (exports.bar = 'bar'), MODULE_IDS.bar, [], false);
+        define((exports) => {
+          exports({ bar: 'bar' });
+        }, MODULE_IDS.bar, {}, false);
 
         expect(status(MODULE_IDS.bar)).toBe('idle');
       });
@@ -211,7 +226,7 @@ describe('@global-modules/runtime', () => {
       it('should returns `ready`', () => {
         const { update, status } = context.getGlobalModuleRegistry();
 
-        update(MODULE_IDS.foo, [], true); // default behavior
+        update(MODULE_IDS.foo, {}, true); // default behavior
 
         expect(status(MODULE_IDS.foo)).toBe('ready');
       });
@@ -221,7 +236,7 @@ describe('@global-modules/runtime', () => {
       it('should returns `stale`', () => {
         const { update, status } = context.getGlobalModuleRegistry();
 
-        update(MODULE_IDS.foo, [], false);
+        update(MODULE_IDS.foo, {}, false);
 
         expect(status(MODULE_IDS.foo)).toBe('stale');
       });
