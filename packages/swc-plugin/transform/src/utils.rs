@@ -1,10 +1,10 @@
 pub mod ast {
     use swc_core::{atoms::Atom, common::DUMMY_SP, ecma::ast::*};
 
-    pub fn kv_prop(key: &Atom, value: Expr) -> PropOrSpread {
+    pub fn kv_prop(key: Atom, value: Expr) -> PropOrSpread {
         PropOrSpread::Prop(Box::new(Prop::KeyValue(KeyValueProp {
             key: PropName::Str(Str {
-                value: key.clone(),
+                value: key,
                 raw: None,
                 span: DUMMY_SP,
             }),
@@ -52,14 +52,14 @@ pub mod ast {
         }
     }
 
-    pub fn import_star(ident: &Ident, src: &Atom) -> ModuleItem {
+    pub fn import_star(ident: Ident, src: Atom) -> ModuleItem {
         ModuleDecl::Import(ImportDecl {
             phase: ImportPhase::Evaluation,
             specifiers: vec![ImportSpecifier::Namespace(ImportStarAsSpecifier {
-                local: ident.clone(),
+                local: ident,
                 span: DUMMY_SP,
             })],
-            src: Box::new(src.clone().into()),
+            src: Box::new(src.into()),
             type_only: false,
             with: None,
             span: DUMMY_SP,

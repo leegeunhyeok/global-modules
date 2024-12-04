@@ -69,78 +69,78 @@ impl GlobalModuleTransformer {
             deps_requires.extend(self.to_require_dep_stmts(src, value));
         });
 
-        self.exports.iter().for_each(|export_ref| match export_ref {
-            ExportRef::Named(NamedExportRef { members }) => {
-                members.iter().for_each(|member| match member {
-                    ExportMember::Actual(actual_export) => {
-                        let name = actual_export
-                            .name
-                            .as_ref()
-                            .map_or_else(|| actual_export.ident.sym.clone(), |name| name.clone());
-
-                        export_props.push(kv_prop(&name, actual_export.ident.clone().into()));
-                    }
-                    ExportMember::Binding(binding_export) => {
-                        export_props.push(kv_prop(
-                            &binding_export.name,
-                            binding_export.bind_ident.clone().into(),
-                        ));
-                        export_decls.push(var_declarator(&binding_export.bind_ident));
-                    }
-                })
-            }
-            ExportRef::NamedReExport(NamedReExportRef {
-                mod_ident,
-                src,
-                members,
-            }) => {
-                if self.phase == ModulePhase::Register {
-                    additional_imports.push(import_star(mod_ident, src));
-                }
-
-                export_props.extend(members.iter().map(|member| {
-                    match member {
+        mem::take(&mut self.exports)
+            .into_iter()
+            .for_each(|export_ref| match export_ref {
+                ExportRef::Named(NamedExportRef { members }) => {
+                    members.into_iter().for_each(|member| match member {
                         ExportMember::Actual(actual_export) => {
-                            let name = actual_export.name.as_ref().map_or_else(
-                                || actual_export.ident.sym.clone(),
-                                |name| name.clone(),
-                            );
+                            let name = actual_export
+                                .name
+                                .unwrap_or_else(|| actual_export.ident.sym.clone());
 
-                            kv_prop(
-                                &name,
+                            export_props.push(kv_prop(name, actual_export.ident.into()));
+                        }
+                        ExportMember::Binding(binding_export) => {
+                            export_props.push(kv_prop(
+                                binding_export.name,
+                                binding_export.bind_ident.clone().into(),
+                            ));
+                            export_decls.push(var_declarator(&binding_export.bind_ident));
+                        }
+                    })
+                }
+                ExportRef::NamedReExport(NamedReExportRef {
+                    mod_ident,
+                    src,
+                    members,
+                }) => {
+                    if self.phase == ModulePhase::Register {
+                        additional_imports.push(import_star(mod_ident.clone(), src));
+                    }
+
+                    export_props.extend(members.into_iter().map(|member| {
+                        match member {
+                            ExportMember::Actual(actual_export) => {
+                                let name = actual_export
+                                    .name
+                                    .unwrap_or_else(|| actual_export.ident.sym.clone());
+
+                                kv_prop(
+                                    name,
+                                    mod_ident
+                                        .clone()
+                                        .make_member(actual_export.ident.sym.clone().into())
+                                        .into(),
+                                )
+                            }
+                            ExportMember::Binding(binding_export) => kv_prop(
+                                binding_export.name.clone(),
                                 mod_ident
                                     .clone()
-                                    .make_member(actual_export.ident.sym.clone().into())
+                                    .make_member(binding_export.name.into())
                                     .into(),
-                            )
+                            ),
                         }
-                        ExportMember::Binding(binding_export) => kv_prop(
-                            &binding_export.name,
-                            mod_ident
-                                .clone()
-                                .make_member(binding_export.name.clone().into())
-                                .into(),
-                        ),
-                    }
-                }));
-            }
-            ExportRef::ReExportAll(ReExportAllRef {
-                src,
-                mod_ident,
-                name,
-            }) => {
-                if self.phase == ModulePhase::Register {
-                    additional_imports.push(import_star(mod_ident, src));
+                    }));
                 }
+                ExportRef::ReExportAll(ReExportAllRef {
+                    src,
+                    mod_ident,
+                    name,
+                }) => {
+                    if self.phase == ModulePhase::Register {
+                        additional_imports.push(import_star(mod_ident.clone(), src));
+                    }
 
-                let ns_call = self.to_ns_export(mod_ident.clone().into());
+                    let ns_call = self.to_ns_export(mod_ident.clone().into());
 
-                match name {
-                    Some(exp_name) => export_props.push(kv_prop(exp_name, ns_call)),
-                    None => export_props.insert(0, spread_prop(ns_call)),
-                };
-            }
-        });
+                    match name {
+                        Some(exp_name) => export_props.push(kv_prop(exp_name, ns_call)),
+                        None => export_props.insert(0, spread_prop(ns_call)),
+                    };
+                }
+            });
 
         let exports_call = self.exports_call(obj_lit_expr(export_props));
         let exports_decl = VarDecl {
