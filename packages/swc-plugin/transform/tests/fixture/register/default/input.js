@@ -4,12 +4,19 @@ import { bar as bar2 } from './bar';
 import * as baz from './baz';
 import * as foo2 from './foo';
 
+React.lazy(() => import('./Component'));
+
 if (__DEV__) {
-  require('./dev');
+  require('./cjs-1');
 }
 
 export default function () {
-  //
+  require('./cjs-2');
+
+  const inner = async () => {
+    await import('./esm');
+    require('./cjs-3');
+  }
 }
 
 const value = 'val';
