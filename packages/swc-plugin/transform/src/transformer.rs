@@ -307,13 +307,15 @@ impl GlobalModuleTransformer {
     ///
     /// ```js
     /// // Code
-    /// ctx.exports({ ... });
+    /// ctx.exports(function () {
+    ///   return <obj>;
+    /// });
     /// ```
     fn exports_call(&self, obj: Expr) -> Expr {
         self.ctx_ident
             .clone()
             .make_member(quote_ident!("exports"))
-            .as_call(DUMMY_SP, vec![obj.into()])
+            .as_call(DUMMY_SP, vec![obj.into_lazy_fn(vec![]).as_arg()])
     }
 
     /// ```js
