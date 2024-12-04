@@ -171,17 +171,11 @@ pub struct ActualExportMember {
     /// ```
     pub ident: Ident,
     /// Export name.
-    pub name: Atom,
+    pub name: Option<Atom>,
 }
 
 impl ActualExportMember {
     pub fn new(orig_ident: &Ident, name: Option<Atom>) -> Self {
-        let name = if let Some(name) = name {
-            name
-        } else {
-            orig_ident.sym.clone()
-        };
-
         Self {
             ident: orig_ident.clone(),
             name,

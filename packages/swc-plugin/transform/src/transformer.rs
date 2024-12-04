@@ -73,10 +73,12 @@ impl GlobalModuleTransformer {
             ExportRef::Named(NamedExportRef { members }) => {
                 members.iter().for_each(|member| match member {
                     ExportMember::Actual(actual_export) => {
-                        export_props.push(kv_prop(
-                            &actual_export.name,
-                            actual_export.ident.clone().into(),
-                        ));
+                        let name = actual_export
+                            .name
+                            .as_ref()
+                            .map_or_else(|| actual_export.ident.sym.clone(), |name| name.clone());
+
+                        export_props.push(kv_prop(&name, actual_export.ident.clone().into()));
                     }
                     ExportMember::Binding(binding_export) => {
                         export_props.push(kv_prop(
@@ -98,13 +100,20 @@ impl GlobalModuleTransformer {
 
                 export_props.extend(members.iter().map(|member| {
                     match member {
-                        ExportMember::Actual(actual_export) => kv_prop(
-                            &actual_export.name,
-                            mod_ident
-                                .clone()
-                                .make_member(actual_export.ident.sym.clone().into())
-                                .into(),
-                        ),
+                        ExportMember::Actual(actual_export) => {
+                            let name = actual_export.name.as_ref().map_or_else(
+                                || actual_export.ident.sym.clone(),
+                                |name| name.clone(),
+                            );
+
+                            kv_prop(
+                                &name,
+                                mod_ident
+                                    .clone()
+                                    .make_member(actual_export.ident.sym.clone().into())
+                                    .into(),
+                            )
+                        }
                         ExportMember::Binding(binding_export) => kv_prop(
                             &binding_export.name,
                             mod_ident
