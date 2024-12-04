@@ -12,7 +12,6 @@ pub fn global_module(
     as_folder(GlobalModuleTransformer::new(id, phase.into(), deps_id))
 }
 
-mod model_helpers;
 mod models;
 mod phase;
 mod transformer;
