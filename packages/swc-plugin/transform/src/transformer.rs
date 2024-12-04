@@ -126,10 +126,10 @@ impl GlobalModuleTransformer {
 
                 let ns_call = self.to_ns_export(mod_ident.clone().into());
 
-                export_props.push(match name {
-                    Some(exp_name) => kv_prop(exp_name, ns_call),
-                    None => spread_prop(ns_call),
-                });
+                match name {
+                    Some(exp_name) => export_props.push(kv_prop(exp_name, ns_call)),
+                    None => export_props.insert(0, spread_prop(ns_call)),
+                };
             }
         });
 
