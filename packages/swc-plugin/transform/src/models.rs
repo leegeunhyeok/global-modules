@@ -97,12 +97,6 @@ impl ImportNamespaceMember {
             ident: ident.clone(),
         }
     }
-
-    pub fn anonymous() -> Self {
-        Self {
-            ident: private_ident!("__mod"),
-        }
-    }
 }
 
 #[derive(Debug)]
@@ -221,9 +215,9 @@ pub struct NamedReExportRef {
 }
 
 impl NamedReExportRef {
-    pub fn new(mod_ident: &Ident, src: &Atom, members: Vec<ExportMember>) -> Self {
+    pub fn new(src: &Atom, members: Vec<ExportMember>) -> Self {
         NamedReExportRef {
-            mod_ident: mod_ident.clone(),
+            mod_ident: private_ident!("__mod"),
             src: src.clone(),
             members,
         }
@@ -254,9 +248,9 @@ pub struct ReExportAllRef {
 }
 
 impl ReExportAllRef {
-    pub fn new(mod_ident: &Ident, src: &Atom, name: Option<Atom>) -> Self {
+    pub fn new(src: &Atom, name: Option<Atom>) -> Self {
         ReExportAllRef {
-            mod_ident: mod_ident.clone(),
+            mod_ident: private_ident!("__mod"),
             src: src.clone(),
             name,
         }

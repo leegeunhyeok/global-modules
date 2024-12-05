@@ -95,7 +95,12 @@ impl GlobalModuleTransformer {
                     src,
                     members,
                 }) => {
-                    if self.phase == ModulePhase::Register {
+                    if self.phase == ModulePhase::Runtime {
+                        deps_requires.push(
+                            self.decl_required_deps_stmt(&src, mod_ident.clone().into())
+                                .into(),
+                        );
+                    } else {
                         additional_imports.push(import_star(mod_ident.clone(), src));
                     }
 
@@ -129,11 +134,16 @@ impl GlobalModuleTransformer {
                     mod_ident,
                     name,
                 }) => {
-                    if self.phase == ModulePhase::Register {
+                    let ns_call = self.to_ns_export(mod_ident.clone().into());
+
+                    if self.phase == ModulePhase::Runtime {
+                        deps_requires.push(
+                            self.decl_required_deps_stmt(&src, mod_ident.clone().into())
+                                .into(),
+                        );
+                    } else {
                         additional_imports.push(import_star(mod_ident.clone(), src));
                     }
-
-                    let ns_call = self.to_ns_export(mod_ident.clone().into());
 
                     match name {
                         Some(exp_name) => export_props.push(kv_prop(exp_name, ns_call)),
@@ -539,7 +549,6 @@ impl VisitMut for GlobalModuleTransformer {
                                 // Re-exports
                                 Some(src_str) => {
                                     let src = src_str.clone().value;
-                                    let import_member = ImportNamespaceMember::anonymous();
                                     let specifier = export_named.specifiers.get(0).unwrap();
 
                                     if let Some(ns_specifier) = specifier.as_namespace() {
@@ -551,7 +560,6 @@ impl VisitMut for GlobalModuleTransformer {
                                         // ```
                                         self.register_export(ExportRef::ReExportAll(
                                             ReExportAllRef::new(
-                                                &import_member.ident,
                                                 &src,
                                                 Some(ns_specifier.name.atom().clone()),
                                             ),
@@ -566,30 +574,11 @@ impl VisitMut for GlobalModuleTransformer {
                                         // ```
                                         self.register_export(ExportRef::NamedReExport(
                                             NamedReExportRef::new(
-                                                &import_member.ident,
                                                 &src,
                                                 self.to_export_members(&export_named.specifiers),
                                             ),
                                         ));
                                     }
-
-                                    // Register new import for reference re-exported modules.
-                                    //
-                                    // ```js
-                                    // // Before
-                                    // export * as foo from './foo';
-                                    //
-                                    // // After
-                                    // import * as __x from './foo';
-                                    //
-                                    // __x; // can be referenced.
-                                    //
-                                    // export { __x as foo };
-                                    // ```
-                                    self.register_mod(
-                                        &src,
-                                        vec![ImportMember::Namespace(import_member)],
-                                    );
                                 }
                                 // Named export
                                 None => {
@@ -611,16 +600,9 @@ impl VisitMut for GlobalModuleTransformer {
                             with: None,
                             ..
                         }) => {
-                            let src = src.clone().value;
-                            let import_member = ImportNamespaceMember::anonymous();
-
                             self.register_export(ExportRef::ReExportAll(ReExportAllRef::new(
-                                &import_member.ident,
-                                &src,
-                                None,
+                                &src.value, None,
                             )));
-
-                            self.register_mod(&src, vec![ImportMember::Namespace(import_member)]);
                         }
                         // Default export statements.
                         //
