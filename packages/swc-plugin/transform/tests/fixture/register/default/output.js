@@ -1,4 +1,4 @@
-import { register as __r } from "@global-modules/runtime";
+var __ctx = global.__modules.register(1000);
 import React, { useState, useCallback } from 'react';
 import { foo } from './foo';
 import { bar as bar2 } from './bar';
@@ -9,7 +9,6 @@ import * as __mod1 from "./re-exp-2";
 import * as __mod2 from "./re-exp-3";
 import * as __mod3 from "./re-exp-4";
 import * as __mod4 from "./re-exp-5";
-var __ctx = __r(1000);
 React.lazy(()=>import('./Component'));
 if (__DEV__) {
     require('./cjs-1');

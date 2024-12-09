@@ -1,5 +1,14 @@
 pub mod ast {
-    use swc_core::{atoms::Atom, common::DUMMY_SP, ecma::ast::*};
+    use swc_core::{
+        atoms::Atom,
+        common::DUMMY_SP,
+        ecma::{
+            ast::*,
+            utils::{member_expr, quote_ident, ExprFactory},
+        },
+    };
+
+    use crate::models::ExportMember;
 
     pub fn kv_prop(key: Atom, value: Expr) -> PropOrSpread {
         PropOrSpread::Prop(Box::new(Prop::KeyValue(KeyValueProp {
@@ -35,10 +44,10 @@ pub mod ast {
         })
     }
 
-    pub fn num_lit_expr(num: u32) -> Expr {
+    pub fn num_lit_expr(num: f64) -> Expr {
         Expr::Lit(Lit::Num(Number {
             span: DUMMY_SP,
-            value: num as f64,
+            value: num,
             raw: None,
         }))
     }
@@ -66,10 +75,45 @@ pub mod ast {
         })
         .into()
     }
-}
 
-pub mod parse {
-    use swc_core::ecma::ast::*;
+    /// Wraps the given expression with a `__ctx.ns` function call expression.
+    ///
+    /// ```js
+    /// // Code
+    /// __ctx.ns(<expr>);
+    /// ```
+    pub fn to_ns_export(ident: &Ident, expr: Expr) -> Expr {
+        ident
+            .clone()
+            .make_member(quote_ident!("ns"))
+            .as_call(DUMMY_SP, vec![expr.into()])
+    }
+
+    pub fn expr_from_export_default_decl(
+        export_default_decl: &ExportDefaultDecl,
+        ident: Ident,
+    ) -> Expr {
+        assign_expr(
+            &ident,
+            get_expr_from_default_decl(&export_default_decl.decl),
+        )
+        .into()
+    }
+
+    pub fn default_expr_from_default_export_decl(
+        export_default_decl: &ExportDefaultDecl,
+        ident: Ident,
+    ) -> ModuleItem {
+        ModuleItem::ModuleDecl(ModuleDecl::ExportDefaultExpr(ExportDefaultExpr {
+            expr: assign_expr(
+                &ident,
+                get_expr_from_default_decl(&export_default_decl.decl),
+            )
+            .into(),
+            span: DUMMY_SP,
+        }))
+        .into()
+    }
 
     pub fn get_expr_from_decl(decl: &Decl) -> (Ident, Expr) {
         match decl {
@@ -124,6 +168,64 @@ pub mod parse {
             DefaultDecl::Fn(fn_expr) => Expr::Fn(fn_expr.clone()),
             _ => panic!("not implemented"),
         }
+    }
+
+    pub fn to_export_members(specifiers: &Vec<ExportSpecifier>) -> Vec<ExportMember> {
+        let mut members = Vec::with_capacity(specifiers.len());
+
+        specifiers.iter().for_each(|spec| match spec {
+            ExportSpecifier::Named(
+                specifier @ ExportNamedSpecifier {
+                    is_type_only: false,
+                    ..
+                },
+            ) => members.push(specifier.into()),
+            _ => {}
+        });
+
+        members
+    }
+
+    pub fn global_module_register_stmt(id: f64, ctx_ident: &Ident) -> ModuleItem {
+        member_expr!(Default::default(), DUMMY_SP, global.__modules.register)
+            .as_call(DUMMY_SP, vec![num_lit_expr(id).as_arg()])
+            .into_var_decl(VarDeclKind::Var, ctx_ident.clone().into())
+            .into()
+    }
+
+    pub fn global_module_get_ctx_stmt(id: f64, ctx_ident: &Ident) -> ModuleItem {
+        member_expr!(Default::default(), DUMMY_SP, global.__modules.getContext)
+            .as_call(DUMMY_SP, vec![num_lit_expr(id).as_arg()])
+            .into_var_decl(VarDeclKind::Var, ctx_ident.clone().into())
+            .into()
+    }
+
+    /// Returns global module's require call expression.
+    ///
+    /// ```js
+    /// // Code
+    /// ident.require(src);
+    /// ```
+    pub fn require_call(ident: &Ident, src: &Atom) -> Expr {
+        ident
+            .clone()
+            .make_member(quote_ident!("require"))
+            .as_call(DUMMY_SP, vec![src.clone().as_arg()])
+    }
+
+    /// Returns global module's exports call expression.
+    ///
+    /// ```js
+    /// // Code
+    /// ident.exports(function () {
+    ///   return <obj>;
+    /// });
+    /// ```
+    pub fn exports_call(ident: &Ident, obj: Expr) -> Expr {
+        ident
+            .clone()
+            .make_member(quote_ident!("exports"))
+            .as_call(DUMMY_SP, vec![obj.into_lazy_fn(vec![]).as_arg()])
     }
 }
 

@@ -9,9 +9,9 @@ use swc_global_module::global_module;
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct GlobalModuleOptions {
-    id: u32,
-    phase: u32,
-    dependencies: Option<AHashMap<String, u32>>,
+    id: f64,
+    phase: f64,
+    dependencies: Option<AHashMap<String, f64>>,
 }
 
 #[plugin_transform]

@@ -1,7 +1,13 @@
+use helpers::*;
 use swc_core::{
     atoms::Atom,
-    ecma::{ast::*, utils::private_ident},
+    ecma::{
+        ast::*,
+        utils::{private_ident, ExprFactory},
+    },
 };
+
+use crate::{phase::ModulePhase, utils::ast::*};
 
 #[derive(Debug)]
 pub struct ModuleRef {
@@ -155,7 +161,7 @@ impl From<&ExportNamedSpecifier> for ExportMember {
     }
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct ActualExportMember {
     /// The identifier of the actual export target.
     ///
@@ -175,9 +181,27 @@ impl ActualExportMember {
             name,
         }
     }
+
+    pub fn into_bind_prop(&self, bind_ident: &Ident) -> PropOrSpread {
+        let ident_sym = self.ident.sym.clone();
+        let name = self.name.clone();
+        let name = name.unwrap_or_else(|| ident_sym.clone());
+
+        kv_prop(
+            name,
+            bind_ident.clone().make_member(ident_sym.into()).into(),
+        )
+    }
 }
 
-#[derive(Debug)]
+impl From<ActualExportMember> for PropOrSpread {
+    fn from(value: ActualExportMember) -> PropOrSpread {
+        let name = value.name.unwrap_or_else(|| value.ident.sym.clone());
+        kv_prop(name, value.ident.into())
+    }
+}
+
+#[derive(Clone, Debug)]
 pub struct BindingExportMember {
     /// A reference variable that points to the export target.
     ///
@@ -196,6 +220,28 @@ impl BindingExportMember {
             bind_ident: private_ident!("__x"),
             name,
         }
+    }
+
+    pub fn into_bind_prop(&self, bind_ident: &Ident) -> PropOrSpread {
+        kv_prop(
+            self.name.clone(),
+            bind_ident
+                .clone()
+                .make_member(self.name.clone().into())
+                .into(),
+        )
+    }
+}
+
+impl From<BindingExportMember> for PropOrSpread {
+    fn from(value: BindingExportMember) -> PropOrSpread {
+        kv_prop(value.name, value.bind_ident.into())
+    }
+}
+
+impl From<BindingExportMember> for VarDeclarator {
+    fn from(value: BindingExportMember) -> VarDeclarator {
+        var_declarator(&value.bind_ident)
     }
 }
 
@@ -220,6 +266,15 @@ impl NamedReExportRef {
             mod_ident: private_ident!("__mod"),
             src: src.clone(),
             members,
+        }
+    }
+
+    pub fn get_binding_ast(&self, ctx_ident: &Ident, phase: ModulePhase) -> ModuleItem {
+        match phase {
+            ModulePhase::Register => import_star(self.mod_ident.clone(), self.src.clone()),
+            ModulePhase::Runtime => {
+                decl_required_deps_stmt(ctx_ident, &self.src, self.mod_ident.clone().into()).into()
+            }
         }
     }
 }
@@ -255,4 +310,276 @@ impl ReExportAllRef {
             name,
         }
     }
+
+    pub fn get_binding_ast(&self, ctx_ident: &Ident, phase: ModulePhase) -> ModuleItem {
+        match phase {
+            ModulePhase::Register => import_star(self.mod_ident.clone(), self.src.clone()),
+            ModulePhase::Runtime => {
+                decl_required_deps_stmt(ctx_ident, &self.src, self.mod_ident.clone().into()).into()
+            }
+        }
+    }
+}
+
+pub mod helpers {
+    use swc_core::{
+        common::DUMMY_SP,
+        ecma::{
+            ast::*,
+            utils::{quote_ident, ExprFactory},
+        },
+    };
+
+    use super::*;
+    use crate::{phase::ModulePhase, utils::collections::OHashMap};
+
+    /// Get `ExportRef` and `ModuleItem` from `ExportDecl`.
+    pub fn get_from_export_decl(export_decl: &ExportDecl) -> ExportDeclItem {
+        let (orig_ident, decl_expr) = get_expr_from_decl(&export_decl.decl);
+        let binding_export = BindingExportMember::new(orig_ident.sym.clone());
+        let binding_name = ModuleExportName::Ident(binding_export.bind_ident.clone());
+        let exported_name = ModuleExportName::Ident(orig_ident);
+        let binding_assign_stmt = assign_expr(&binding_export.bind_ident, decl_expr).into_stmt();
+        let export_ref = ExportRef::Named(NamedExportRef::new(vec![ExportMember::Binding(
+            binding_export,
+        )]));
+
+        ExportDeclItem {
+            export_ref,
+            export_stmt: ModuleItem::ModuleDecl(ModuleDecl::ExportNamed(NamedExport {
+                specifiers: vec![ExportSpecifier::Named(ExportNamedSpecifier {
+                    orig: binding_name,
+                    exported: exported_name.into(),
+                    is_type_only: false,
+                    span: DUMMY_SP,
+                })],
+                src: None,
+                with: None,
+                type_only: false,
+                span: DUMMY_SP,
+            }))
+            .into(),
+            binding_stmt: binding_assign_stmt.into(),
+        }
+    }
+
+    pub fn get_from_export_named(export_named: &NamedExport) -> ExportRef {
+        match &export_named.src {
+            // Re-exports
+            Some(src_str) => {
+                let src = src_str.clone().value;
+                let specifier = export_named.specifiers.get(0).unwrap();
+
+                if let Some(ns_specifier) = specifier.as_namespace() {
+                    // Re-export all with alias.
+                    // In this case, the size of the `specifier` vector is always 1.
+                    //
+                    // ```js
+                    // export * as foo from './foo';
+                    // ```
+                    ExportRef::ReExportAll(ReExportAllRef::new(
+                        &src,
+                        Some(ns_specifier.name.atom().clone()),
+                    ))
+                } else {
+                    // Re-export specified members only.
+                    //
+                    // ```js
+                    // export { foo, bar as baz } from './foo';
+                    // export { default } from './foo';
+                    // export { default as named } from './foo';
+                    // ```
+                    ExportRef::NamedReExport(NamedReExportRef::new(
+                        &src,
+                        to_export_members(&export_named.specifiers),
+                    ))
+                }
+            }
+            // Named export
+            None => {
+                let members = to_export_members(&export_named.specifiers);
+                ExportRef::Named(NamedExportRef::new(members))
+            }
+        }
+    }
+
+    /// Convert `ImportSpecifier` into `ImportMember`.
+    pub fn to_import_members(specifiers: &Vec<ImportSpecifier>) -> Vec<ImportMember> {
+        let mut members = Vec::with_capacity(specifiers.len());
+
+        specifiers.iter().for_each(|spec| match spec {
+            ImportSpecifier::Named(
+                specifier @ ImportNamedSpecifier {
+                    is_type_only: false,
+                    ..
+                },
+            ) => members.push(specifier.into()),
+            ImportSpecifier::Namespace(specifier) => members.push(specifier.into()),
+            ImportSpecifier::Default(specifier) => members.push(specifier.into()),
+            _ => {}
+        });
+
+        members
+    }
+
+    /// ```js
+    /// // Code
+    /// var { foo, bar, default: baz } = <ident>.__require('./foo');
+    /// ```
+    pub fn decl_required_deps_stmt(ctx_ident: &Ident, src: &Atom, pat: Pat) -> Stmt {
+        require_call(ctx_ident, src)
+            .into_var_decl(VarDeclKind::Var, pat)
+            .into()
+    }
+
+    /// Returns a list of require call expressions that reference modules from global registry.
+    ///
+    /// ```js
+    /// // Code
+    /// var { default: React, useState, useCallback } = __require('react');
+    /// var { core } = __require('@app/core');
+    /// var ns = __require('@app/internal');
+    /// ```
+    pub fn to_require_dep_stmts(
+        ctx_ident: &Ident,
+        src: &Atom,
+        module_ref: &ModuleRef,
+    ) -> Vec<ModuleItem> {
+        let mut requires = Vec::new();
+        let mut dep_props = Vec::new();
+
+        module_ref
+            .members
+            .iter()
+            .for_each(|module_member| match module_member {
+                ImportMember::Default(ImportDefaultMember { ident, .. }) => {
+                    dep_props.push(ObjectPatProp::KeyValue(KeyValuePatProp {
+                        key: PropName::Ident(quote_ident!("default").into()),
+                        value: Box::new(Pat::Ident(ident.clone().into())),
+                    }))
+                }
+                ImportMember::Named(ImportNamedMember {
+                    ident,
+                    alias: Some(alias_ident),
+                    ..
+                }) => dep_props.push(ObjectPatProp::KeyValue(KeyValuePatProp {
+                    key: PropName::Ident(ident.clone().into()),
+                    value: Box::new(Pat::Ident(alias_ident.clone().into())),
+                })),
+                ImportMember::Named(ImportNamedMember {
+                    ident, alias: None, ..
+                }) => {
+                    dep_props.push(ObjectPatProp::Assign(AssignPatProp {
+                        key: ident.clone().into(),
+                        value: None,
+                        span: DUMMY_SP,
+                    }));
+                }
+                ImportMember::Namespace(ImportNamespaceMember { ident, .. }) => requires
+                    .push(decl_required_deps_stmt(ctx_ident, src, ident.clone().into()).into()),
+            });
+
+        if dep_props.len() > 0 {
+            requires.push(
+                decl_required_deps_stmt(
+                    ctx_ident,
+                    src,
+                    ObjectPat {
+                        props: dep_props,
+                        optional: false,
+                        type_ann: None,
+                        span: DUMMY_SP,
+                    }
+                    .into(),
+                )
+                .into(),
+            );
+        }
+
+        requires
+    }
+
+    pub fn deps_to_ast(ctx_ident: &Ident, deps: &OHashMap<Atom, ModuleRef>) -> Vec<ModuleItem> {
+        let mut items: Vec<ModuleItem> = vec![];
+
+        deps.iter()
+            .for_each(|(src, value)| items.extend(to_require_dep_stmts(ctx_ident, src, value)));
+
+        items
+    }
+
+    pub fn exports_to_ast(
+        ctx_ident: &Ident,
+        exports: Vec<ExportRef>,
+        phase: ModulePhase,
+    ) -> ExportsAst {
+        let mut pre_body: Vec<ModuleItem> = vec![];
+        let mut export_props: Vec<PropOrSpread> = vec![];
+        let mut export_decls: Vec<VarDeclarator> = vec![];
+
+        exports.into_iter().for_each(|export_ref| match export_ref {
+            ExportRef::Named(NamedExportRef { members }) => {
+                members.into_iter().for_each(|member| match member {
+                    ExportMember::Actual(actual_export) => {
+                        export_props.push(actual_export.into());
+                    }
+                    ExportMember::Binding(binding_export) => {
+                        export_props.push(binding_export.clone().into());
+                        export_decls.push(binding_export.into());
+                    }
+                })
+            }
+            ExportRef::NamedReExport(named_re_export) => {
+                pre_body.push(named_re_export.get_binding_ast(ctx_ident, phase));
+                export_props.extend(named_re_export.members.into_iter().map(
+                    |member| match member {
+                        ExportMember::Actual(actual_export) => {
+                            actual_export.into_bind_prop(&named_re_export.mod_ident)
+                        }
+                        ExportMember::Binding(binding_export) => {
+                            binding_export.into_bind_prop(&named_re_export.mod_ident)
+                        }
+                    },
+                ));
+            }
+            ExportRef::ReExportAll(re_export_all) => {
+                let ns_call = to_ns_export(ctx_ident, re_export_all.mod_ident.clone().into());
+
+                pre_body.push(re_export_all.get_binding_ast(ctx_ident, phase));
+
+                match re_export_all.name {
+                    Some(exp_name) => export_props.push(kv_prop(exp_name, ns_call)),
+                    None => export_props.insert(0, spread_prop(ns_call)),
+                };
+            }
+        });
+
+        let post_body = vec![
+            exports_call(ctx_ident, obj_lit_expr(export_props))
+                .into_stmt()
+                .into(),
+            VarDecl {
+                kind: VarDeclKind::Var,
+                decls: export_decls,
+                ..Default::default()
+            }
+            .into(),
+        ];
+
+        ExportsAst {
+            pre_body,
+            post_body,
+        }
+    }
+}
+
+pub struct ExportDeclItem {
+    pub export_ref: ExportRef,
+    pub export_stmt: ModuleItem,
+    pub binding_stmt: ModuleItem,
+}
+
+pub struct ExportsAst {
+    pub pre_body: Vec<ModuleItem>,
+    pub post_body: Vec<ModuleItem>,
 }

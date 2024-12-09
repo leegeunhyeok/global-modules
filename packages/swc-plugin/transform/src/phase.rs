@@ -1,4 +1,4 @@
-#[derive(PartialEq)]
+#[derive(Clone, Copy, PartialEq)]
 pub enum ModulePhase {
     Register = 0,
     Runtime = 1,
@@ -9,7 +9,7 @@ impl From<u32> for ModulePhase {
         match value {
             0 => ModulePhase::Register,
             1 => ModulePhase::Runtime,
-            _ => panic!("invalid u32 value for ModulePhase"),
+            _ => panic!("invalid f64 value for ModulePhase"),
         }
     }
 }

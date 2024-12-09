@@ -13,6 +13,13 @@ React.lazy(()=>__ctx.require("./Component"));
 if (__DEV__) {
     __ctx.require("./cjs-1");
 }
+__x = function() {
+    __ctx.require("./cjs-2");
+    const inner = async ()=>{
+        await __ctx.require("./esm");
+        __ctx.require("./cjs-3");
+    };
+};
 const value = 'val';
 __x1 = 1;
 __ctx.exports(function() {
