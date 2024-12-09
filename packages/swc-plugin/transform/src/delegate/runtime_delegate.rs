@@ -46,7 +46,7 @@ impl RuntimeDelegate {
 }
 
 impl AstDelegate for RuntimeDelegate {
-    fn make_body_and_drain(&mut self, orig_body: Vec<ModuleItem>) -> Vec<ModuleItem> {
+    fn make_body(&mut self, orig_body: Vec<ModuleItem>) -> Vec<ModuleItem> {
         let exps = mem::take(&mut self.exps);
         let bindings = mem::take(&mut self.bindings);
         let mut body = Vec::with_capacity(orig_body.len());

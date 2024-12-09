@@ -13,96 +13,16 @@ use swc_core::{
 };
 
 pub struct GlobalModuleTransformer {
-    pub deps_id: Option<AHashMap<String, f64>>,
+    // TODO
+    #[allow(dead_code)]
+    deps_id: Option<AHashMap<String, f64>>,
     delegate: Box<dyn AstDelegate>,
 }
 
 impl GlobalModuleTransformer {
     /// Returns the AST structure based on the collected module and export data.
     pub fn get_module_body(&mut self, orig_body: Vec<ModuleItem>) -> Vec<ModuleItem> {
-        self.delegate.make_body_and_drain(orig_body)
-        // let (imports, body, exports) = self.partition_by_module_item(orig_body);
-
-        // // Object properties to be passed to the Global module's export API."
-        // let mut export_props: Vec<PropOrSpread> = Vec::new();
-
-        // // An import statement newly added by the re-exports.
-        // let mut additional_imports: Vec<ModuleItem> = Vec::new();
-
-        // // A statements that retrieves injected dependencies
-        // // through the Global Module's require API.
-        // //
-        // // ```js
-        // // var { ... } = __require('./foo');
-        // // var { ... } = __require('./bar');
-        // // ```
-        // let mut deps_requires: Vec<ModuleItem> = Vec::new();
-
-        // // A list of binding variable declarators,
-        // //
-        // // ```js
-        // // var __x, __x1, __x2;
-        // // // => __x, __x1, __x2
-        // // ```
-        // let mut export_decls: Vec<VarDeclarator> = Vec::new();
-
-        // let ExportsAst {
-        //     additional_imports,
-        //     deps_requires,
-        //     export_decls,
-        //     export_props,
-        // } = exports_to_ast(mem::take(&mut self.exports), &self.ctx_ident, &self.phase);
-
-        // // TODO:
-
-        // let exports_call = exports_call(&self.ctx_ident, obj_lit_expr(export_props));
-        // let exports_decl = VarDecl {
-        //     kind: VarDeclKind::Var,
-        //     decls: export_decls,
-        //     ..Default::default()
-        // };
-
-        // let mut new_body = vec![];
-
-        // debug!("additional_imports {:#?}", additional_imports);
-
-        // // Imports
-        // if self.phase == ModulePhase::Register {
-        //     let (import_stmt, ident) = global_module_import_stmt();
-        //     new_body.push(import_stmt);
-        //     new_body.extend(imports);
-        //     new_body.extend(additional_imports);
-        //     new_body.push(
-        //         ident
-        //             .as_call(DUMMY_SP, vec![num_lit_expr(self.id).as_arg()])
-        //             .into_var_decl(VarDeclKind::Var, self.ctx_ident.clone().into())
-        //             .into(),
-        //     );
-        // }
-
-        // // Body
-        // if self.phase == ModulePhase::Runtime {
-        //     new_body.push(
-        //         // `global.__modules.getContext(id);`
-        //         member_expr!(Default::default(), DUMMY_SP, global.__modules.getContext)
-        //             .as_call(DUMMY_SP, vec![num_lit_expr(self.id).as_arg()])
-        //             .into_var_decl(VarDeclKind::Var, self.ctx_ident.clone().into())
-        //             .into(),
-        //     );
-        //     new_body.extend(deps_requires);
-        // }
-        // let stmts = mem::take(&mut self.stmts);
-        // new_body.extend(body);
-        // new_body.extend(stmts.into_iter().map(|stmt| stmt.into()));
-        // new_body.push(exports_call.into_stmt().into());
-        // new_body.push(exports_decl.into());
-
-        // // Exports
-        // if self.phase == ModulePhase::Register {
-        //     new_body.extend(exports);
-        // }
-
-        // new_body
+        self.delegate.make_body(orig_body)
     }
 }
 

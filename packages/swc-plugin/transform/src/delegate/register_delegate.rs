@@ -28,7 +28,7 @@ impl RegisterDelegate {
 }
 
 impl AstDelegate for RegisterDelegate {
-    fn make_body_and_drain(&mut self, orig_body: Vec<ModuleItem>) -> Vec<ModuleItem> {
+    fn make_body(&mut self, orig_body: Vec<ModuleItem>) -> Vec<ModuleItem> {
         let size = orig_body.len();
         let exps = mem::take(&mut self.exps);
         let bindings = mem::take(&mut self.bindings);

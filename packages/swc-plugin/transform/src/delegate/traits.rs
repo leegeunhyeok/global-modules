@@ -1,7 +1,7 @@
 use swc_core::ecma::ast::*;
 
 pub trait AstDelegate {
-    fn make_body_and_drain(&mut self, orig_body: Vec<ModuleItem>) -> Vec<ModuleItem>;
+    fn make_body(&mut self, orig_body: Vec<ModuleItem>) -> Vec<ModuleItem>;
     fn import(&mut self, import_decl: &ImportDecl);
     fn export_decl(&mut self, export_decl: &ExportDecl) -> ModuleItem;
     fn export_default_decl(&mut self, export_default_decl: &ExportDefaultDecl) -> ModuleItem;
