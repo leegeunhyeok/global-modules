@@ -36,5 +36,11 @@ module.exports = {
         '@typescript-eslint/no-unsafe-assignment': 'off',
       },
     },
+    {
+      files: ['**/swc-plugin/index.ts'],
+      rules: {
+        'import/no-default-export': 'off',
+      },
+    },
   ],
 };
