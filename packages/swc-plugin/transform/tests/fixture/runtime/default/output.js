@@ -21,6 +21,11 @@ __x = function() {
     };
 };
 const value = 'val';
+__ctx.module.exports = 'cjs';
+__ctx.exports.foo = 2;
+Object.assign(__ctx.module.exports, {
+    bar: 1
+});
 __x1 = 1;
 __ctx.exports(function() {
     return {

@@ -8,7 +8,7 @@ pub mod ast {
         },
     };
 
-    use crate::models::ExportMember;
+    use crate::{models::ExportMember, phase::ModulePhase};
 
     pub fn kv_prop(key: Atom, value: Expr) -> PropOrSpread {
         PropOrSpread::Prop(Box::new(Prop::KeyValue(KeyValueProp {
@@ -87,6 +87,108 @@ pub mod ast {
             .clone()
             .make_member(quote_ident!("ns"))
             .as_call(DUMMY_SP, vec![expr.into()])
+    }
+
+    pub fn is_commonjs_module(member_expr: &MemberExpr) -> bool {
+        member_expr.obj.is_ident_ref_to("module") && member_expr.prop.is_ident_with("exports")
+    }
+
+    pub fn assign_member(left: MemberExpr, right: Expr) -> Expr {
+        right.make_assign_to(
+            AssignOp::Assign,
+            AssignTarget::Simple(SimpleAssignTarget::Member(left)),
+        )
+    }
+
+    pub fn to_binding_module_from_assign_expr(
+        ctx_ident: &Ident,
+        assign_expr: &AssignExpr,
+        phase: ModulePhase,
+    ) -> Option<Expr> {
+        if assign_expr.op != AssignOp::Assign {
+            return None;
+        }
+
+        match &assign_expr.left {
+            AssignTarget::Simple(SimpleAssignTarget::Member(member_expr)) => {
+                if is_commonjs_module(member_expr) {
+                    let new_assign_expr = assign_member(
+                        ctx_ident
+                            .clone()
+                            .make_member(IdentName {
+                                sym: "module".into(),
+                                ..Default::default()
+                            })
+                            .make_member(IdentName {
+                                sym: "exports".into(),
+                                ..Default::default()
+                            }),
+                        *assign_expr.right.clone(),
+                    );
+
+                    if phase == ModulePhase::Register {
+                        new_assign_expr.make_assign_to(AssignOp::Assign, assign_expr.left.clone())
+                    } else {
+                        new_assign_expr
+                    }
+                    .into()
+                } else if let Some(inner_member_expr) = member_expr.obj.as_member() {
+                    if is_commonjs_module(inner_member_expr) {
+                        let new_assign_expr = assign_member(
+                            ctx_ident
+                                .clone()
+                                .make_member(IdentName {
+                                    sym: "exports".into(),
+                                    ..Default::default()
+                                })
+                                .make_member(member_expr.prop.as_ident().unwrap().clone().into()),
+                            *assign_expr.right.clone(),
+                        );
+
+                        if phase == ModulePhase::Register {
+                            new_assign_expr
+                                .make_assign_to(AssignOp::Assign, assign_expr.left.clone())
+                        } else {
+                            new_assign_expr
+                        }
+                        .into()
+                    } else {
+                        None
+                    }
+                } else {
+                    None
+                }
+            }
+            _ => None,
+        }
+    }
+
+    pub fn to_binding_module_from_member_expr(
+        ctx_ident: &Ident,
+        member_expr: &MemberExpr,
+        phase: ModulePhase,
+    ) -> Option<Expr> {
+        if is_commonjs_module(member_expr) == false {
+            return None;
+        }
+
+        let ctx_module_member = ctx_ident
+            .clone()
+            .make_member(IdentName {
+                sym: "module".into(),
+                ..Default::default()
+            })
+            .make_member(IdentName {
+                sym: "exports".into(),
+                ..Default::default()
+            });
+
+        if phase == ModulePhase::Register {
+            assign_member(member_expr.clone(), ctx_module_member.into())
+        } else {
+            Expr::from(ctx_module_member)
+        }
+        .into()
     }
 
     pub fn expr_from_export_default_decl(

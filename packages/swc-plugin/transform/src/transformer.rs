@@ -159,6 +159,13 @@ impl VisitMut for GlobalModuleTransformer {
                     assign_expr.visit_mut_children_with(self);
                 }
             }
+            Expr::Member(member_expr) => {
+                if let Some(new_expr) = self.delegate.member_expr(member_expr) {
+                    *expr = new_expr;
+                } else {
+                    member_expr.visit_mut_children_with(self);
+                }
+            }
             _ => expr.visit_mut_children_with(self),
         }
     }

@@ -10,4 +10,5 @@ pub trait AstDelegate {
     fn export_all(&mut self, export_all: &ExportAll);
     fn call_expr(&mut self, call_expr: &CallExpr) -> Option<Expr>;
     fn assign_expr(&mut self, assign_expr: &AssignExpr) -> Option<Expr>;
+    fn member_expr(&mut self, member_expr: &MemberExpr) -> Option<Expr>;
 }

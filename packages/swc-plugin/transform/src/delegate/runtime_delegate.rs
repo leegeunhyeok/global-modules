@@ -15,6 +15,7 @@ use crate::{
     utils::{
         ast::{
             assign_expr, expr_from_export_default_decl, global_module_get_ctx_stmt, require_call,
+            to_binding_module_from_assign_expr, to_binding_module_from_member_expr,
         },
         collections::OHashMap,
     },
@@ -178,7 +179,19 @@ impl AstDelegate for RuntimeDelegate {
         }
     }
 
-    fn assign_expr(&mut self, _: &AssignExpr) -> Option<Expr> {
-        unimplemented!("TODO");
+    fn assign_expr(&mut self, assign_expr: &AssignExpr) -> Option<Expr> {
+        to_binding_module_from_assign_expr(
+            &self.ctx_ident,
+            assign_expr,
+            crate::phase::ModulePhase::Runtime,
+        )
+    }
+
+    fn member_expr(&mut self, member_expr: &MemberExpr) -> Option<Expr> {
+        to_binding_module_from_member_expr(
+            &self.ctx_ident,
+            member_expr,
+            crate::phase::ModulePhase::Runtime,
+        )
     }
 }

@@ -14,6 +14,11 @@ if (__DEV__) {
     require('./cjs-1');
 }
 const value = 'val';
+module.exports = __ctx.module.exports = 'cjs';
+module.exports.foo = __ctx.exports.foo = 2;
+Object.assign(module.exports = __ctx.module.exports, {
+    bar: 1
+});
 __x1 = 1;
 __ctx.exports(function() {
     return {

@@ -6,7 +6,10 @@ use swc_core::ecma::{ast::*, utils::private_ident};
 use super::traits::AstDelegate;
 use crate::{
     models::*,
-    utils::ast::{assign_expr, default_expr_from_default_export_decl, global_module_register_stmt},
+    utils::ast::{
+        assign_expr, default_expr_from_default_export_decl, global_module_register_stmt,
+        to_binding_module_from_assign_expr, to_binding_module_from_member_expr,
+    },
 };
 
 pub struct RegisterDelegate {
@@ -113,7 +116,19 @@ impl AstDelegate for RegisterDelegate {
         None
     }
 
-    fn assign_expr(&mut self, _: &AssignExpr) -> Option<Expr> {
-        unimplemented!("TODO");
+    fn assign_expr(&mut self, assign_expr: &AssignExpr) -> Option<Expr> {
+        to_binding_module_from_assign_expr(
+            &self.ctx_ident,
+            assign_expr,
+            crate::phase::ModulePhase::Register,
+        )
+    }
+
+    fn member_expr(&mut self, member_expr: &MemberExpr) -> Option<Expr> {
+        to_binding_module_from_member_expr(
+            &self.ctx_ident,
+            member_expr,
+            crate::phase::ModulePhase::Register,
+        )
     }
 }
