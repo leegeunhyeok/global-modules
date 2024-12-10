@@ -49,13 +49,9 @@ impl VisitMut for GlobalModuleTransformer {
     fn visit_mut_module_items(&mut self, items: &mut Vec<ModuleItem>) {
         for item in items.iter_mut() {
             match item {
-                // Common statements (It can include require cjs modules or esm dynamic imports)
-                //
-                // - visit_mut_expr
-                //   - call_expr (cjs require, esm dynamic imports)
-                //   - assign_expr (TODO: cjs module exports)
+                // Statements (It can include CommonJS's require call and module exports / ESModule's dynamic imports)
                 ModuleItem::Stmt(_) => item.visit_mut_children_with(self),
-                // Import & Exports (ESModules)
+                // Imports & Exports (ESModule)
                 ModuleItem::ModuleDecl(module_decl) => {
                     match module_decl {
                         // Import statements.

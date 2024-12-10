@@ -29,7 +29,7 @@ Object.assign(__ctx.module.exports, {
 __x1 = 1;
 __ctx.exports(function() {
     return {
-        ...__ctx.ns(__mod),
+        ...__ctx.exports.ns(__mod),
         "default": __x,
         "named": __x1,
         "value2": value,
@@ -37,7 +37,7 @@ __ctx.exports(function() {
         "foo2": foo2,
         "baz": baz,
         "baz2": baz,
-        "rx": __ctx.ns(__mod1),
+        "rx": __ctx.exports.ns(__mod1),
         "rx2": __mod2.rx2,
         "rx4": __mod3.rx3,
         "rx5": __mod4.default

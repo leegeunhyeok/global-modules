@@ -76,16 +76,17 @@ pub mod ast {
         .into()
     }
 
-    /// Wraps the given expression with a `__ctx.ns` function call expression.
+    /// Wraps the given expression with a `__ctx.exports.ns` function call expression.
     ///
     /// ```js
     /// // Code
-    /// __ctx.ns(<expr>);
+    /// __ctx.exports.ns(<expr>);
     /// ```
     pub fn to_ns_export(ident: &Ident, expr: Expr) -> Expr {
         ident
             .clone()
-            .make_member(quote_ident!("ns"))
+            .make_member("exports".into())
+            .make_member("ns".into())
             .as_call(DUMMY_SP, vec![expr.into()])
     }
 
