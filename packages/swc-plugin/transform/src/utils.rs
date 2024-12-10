@@ -90,7 +90,7 @@ pub mod ast {
             .as_call(DUMMY_SP, vec![expr.into()])
     }
 
-    pub fn is_commonjs_module(member_expr: &MemberExpr) -> bool {
+    pub fn is_cjs_module_member(member_expr: &MemberExpr) -> bool {
         member_expr.obj.is_ident_ref_to("module") && member_expr.prop.is_ident_with("exports")
     }
 
@@ -112,7 +112,7 @@ pub mod ast {
 
         match &assign_expr.left {
             AssignTarget::Simple(SimpleAssignTarget::Member(member_expr)) => {
-                if is_commonjs_module(member_expr) {
+                if is_cjs_module_member(member_expr) {
                     let new_assign_expr = assign_member(
                         ctx_ident
                             .clone()
@@ -134,7 +134,7 @@ pub mod ast {
                     }
                     .into()
                 } else if let Some(inner_member_expr) = member_expr.obj.as_member() {
-                    if is_commonjs_module(inner_member_expr) {
+                    if is_cjs_module_member(inner_member_expr) {
                         let new_assign_expr = assign_member(
                             ctx_ident
                                 .clone()
@@ -169,7 +169,7 @@ pub mod ast {
         member_expr: &MemberExpr,
         phase: ModulePhase,
     ) -> Option<Expr> {
-        if is_commonjs_module(member_expr) == false {
+        if is_cjs_module_member(member_expr) == false {
             return None;
         }
 
