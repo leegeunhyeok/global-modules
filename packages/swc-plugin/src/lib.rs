@@ -8,7 +8,7 @@ use swc_global_module::global_module;
 
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
-struct GlobalModuleOptions {
+struct GlobalModuleConfig {
     id: f64,
     phase: f64,
     dependencies: Option<AHashMap<String, f64>>,
@@ -16,7 +16,7 @@ struct GlobalModuleOptions {
 
 #[plugin_transform]
 pub fn global_module_plugin(program: Program, metadata: TransformPluginProgramMetadata) -> Program {
-    let config = serde_json::from_str::<GlobalModuleOptions>(
+    let config = serde_json::from_str::<GlobalModuleConfig>(
         &metadata
             .get_transform_plugin_config()
             .expect("failed to get plugin config for @global-modules/swc-plugin"),

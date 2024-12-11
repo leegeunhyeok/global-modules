@@ -6,6 +6,12 @@ export enum Phase {
   Runtime = 1,
 }
 
+export interface PluginConfig {
+  id: number;
+  phase: Phase;
+  dependencies?: Record<string, number>;
+}
+
 const wasmPath = join(
   __dirname,
   './target/wasm32-wasi/release/swc_plugin_global_modules.wasm',
