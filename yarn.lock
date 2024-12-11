@@ -676,7 +676,6 @@ __metadata:
     "@swc/types": "npm:^0.1.12"
     "@types/node": "npm:^20"
     esbuild: "npm:^0.24.0"
-    esbuild-dependency-graph: "npm:^0.13.0"
     typescript: "npm:5.6.2"
     vite: "npm:^5.4.8"
     vitest: "npm:^2.1.1"

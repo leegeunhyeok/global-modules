@@ -7,23 +7,26 @@ Configure the runtime environment to register the module in the global module re
 Setup from top of entry point like this:
 
 ```ts
-import { setup } from '@global-modules/runtime';
+import '@global-modules/runtime';
 
-setup();
+const __ctx = global.__modules.register(1);
 
-global.__modules.define(
-  () => {
-    // Module body
-  },
-  0, // Module ID
-  [deps0, deps1, deps2], // Module's dependencies
-);
+// CommonJS
+__ctx.module.exports = 100;
+__ctx.module.exports.foo = 'foo';
+__ctx.module.exports.bar = 'bar';
+__ctx.module.exports.baz = 'baz';
 
-global.__modules.update(0, [deps0, deps1, deps2]);
+// ESModule
+__ctx.exports(function () {
+  return {
+    default: 100,
+    foo: 'foo',
+    bar: 'bar',
+    baz: 'baz',
+  };
+});
 ```
-
-- `define`: Define the module and register it in the global registry. It can be re-evaluated later using global module APIs.
-- `update`: Re-evaluate the specified module registered in the global registry.
 
 ## Concept
 
@@ -39,45 +42,43 @@ export function something() {
 ```
 
 ```ts
-// Transform module body to global module.
+// 1. Register phase
+const __ctx = global.__modules.register(1);
+
 import foo from './foo';
 import bar from './bar';
 import { baz } from './baz';
 
-_i0 = { default: foo };
-_i1 = { default: bar };
-_i2 = { baz: baz };
+__x = function something() {
+  return foo.value + bar.value + baz;
+};
 
-global.__modules.define(
-  (exports, require) => {
-    const mod0 = require(0); // foo
-    const mod1 = require(1); // bar
-    const mod2 = require(2); // baz
+__ctx.exports(function () {
+  return {
+    something: __x,
+  };
+});
 
-    exports.something = _x0 = function something() {
-      return mod0.default.value + mod1.default.value + mod2.baz;
-    };
-  },
-  0, // Module ID
-  [_i0, _i1, _i2], // Dependencies
-);
-
-var _i0, _i1, i2;
-var _x0;
-
-export { _x0 as baz };
+export { __x as something };
 ```
 
 ```ts
-// Re-evaluate target module with its dependencies IDs. (For example: when an HMR update is accepted, etc.)
-global.__modules.update(
-  0,
-  [
-    1 /* foo's ID */,
-    2 /* bar's ID */,
-    3 /* baz's ID */,
-  ],
-);
+// 2. Runtime phase
+var __ctx = global.__modules.getContext(1);
+
+var { default: foo } = __ctx.require(1000); // `./foo` module's id
+var { default: bar } = __ctx.require(1001); // `./bar` module's id
+var { baz } = __ctx.require(1002);          // `./baz` module's id
+
+__x = function something() {
+  return foo.value + bar.value + baz;
+};
+
+__ctx.exports(function () {
+  return {
+    something: __x,
+  };
+});
 ```
 
 For transform to global module, see more: [@global-modules/swc-plugin](https://github.com/leegeunhyeok/global-modules/tree/main/packages/swc-plugin)

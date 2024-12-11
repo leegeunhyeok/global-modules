@@ -34,6 +34,7 @@ module.exports = {
         '@typescript-eslint/prefer-promise-reject-errors': 'off',
         '@typescript-eslint/no-unnecessary-condition': 'off',
         '@typescript-eslint/no-unsafe-assignment': 'off',
+        '@typescript-eslint/unbound-method': 'off',
       },
     },
     {
