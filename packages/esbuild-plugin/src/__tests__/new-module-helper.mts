@@ -1,3 +1,4 @@
+/* eslint-disable quotes -- allow template literal */
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 

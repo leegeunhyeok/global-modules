@@ -37,7 +37,13 @@ module.exports = {
       },
     },
     {
-      files: ['**/swc-plugin/index.ts'],
+      files: ['vitest.config.mts'],
+      rules: {
+        'import/no-default-export': 'off',
+      },
+    },
+    {
+      files: ['**/swc-plugin/index.*'],
       rules: {
         'import/no-default-export': 'off',
       },

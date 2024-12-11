@@ -1,10 +1,13 @@
 import vm from 'node:vm';
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import { describe, it, expect, beforeAll, vi, Mock } from 'vitest';
+import { describe, it, expect, beforeAll, vi, type Mock } from 'vitest';
 import { DependencyGraph } from 'esbuild-dependency-graph';
+import type { GlobalModuleRegistry } from './types.js';
 import { setup } from './index.js';
-import { GlobalModuleRegistry } from './types.js';
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- allow
+type RuntimeResult = any;
 
 describe('@global-modules/runtime', () => {
   const REGISTRY_NAME = '__modules';
@@ -17,19 +20,19 @@ describe('@global-modules/runtime', () => {
       [GLOBAL_CONTEXT_NAME]: {},
     });
 
-    function evaluate(code: string) {
+    function evaluate(code: string): RuntimeResult {
       return new vm.Script(code).runInContext(context);
     }
 
     return {
-      setup: () => {
+      setup: (): RuntimeResult => {
         return evaluate(
           `setup({ registryName: ${JSON.stringify(
             REGISTRY_NAME,
           )}, globalContext: ${GLOBAL_CONTEXT_NAME} })`,
         );
       },
-      getGlobalModuleRegistry: () => {
+      getGlobalModuleRegistry: (): RuntimeResult => {
         return evaluate(`${GLOBAL_CONTEXT_NAME}.__modules`);
       },
       evaluate,
@@ -37,9 +40,9 @@ describe('@global-modules/runtime', () => {
   }
 
   interface SandboxContext {
-    setup: () => any;
+    setup: () => void;
     getGlobalModuleRegistry: () => GlobalModuleRegistry;
-    evaluate: (code: string) => any;
+    evaluate: (code: string) => RuntimeResult;
   }
 
   describe('when call `setup()` once', () => {
@@ -156,7 +159,7 @@ describe('@global-modules/runtime', () => {
           const basename = path.basename(modulePath);
           const extension = path.extname(basename);
 
-          return './' + basename.replace(new RegExp(`${extension}$`), '');
+          return `./${basename.replace(new RegExp(`${extension}$`), '')}`;
         }
 
         const inverseDependenciesId = graph
@@ -193,7 +196,7 @@ describe('@global-modules/runtime', () => {
     } as const;
     let context: SandboxContext;
 
-    beforeAll(async () => {
+    beforeAll(() => {
       context = createSandboxContext();
       context.setup();
     });
@@ -202,9 +205,14 @@ describe('@global-modules/runtime', () => {
       it('should returns `ready`', () => {
         const { define, status } = context.getGlobalModuleRegistry();
 
-        define((exports) => {
-          exports({ foo: 'foo'})
-        }, MODULE_IDS.foo, {}, true); // default behavior
+        define(
+          (exports) => {
+            exports({ foo: 'foo' });
+          },
+          MODULE_IDS.foo,
+          {},
+          true,
+        ); // default behavior
 
         expect(status(MODULE_IDS.foo)).toBe('ready');
       });
@@ -214,9 +222,14 @@ describe('@global-modules/runtime', () => {
       it('should returns `idle`', () => {
         const { define, status } = context.getGlobalModuleRegistry();
 
-        define((exports) => {
-          exports({ bar: 'bar' });
-        }, MODULE_IDS.bar, {}, false);
+        define(
+          (exports) => {
+            exports({ bar: 'bar' });
+          },
+          MODULE_IDS.bar,
+          {},
+          false,
+        );
 
         expect(status(MODULE_IDS.bar)).toBe('idle');
       });
