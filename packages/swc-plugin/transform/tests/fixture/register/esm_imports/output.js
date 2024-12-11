@@ -1,0 +1,8 @@
+var __ctx = global.__modules.register(1000);
+import React, { useState, useCallback, useMemo as useMemoization } from 'react';
+import Default from 'mod-1';
+import { foo, bar, baz } from 'mod-2';
+import * as all from 'mod-3';
+__ctx.exports(function() {
+    return {};
+});

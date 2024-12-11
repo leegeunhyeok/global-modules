@@ -15,16 +15,21 @@ if (__DEV__) {
 }
 const value = 'val';
 module.exports = __ctx.module.exports = 'cjs';
-module.exports.foo = __ctx.exports.foo = 2;
+module.exports.foo = __ctx.module.exports.foo = 2;
 Object.assign(module.exports = __ctx.module.exports, {
     bar: 1
 });
-__x1 = 1;
+__x = 1;
+__x1 = class Class {
+};
+__x2 = function func() {};
 __ctx.exports(function() {
     return {
         ...__ctx.exports.ns(__mod),
-        "default": __x,
-        "named": __x1,
+        "variable": __x,
+        "Class": __x1,
+        "func": __x2,
+        "default": __x3,
         "value2": value,
         "foo": foo,
         "foo2": foo2,
@@ -36,15 +41,17 @@ __ctx.exports(function() {
         "rx5": __mod4.default
     };
 });
-var __x, __x1;
-export default __x = function() {
+var __x, __x1, __x2, __x3;
+export { __x as variable };
+export { __x1 as Class };
+export { __x2 as func };
+export default __x3 = function() {
     require('./cjs-2');
     const inner = async ()=>{
         await import('./esm');
         require('./cjs-3');
     };
 };
-export { __x1 as named };
 export { value as value2 };
 export { foo, foo2 };
 export { baz, baz as baz2 };

@@ -13,25 +13,30 @@ React.lazy(()=>__ctx.require("./Component"));
 if (__DEV__) {
     __ctx.require("./cjs-1");
 }
-__x = function() {
+const value = 'val';
+__ctx.module.exports = 'cjs';
+__ctx.module.exports.foo = 2;
+Object.assign(__ctx.module.exports, {
+    bar: 1
+});
+__x3 = function() {
     __ctx.require("./cjs-2");
     const inner = async ()=>{
         await __ctx.require("./esm");
         __ctx.require("./cjs-3");
     };
 };
-const value = 'val';
-__ctx.module.exports = 'cjs';
-__ctx.exports.foo = 2;
-Object.assign(__ctx.module.exports, {
-    bar: 1
-});
-__x1 = 1;
+__x = 1;
+__x1 = class Class {
+};
+__x2 = function func() {};
 __ctx.exports(function() {
     return {
         ...__ctx.exports.ns(__mod),
-        "default": __x,
-        "named": __x1,
+        "variable": __x,
+        "Class": __x1,
+        "func": __x2,
+        "default": __x3,
         "value2": value,
         "foo": foo,
         "foo2": foo2,
@@ -43,4 +48,4 @@ __ctx.exports(function() {
         "rx5": __mod4.default
     };
 });
-var __x, __x1;
+var __x, __x1, __x2, __x3;
