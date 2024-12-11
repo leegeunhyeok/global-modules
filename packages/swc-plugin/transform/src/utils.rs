@@ -183,73 +183,58 @@ pub mod ast {
             return None;
         }
 
+        let get_new_assign_expr = |expr: Expr, named_sym: Option<&str>| {
+            // `ctx_ident.module;`
+            let ctx_module = ctx_ident
+                .make_member(IdentName {
+                    sym: "module".into(),
+                    ..Default::default()
+                })
+                .make_member(IdentName {
+                    sym: "exports".into(),
+                    ..Default::default()
+                });
+
+            let new_assign_expr = assign_member(
+                if let Some(named_sym) = named_sym {
+                    // `named_sym`: foo
+                    // => `ctx_ident.module.foo`
+                    ctx_module.make_member(IdentName {
+                        sym: named_sym.into(),
+                        ..Default::default()
+                    })
+                } else {
+                    ctx_module
+                },
+                expr,
+            );
+
+            if phase == ModulePhase::Register {
+                new_assign_expr.make_assign_to(AssignOp::Assign, assign_expr.left.clone())
+            } else {
+                new_assign_expr
+            }
+            .into()
+        };
+
         match &assign_expr.left {
             AssignTarget::Simple(SimpleAssignTarget::Member(member_expr)) => {
-                if member_expr.obj.is_ident_ref_to("exports") {
+                if member_expr.obj.is_ident_ref_to("exports") && member_expr.prop.is_ident() {
                     // `exports.foo = ...;`
-                    let new_assign_expr = assign_member(
-                        ctx_ident
-                            .make_member(IdentName {
-                                sym: "exports".into(),
-                                ..Default::default()
-                            })
-                            .make_member(IdentName {
-                                sym: member_expr.prop.as_ident().unwrap().sym.clone(),
-                                ..Default::default()
-                            }),
+                    get_new_assign_expr(
                         *assign_expr.right.clone(),
-                    );
-
-                    if phase == ModulePhase::Register {
-                        new_assign_expr.make_assign_to(AssignOp::Assign, assign_expr.left.clone())
-                    } else {
-                        new_assign_expr
-                    }
-                    .into()
+                        member_expr.prop.as_ident().unwrap().sym.as_str().into(),
+                    )
                 } else if is_cjs_module_member(member_expr) {
                     // `module.exports = ...;`
-                    let new_assign_expr = assign_member(
-                        ctx_ident
-                            .make_member(IdentName {
-                                sym: "module".into(),
-                                ..Default::default()
-                            })
-                            .make_member(IdentName {
-                                sym: "exports".into(),
-                                ..Default::default()
-                            }),
-                        *assign_expr.right.clone(),
-                    );
-
-                    if phase == ModulePhase::Register {
-                        new_assign_expr.make_assign_to(AssignOp::Assign, assign_expr.left.clone())
-                    } else {
-                        new_assign_expr
-                    }
-                    .into()
-                } else if let Some(inner_member_expr) = member_expr.obj.as_member() {
-                    if is_cjs_module_member(inner_member_expr) {
+                    get_new_assign_expr(*assign_expr.right.clone(), None)
+                } else if let Some(leading_member) = member_expr.obj.as_member() {
+                    if is_cjs_module_member(leading_member) {
                         // `module.exports.foo = ...;`
-                        let new_assign_expr = assign_member(
-                            ctx_ident
-                                .make_member(IdentName {
-                                    sym: "exports".into(),
-                                    ..Default::default()
-                                })
-                                .make_member(IdentName {
-                                    sym: member_expr.prop.as_ident().unwrap().sym.clone(),
-                                    ..Default::default()
-                                }),
+                        get_new_assign_expr(
                             *assign_expr.right.clone(),
-                        );
-
-                        if phase == ModulePhase::Register {
-                            new_assign_expr
-                                .make_assign_to(AssignOp::Assign, assign_expr.left.clone())
-                        } else {
-                            new_assign_expr
-                        }
-                        .into()
+                            member_expr.prop.as_ident().unwrap().sym.as_str().into(),
+                        )
                     } else {
                         None
                     }
