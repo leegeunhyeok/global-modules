@@ -185,7 +185,29 @@ pub mod ast {
 
         match &assign_expr.left {
             AssignTarget::Simple(SimpleAssignTarget::Member(member_expr)) => {
-                if is_cjs_module_member(member_expr) {
+                if member_expr.obj.is_ident_ref_to("exports") {
+                    // `exports.foo = ...;`
+                    let new_assign_expr = assign_member(
+                        ctx_ident
+                            .make_member(IdentName {
+                                sym: "exports".into(),
+                                ..Default::default()
+                            })
+                            .make_member(IdentName {
+                                sym: member_expr.prop.as_ident().unwrap().sym.clone(),
+                                ..Default::default()
+                            }),
+                        *assign_expr.right.clone(),
+                    );
+
+                    if phase == ModulePhase::Register {
+                        new_assign_expr.make_assign_to(AssignOp::Assign, assign_expr.left.clone())
+                    } else {
+                        new_assign_expr
+                    }
+                    .into()
+                } else if is_cjs_module_member(member_expr) {
+                    // `module.exports = ...;`
                     let new_assign_expr = assign_member(
                         ctx_ident
                             .make_member(IdentName {
@@ -207,13 +229,17 @@ pub mod ast {
                     .into()
                 } else if let Some(inner_member_expr) = member_expr.obj.as_member() {
                     if is_cjs_module_member(inner_member_expr) {
+                        // `module.exports.foo = ...;`
                         let new_assign_expr = assign_member(
                             ctx_ident
                                 .make_member(IdentName {
                                     sym: "exports".into(),
                                     ..Default::default()
                                 })
-                                .make_member(member_expr.prop.as_ident().unwrap().clone().into()),
+                                .make_member(IdentName {
+                                    sym: member_expr.prop.as_ident().unwrap().sym.clone(),
+                                    ..Default::default()
+                                }),
                             *assign_expr.right.clone(),
                         );
 
