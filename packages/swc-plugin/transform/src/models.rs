@@ -582,17 +582,23 @@ pub mod helpers {
             }
         });
 
-        let post_body = vec![
+        let mut post_body = vec![];
+        post_body.push(
             exports_call(ctx_ident.clone(), obj_lit_expr(export_props))
                 .into_stmt()
                 .into(),
-            VarDecl {
-                kind: VarDeclKind::Var,
-                decls: export_decls,
-                ..Default::default()
-            }
-            .into(),
-        ];
+        );
+
+        if export_decls.len() > 0 {
+            post_body.push(
+                VarDecl {
+                    kind: VarDeclKind::Var,
+                    decls: export_decls,
+                    ..Default::default()
+                }
+                .into(),
+            )
+        }
 
         ExportsAst {
             pre_body,
