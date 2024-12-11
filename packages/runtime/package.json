@@ -22,7 +22,8 @@
     "prepack": "yarn build",
     "start": "node --import @swc-node/register/esm-register src/index.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "vitest",
+    "test": "vitest --run",
+    "test:watch": "vitest --watch",
     "cleanup": "rm -rf dist cjs esm",
     "build": "yarn cleanup && node build/index.mjs && tsc -p tsconfig.build.json"
   },
