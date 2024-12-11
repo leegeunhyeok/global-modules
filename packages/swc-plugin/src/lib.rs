@@ -1,10 +1,10 @@
 use serde::Deserialize;
 use swc_core::{
     common::collections::AHashMap,
-    ecma::{ast::Program, visit::FoldWith},
+    ecma::{ast::Program, visit::VisitMutWith},
     plugin::{plugin_transform, proxies::TransformPluginProgramMetadata},
 };
-use swc_global_module::global_module;
+use swc_global_modules::global_modules;
 
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -15,7 +15,10 @@ struct GlobalModuleConfig {
 }
 
 #[plugin_transform]
-pub fn global_module_plugin(program: Program, metadata: TransformPluginProgramMetadata) -> Program {
+pub fn global_modules_plugin(
+    mut program: Program,
+    metadata: TransformPluginProgramMetadata,
+) -> Program {
     let config = serde_json::from_str::<GlobalModuleConfig>(
         &metadata
             .get_transform_plugin_config()
@@ -23,9 +26,11 @@ pub fn global_module_plugin(program: Program, metadata: TransformPluginProgramMe
     )
     .expect("invalid config for @global-modules/swc-plugin");
 
-    program.fold_with(&mut global_module(
+    program.visit_mut_with(&mut global_modules(
         config.id,
         config.phase,
         config.dependencies,
-    ))
+    ));
+
+    program
 }

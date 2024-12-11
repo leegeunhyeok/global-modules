@@ -1,15 +1,15 @@
 [package]
-name = "swc_global_module"
-version = "0.1.0"
-edition = "2021"
+name = "swc_global_modules"
+edition = { workspace = true }
+version = { workspace = true }
 
 [dependencies]
 regex = "1.10.4"
-serde = "1"
-swc_core = { version = "1.0.5", features = ["ecma_plugin_transform", "ecma_utils"] }
-tracing = "0.1.40"
+serde = { workspace = true }
+swc_core = { workspace = true, features = ["ecma_plugin_transform", "ecma_utils"] }
+tracing = { workspace = true }
 
 [dev-dependencies]
-swc_ecma_parser = "1.0.1"
-swc_ecma_transforms_testing = "1.0.0"
-testing = "1.0.0"
+swc_ecma_parser = { workspace = true }
+swc_ecma_transforms_testing = { workspace = true }
+testing = { workspace = true }

@@ -2,7 +2,7 @@ use std::path::PathBuf;
 
 use swc_ecma_parser::{Syntax, TsSyntax};
 use swc_ecma_transforms_testing::test_fixture;
-use swc_global_module::global_module;
+use swc_global_modules::global_modules;
 
 const MODULE_ID: f64 = 1000.0;
 
@@ -17,7 +17,7 @@ fn register_fixture(input: PathBuf) {
             tsx: filename.ends_with(".tsx"),
             ..Default::default()
         }),
-        &|_| global_module(MODULE_ID, phase, None),
+        &|_| global_modules(MODULE_ID, phase, None),
         &input,
         &output,
         Default::default(),
@@ -35,7 +35,7 @@ fn runtime_fixture(input: PathBuf) {
             tsx: filename.ends_with(".tsx"),
             ..Default::default()
         }),
-        &|_| global_module(MODULE_ID, phase, None),
+        &|_| global_modules(MODULE_ID, phase, None),
         &input,
         &output,
         Default::default(),
