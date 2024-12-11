@@ -419,7 +419,7 @@ pub mod ast {
         /// ```js
         /// var ctx_ident = global.__modules.register(id);
         /// ```
-        pub fn global_module_register_stmt(id: f64, ctx_ident: &Ident) -> ModuleItem {
+        pub fn global_module_register_stmt(id: f64, ctx_ident: &Ident) -> Stmt {
             member_expr!(Default::default(), DUMMY_SP, global.__modules.register)
                 .as_call(DUMMY_SP, vec![num_lit_expr(id).as_arg()])
                 .into_var_decl(VarDeclKind::Var, ctx_ident.clone().into())
@@ -431,7 +431,7 @@ pub mod ast {
         /// ```js
         /// var ctx_ident = global.__modules.getContext(id);
         /// ```
-        pub fn global_module_get_ctx_stmt(id: f64, ctx_ident: &Ident) -> ModuleItem {
+        pub fn global_module_get_ctx_stmt(id: f64, ctx_ident: &Ident) -> Stmt {
             member_expr!(Default::default(), DUMMY_SP, global.__modules.getContext)
                 .as_call(DUMMY_SP, vec![num_lit_expr(id).as_arg()])
                 .into_var_decl(VarDeclKind::Var, ctx_ident.clone().into())

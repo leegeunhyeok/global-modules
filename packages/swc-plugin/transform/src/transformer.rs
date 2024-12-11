@@ -20,9 +20,12 @@ pub struct GlobalModuleTransformer {
 }
 
 impl GlobalModuleTransformer {
-    /// Returns the AST structure based on the collected module and export data.
+    pub fn get_script_body(&mut self, orig_body: Vec<Stmt>) -> Vec<Stmt> {
+        self.delegate.make_script_body(orig_body)
+    }
+
     pub fn get_module_body(&mut self, orig_body: Vec<ModuleItem>) -> Vec<ModuleItem> {
-        self.delegate.make_body(orig_body)
+        self.delegate.make_module_body(orig_body)
     }
 }
 
@@ -39,6 +42,13 @@ impl GlobalModuleTransformer {
 
 impl VisitMut for GlobalModuleTransformer {
     noop_visit_mut_type!();
+
+    fn visit_mut_script(&mut self, script: &mut Script) {
+        script.visit_mut_children_with(self);
+
+        // Replace to new script body.
+        script.body = self.get_script_body(mem::take(&mut script.body));
+    }
 
     fn visit_mut_module(&mut self, module: &mut Module) {
         module.visit_mut_children_with(self);

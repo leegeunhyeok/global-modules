@@ -459,9 +459,9 @@ pub mod helpers {
     ///
     /// ```js
     /// // Code
-    /// var { default: React, useState, useCallback } = __require('react');
-    /// var { core } = __require('@app/core');
-    /// var ns = __require('@app/internal');
+    /// var { default: React, useState, useCallback } = ctx_ident.require('react');
+    /// var { core } = ctx_ident.require('@app/core');
+    /// var ns = ctx_ident.require('@app/internal');
     /// ```
     pub fn to_require_dep_stmts(
         ctx_ident: &Ident,
@@ -526,7 +526,7 @@ pub mod helpers {
 
     /// Converts dependencies into `Vec<ModuleItem>`.
     pub fn deps_to_ast(ctx_ident: &Ident, deps: &OHashMap<Atom, ModuleRef>) -> Vec<ModuleItem> {
-        let mut items: Vec<ModuleItem> = vec![];
+        let mut items = vec![];
 
         deps.iter()
             .for_each(|(src, value)| items.extend(to_require_dep_stmts(ctx_ident, src, value)));
