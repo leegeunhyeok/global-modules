@@ -49,9 +49,9 @@ pub mod ast {
     /// // Code
     /// ident = expr;
     /// ```
-    pub fn assign_expr(ident: &Ident, expr: Expr) -> AssignExpr {
+    pub fn assign_expr(ident: Ident, expr: Expr) -> AssignExpr {
         AssignExpr {
-            left: AssignTarget::Simple(SimpleAssignTarget::Ident(ident.clone().into())),
+            left: AssignTarget::Simple(SimpleAssignTarget::Ident(ident.into())),
             right: expr.into(),
             op: AssignOp::Assign,
             ..Default::default()
@@ -94,9 +94,9 @@ pub mod ast {
     /// // VarDeclarators
     /// // => foo, bar, baz
     /// ```
-    pub fn var_declarator(ident: &Ident) -> VarDeclarator {
+    pub fn var_declarator(ident: Ident) -> VarDeclarator {
         VarDeclarator {
-            name: Pat::Ident(ident.clone().into()),
+            name: Pat::Ident(ident.into()),
             definite: false,
             init: None,
             span: DUMMY_SP,
@@ -130,9 +130,8 @@ pub mod ast {
     /// // Code
     /// __ctx.exports.ns(<expr>);
     /// ```
-    pub fn to_ns_export(ident: &Ident, expr: Expr) -> Expr {
+    pub fn to_ns_export(ident: Ident, expr: Expr) -> Expr {
         ident
-            .clone()
             .make_member("exports".into())
             .make_member("ns".into())
             .as_call(DUMMY_SP, vec![expr.into()])
@@ -176,7 +175,7 @@ pub mod ast {
     /// ctx_ident.module.exports.foo = orig_expr;
     /// ```
     pub fn to_binding_module_from_assign_expr(
-        ctx_ident: &Ident,
+        ctx_ident: Ident,
         assign_expr: &AssignExpr,
         phase: ModulePhase,
     ) -> Option<Expr> {
@@ -189,7 +188,6 @@ pub mod ast {
                 if is_cjs_module_member(member_expr) {
                     let new_assign_expr = assign_member(
                         ctx_ident
-                            .clone()
                             .make_member(IdentName {
                                 sym: "module".into(),
                                 ..Default::default()
@@ -211,7 +209,6 @@ pub mod ast {
                     if is_cjs_module_member(inner_member_expr) {
                         let new_assign_expr = assign_member(
                             ctx_ident
-                                .clone()
                                 .make_member(IdentName {
                                     sym: "exports".into(),
                                     ..Default::default()
@@ -253,7 +250,7 @@ pub mod ast {
     /// ctx_ident.module.exports.foo;
     /// ```
     pub fn to_binding_module_from_member_expr(
-        ctx_ident: &Ident,
+        ctx_ident: Ident,
         member_expr: &MemberExpr,
         phase: ModulePhase,
     ) -> Option<Expr> {
@@ -262,7 +259,6 @@ pub mod ast {
         }
 
         let ctx_module_member = ctx_ident
-            .clone()
             .make_member(IdentName {
                 sym: "module".into(),
                 ..Default::default()
@@ -296,11 +292,7 @@ pub mod ast {
         export_default_decl: &ExportDefaultDecl,
         ident: Ident,
     ) -> Expr {
-        assign_expr(
-            &ident,
-            get_expr_from_default_decl(&export_default_decl.decl),
-        )
-        .into()
+        assign_expr(ident, get_expr_from_default_decl(&export_default_decl.decl)).into()
     }
 
     /// Returns an export default expression bound to the
@@ -320,11 +312,7 @@ pub mod ast {
         ident: Ident,
     ) -> ModuleItem {
         ModuleItem::ModuleDecl(ModuleDecl::ExportDefaultExpr(ExportDefaultExpr {
-            expr: assign_expr(
-                &ident,
-                get_expr_from_default_decl(&export_default_decl.decl),
-            )
-            .into(),
+            expr: assign_expr(ident, get_expr_from_default_decl(&export_default_decl.decl)).into(),
             span: DUMMY_SP,
         }))
         .into()
@@ -445,11 +433,10 @@ pub mod ast {
         /// // Code
         /// ctx_ident.require(src);
         /// ```
-        pub fn require_call(ctx_ident: &Ident, src: &Atom) -> Expr {
+        pub fn require_call(ctx_ident: Ident, src: Atom) -> Expr {
             ctx_ident
-                .clone()
                 .make_member(quote_ident!("require"))
-                .as_call(DUMMY_SP, vec![src.clone().as_arg()])
+                .as_call(DUMMY_SP, vec![src.as_arg()])
         }
 
         /// Returns a global module's exports call expression.
@@ -460,9 +447,8 @@ pub mod ast {
         ///   return expr;
         /// });
         /// ```
-        pub fn exports_call(ctx_ident: &Ident, expr: Expr) -> Expr {
+        pub fn exports_call(ctx_ident: Ident, expr: Expr) -> Expr {
             ctx_ident
-                .clone()
                 .make_member(quote_ident!("exports"))
                 .as_call(DUMMY_SP, vec![expr.into_lazy_fn(vec![]).as_arg()])
         }
@@ -474,7 +460,7 @@ pub mod ast {
         /// // Pat: { foo, bar, default: baz }
         /// var { foo, bar, default: baz } = ctx_ident.require('./foo');
         /// ```
-        pub fn decl_require_deps_stmt(ctx_ident: &Ident, src: &Atom, pat: Pat) -> Stmt {
+        pub fn decl_require_deps_stmt(ctx_ident: Ident, src: Atom, pat: Pat) -> Stmt {
             require_call(ctx_ident, src)
                 .into_var_decl(VarDeclKind::Var, pat)
                 .into()

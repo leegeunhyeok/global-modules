@@ -1,3 +1,4 @@
+use helpers::to_export_members;
 use presets::decl_require_deps_stmt;
 use swc_core::{
     atoms::Atom,
@@ -128,6 +129,48 @@ pub enum ExportRef {
     ReExportAll(ReExportAllRef),
 }
 
+impl From<&NamedExport> for ExportRef {
+    fn from(value: &NamedExport) -> Self {
+        match &value.src {
+            // Re-exports
+            Some(src_str) => {
+                let src = src_str.clone().value;
+                let specifier = value.specifiers.get(0).unwrap();
+
+                if let Some(ns_specifier) = specifier.as_namespace() {
+                    // Re-export all with alias.
+                    // In this case, the size of the `specifier` vector is always 1.
+                    //
+                    // ```js
+                    // export * as foo from './foo';
+                    // ```
+                    ExportRef::ReExportAll(ReExportAllRef::new(
+                        src,
+                        Some(ns_specifier.name.atom().clone()),
+                    ))
+                } else {
+                    // Re-export specified members only.
+                    //
+                    // ```js
+                    // export { foo, bar as baz } from './foo';
+                    // export { default } from './foo';
+                    // export { default as named } from './foo';
+                    // ```
+                    ExportRef::NamedReExport(NamedReExportRef::new(
+                        src,
+                        to_export_members(&value.specifiers),
+                    ))
+                }
+            }
+            // Named export
+            None => {
+                let members = to_export_members(&value.specifiers);
+                ExportRef::Named(NamedExportRef::new(members))
+            }
+        }
+    }
+}
+
 #[derive(Debug)]
 pub struct NamedExportRef {
     pub members: Vec<ExportMember>,
@@ -241,7 +284,7 @@ impl From<BindingExportMember> for PropOrSpread {
 
 impl From<BindingExportMember> for VarDeclarator {
     fn from(value: BindingExportMember) -> VarDeclarator {
-        var_declarator(&value.bind_ident)
+        var_declarator(value.bind_ident)
     }
 }
 
@@ -261,19 +304,20 @@ pub struct NamedReExportRef {
 }
 
 impl NamedReExportRef {
-    pub fn new(src: &Atom, members: Vec<ExportMember>) -> Self {
+    pub fn new(src: Atom, members: Vec<ExportMember>) -> Self {
         NamedReExportRef {
             mod_ident: private_ident!("__mod"),
-            src: src.clone(),
+            src,
             members,
         }
     }
 
-    pub fn get_binding_ast(&self, ctx_ident: &Ident, phase: ModulePhase) -> ModuleItem {
+    pub fn get_binding_ast(&self, ctx_ident: Ident, phase: ModulePhase) -> ModuleItem {
         match phase {
             ModulePhase::Register => import_star(self.mod_ident.clone(), self.src.clone()),
             ModulePhase::Runtime => {
-                decl_require_deps_stmt(ctx_ident, &self.src, self.mod_ident.clone().into()).into()
+                decl_require_deps_stmt(ctx_ident, self.src.clone(), self.mod_ident.clone().into())
+                    .into()
             }
         }
     }
@@ -303,19 +347,20 @@ pub struct ReExportAllRef {
 }
 
 impl ReExportAllRef {
-    pub fn new(src: &Atom, name: Option<Atom>) -> Self {
+    pub fn new(src: Atom, name: Option<Atom>) -> Self {
         ReExportAllRef {
             mod_ident: private_ident!("__mod"),
-            src: src.clone(),
+            src,
             name,
         }
     }
 
-    pub fn get_binding_ast(&self, ctx_ident: &Ident, phase: ModulePhase) -> ModuleItem {
+    pub fn get_binding_ast(&self, ctx_ident: Ident, phase: ModulePhase) -> ModuleItem {
         match phase {
             ModulePhase::Register => import_star(self.mod_ident.clone(), self.src.clone()),
             ModulePhase::Runtime => {
-                decl_require_deps_stmt(ctx_ident, &self.src, self.mod_ident.clone().into()).into()
+                decl_require_deps_stmt(ctx_ident, self.src.clone(), self.mod_ident.clone().into())
+                    .into()
             }
         }
     }
@@ -349,7 +394,8 @@ pub mod helpers {
         let exported_name = ModuleExportName::Ident(orig_ident);
 
         // `binding_assign_stmt`: `__x = function foo {}`
-        let binding_assign_stmt = assign_expr(&binding_export.bind_ident, decl_expr).into_stmt();
+        let binding_assign_stmt =
+            assign_expr(binding_export.bind_ident.clone(), decl_expr).into_stmt();
         let export_ref = ExportRef::Named(NamedExportRef::new(vec![ExportMember::Binding(
             binding_export,
         )]));
@@ -370,47 +416,6 @@ pub mod helpers {
             }))
             .into(),
             binding_stmt: binding_assign_stmt.into(),
-        }
-    }
-
-    /// Returns an `ExportRef` based on the export named AST.
-    pub fn to_export_ref(export_named: &NamedExport) -> ExportRef {
-        match &export_named.src {
-            // Re-exports
-            Some(src_str) => {
-                let src = src_str.clone().value;
-                let specifier = export_named.specifiers.get(0).unwrap();
-
-                if let Some(ns_specifier) = specifier.as_namespace() {
-                    // Re-export all with alias.
-                    // In this case, the size of the `specifier` vector is always 1.
-                    //
-                    // ```js
-                    // export * as foo from './foo';
-                    // ```
-                    ExportRef::ReExportAll(ReExportAllRef::new(
-                        &src,
-                        Some(ns_specifier.name.atom().clone()),
-                    ))
-                } else {
-                    // Re-export specified members only.
-                    //
-                    // ```js
-                    // export { foo, bar as baz } from './foo';
-                    // export { default } from './foo';
-                    // export { default as named } from './foo';
-                    // ```
-                    ExportRef::NamedReExport(NamedReExportRef::new(
-                        &src,
-                        to_export_members(&export_named.specifiers),
-                    ))
-                }
-            }
-            // Named export
-            None => {
-                let members = to_export_members(&export_named.specifiers);
-                ExportRef::Named(NamedExportRef::new(members))
-            }
         }
     }
 
@@ -493,15 +498,17 @@ pub mod helpers {
                         span: DUMMY_SP,
                     }));
                 }
-                ImportMember::Namespace(ImportNamespaceMember { ident, .. }) => requires
-                    .push(decl_require_deps_stmt(ctx_ident, src, ident.clone().into()).into()),
+                ImportMember::Namespace(ImportNamespaceMember { ident, .. }) => requires.push(
+                    decl_require_deps_stmt(ctx_ident.clone(), src.clone(), ident.clone().into())
+                        .into(),
+                ),
             });
 
         if dep_props.len() > 0 {
             requires.push(
                 decl_require_deps_stmt(
-                    ctx_ident,
-                    src,
+                    ctx_ident.clone(),
+                    src.clone(),
                     ObjectPat {
                         props: dep_props,
                         optional: false,
@@ -517,6 +524,7 @@ pub mod helpers {
         requires
     }
 
+    /// Converts dependencies into `Vec<ModuleItem>`.
     pub fn deps_to_ast(ctx_ident: &Ident, deps: &OHashMap<Atom, ModuleRef>) -> Vec<ModuleItem> {
         let mut items: Vec<ModuleItem> = vec![];
 
@@ -526,6 +534,7 @@ pub mod helpers {
         items
     }
 
+    /// Converts exports into `ExportsAst`.
     pub fn exports_to_ast(
         ctx_ident: &Ident,
         exports: Vec<ExportRef>,
@@ -548,7 +557,7 @@ pub mod helpers {
                 })
             }
             ExportRef::NamedReExport(named_re_export) => {
-                pre_body.push(named_re_export.get_binding_ast(ctx_ident, phase));
+                pre_body.push(named_re_export.get_binding_ast(ctx_ident.clone(), phase));
                 export_props.extend(named_re_export.members.into_iter().map(
                     |member| match member {
                         ExportMember::Actual(actual_export) => {
@@ -561,9 +570,10 @@ pub mod helpers {
                 ));
             }
             ExportRef::ReExportAll(re_export_all) => {
-                let ns_call = to_ns_export(ctx_ident, re_export_all.mod_ident.clone().into());
+                let ns_call =
+                    to_ns_export(ctx_ident.clone(), re_export_all.mod_ident.clone().into());
 
-                pre_body.push(re_export_all.get_binding_ast(ctx_ident, phase));
+                pre_body.push(re_export_all.get_binding_ast(ctx_ident.clone(), phase));
 
                 match re_export_all.name {
                     Some(exp_name) => export_props.push(kv_prop(exp_name, ns_call)),
@@ -573,7 +583,7 @@ pub mod helpers {
         });
 
         let post_body = vec![
-            exports_call(ctx_ident, obj_lit_expr(export_props))
+            exports_call(ctx_ident.clone(), obj_lit_expr(export_props))
                 .into_stmt()
                 .into(),
             VarDecl {

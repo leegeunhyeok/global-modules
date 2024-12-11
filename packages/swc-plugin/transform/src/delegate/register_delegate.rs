@@ -1,6 +1,6 @@
 use std::mem;
 
-use helpers::{exports_to_ast, get_from_export_decl, to_export_ref};
+use helpers::{exports_to_ast, get_from_export_decl};
 use swc_core::ecma::{ast::*, utils::private_ident};
 
 use super::traits::AstDelegate;
@@ -89,9 +89,9 @@ impl AstDelegate for RegisterDelegate {
     }
 
     fn export_default_expr(&mut self, export_default_expr: &ExportDefaultExpr) -> Option<Expr> {
-        let orig_expr = (*export_default_expr.expr).clone();
+        let orig_expr = export_default_expr.expr.clone();
         let binding_export = BindingExportMember::new("default".into());
-        let binding_assign_expr = assign_expr(&binding_export.bind_ident, orig_expr).into();
+        let binding_assign_expr = assign_expr(binding_export.bind_ident.clone(), *orig_expr).into();
 
         self.exps.push(ExportRef::Named(NamedExportRef::new(vec![
             ExportMember::Binding(binding_export),
@@ -101,13 +101,12 @@ impl AstDelegate for RegisterDelegate {
     }
 
     fn export_named(&mut self, export_named: &NamedExport) {
-        let export_ref = to_export_ref(export_named);
-        self.exps.push(export_ref);
+        self.exps.push(export_named.into());
     }
 
     fn export_all(&mut self, export_all: &ExportAll) {
         self.exps.push(ExportRef::ReExportAll(ReExportAllRef::new(
-            &export_all.src.value,
+            export_all.src.value.clone(),
             None,
         )));
     }
@@ -118,7 +117,7 @@ impl AstDelegate for RegisterDelegate {
 
     fn assign_expr(&mut self, assign_expr: &AssignExpr) -> Option<Expr> {
         to_binding_module_from_assign_expr(
-            &self.ctx_ident,
+            self.ctx_ident.clone(),
             assign_expr,
             crate::phase::ModulePhase::Register,
         )
@@ -126,7 +125,7 @@ impl AstDelegate for RegisterDelegate {
 
     fn member_expr(&mut self, member_expr: &MemberExpr) -> Option<Expr> {
         to_binding_module_from_member_expr(
-            &self.ctx_ident,
+            self.ctx_ident.clone(),
             member_expr,
             crate::phase::ModulePhase::Register,
         )

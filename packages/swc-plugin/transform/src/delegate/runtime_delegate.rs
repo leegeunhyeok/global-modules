@@ -109,9 +109,9 @@ impl AstDelegate for RuntimeDelegate {
     }
 
     fn export_default_expr(&mut self, export_default_expr: &ExportDefaultExpr) -> Option<Expr> {
-        let orig_expr = (*export_default_expr.expr).clone();
+        let orig_expr = export_default_expr.expr.clone();
         let binding_export = BindingExportMember::new("default".into());
-        let binding_assign_expr = assign_expr(&binding_export.bind_ident, orig_expr).into();
+        let binding_assign_expr = assign_expr(binding_export.bind_ident.clone(), *orig_expr).into();
 
         self.exps.push(ExportRef::Named(NamedExportRef::new(vec![
             ExportMember::Binding(binding_export),
@@ -121,13 +121,12 @@ impl AstDelegate for RuntimeDelegate {
     }
 
     fn export_named(&mut self, export_named: &NamedExport) {
-        let export_ref = to_export_ref(export_named);
-        self.exps.push(export_ref);
+        self.exps.push(export_named.into());
     }
 
     fn export_all(&mut self, export_all: &ExportAll) {
         self.exps.push(ExportRef::ReExportAll(ReExportAllRef::new(
-            &export_all.src.value,
+            export_all.src.value.clone(),
             None,
         )));
     }
@@ -150,7 +149,7 @@ impl AstDelegate for RuntimeDelegate {
                 match &*src.expr {
                     // The first argument of the `require` function must be a string type only.
                     Expr::Lit(Lit::Str(str)) => {
-                        return Some(require_call(&self.ctx_ident, &str.value))
+                        return Some(require_call(self.ctx_ident.clone(), str.value.clone()))
                     }
                     _ => panic!("invalid `require` call expression"),
                 }
@@ -171,7 +170,7 @@ impl AstDelegate for RuntimeDelegate {
                 match &*src.expr {
                     // The first argument of the `import` function must be a string type only.
                     Expr::Lit(Lit::Str(str)) => {
-                        return Some(require_call(&self.ctx_ident, &str.value))
+                        return Some(require_call(self.ctx_ident.clone(), str.value.clone()))
                     }
                     _ => panic!("unsupported dynamic import usage"),
                 }
@@ -182,7 +181,7 @@ impl AstDelegate for RuntimeDelegate {
 
     fn assign_expr(&mut self, assign_expr: &AssignExpr) -> Option<Expr> {
         to_binding_module_from_assign_expr(
-            &self.ctx_ident,
+            self.ctx_ident.clone(),
             assign_expr,
             crate::phase::ModulePhase::Runtime,
         )
@@ -190,7 +189,7 @@ impl AstDelegate for RuntimeDelegate {
 
     fn member_expr(&mut self, member_expr: &MemberExpr) -> Option<Expr> {
         to_binding_module_from_member_expr(
-            &self.ctx_ident,
+            self.ctx_ident.clone(),
             member_expr,
             crate::phase::ModulePhase::Runtime,
         )
