@@ -2,14 +2,20 @@ pub mod ast {
     use swc_core::{
         atoms::Atom,
         common::DUMMY_SP,
-        ecma::{
-            ast::*,
-            utils::{member_expr, quote_ident, ExprFactory},
-        },
+        ecma::{ast::*, utils::ExprFactory},
     };
 
-    use crate::{models::ExportMember, phase::ModulePhase};
+    use crate::phase::ModulePhase;
 
+    /// Returns a key-value property ast.
+    ///
+    /// ```js
+    /// // Code
+    /// { key: value }
+    ///
+    /// // Property
+    /// // => key: value
+    /// ```
     pub fn kv_prop(key: Atom, value: Expr) -> PropOrSpread {
         PropOrSpread::Prop(Box::new(Prop::KeyValue(KeyValueProp {
             key: PropName::Str(Str {
@@ -21,6 +27,15 @@ pub mod ast {
         })))
     }
 
+    /// Returns a spread property ast.
+    ///
+    /// ```js
+    /// // Code
+    /// { ...expr };
+    ///
+    /// // Property
+    /// // => ...expr
+    /// ```
     pub fn spread_prop(expr: Expr) -> PropOrSpread {
         PropOrSpread::Spread(SpreadElement {
             expr: expr.into(),
@@ -28,6 +43,12 @@ pub mod ast {
         })
     }
 
+    /// Returns an assign expression.
+    ///
+    /// ```js
+    /// // Code
+    /// ident = expr;
+    /// ```
     pub fn assign_expr(ident: &Ident, expr: Expr) -> AssignExpr {
         AssignExpr {
             left: AssignTarget::Simple(SimpleAssignTarget::Ident(ident.clone().into())),
@@ -37,6 +58,12 @@ pub mod ast {
         }
     }
 
+    /// Returns an object literal expression.
+    ///
+    /// ```js
+    /// // Code
+    /// { prop: value, prop_1: value }
+    /// ```
     pub fn obj_lit_expr(props: Vec<PropOrSpread>) -> Expr {
         Expr::Object(ObjectLit {
             props,
@@ -44,6 +71,12 @@ pub mod ast {
         })
     }
 
+    /// Returns a number literal expression.
+    ///
+    /// ```js
+    /// // Code
+    /// 100
+    /// ```
     pub fn num_lit_expr(num: f64) -> Expr {
         Expr::Lit(Lit::Num(Number {
             span: DUMMY_SP,
@@ -52,6 +85,15 @@ pub mod ast {
         }))
     }
 
+    /// Returns a variable declarator bound to the provided identifier.
+    ///
+    /// ```js
+    /// // Code
+    /// var foo, bar, baz;
+    ///
+    /// // VarDeclarators
+    /// // => foo, bar, baz
+    /// ```
     pub fn var_declarator(ident: &Ident) -> VarDeclarator {
         VarDeclarator {
             name: Pat::Ident(ident.clone().into()),
@@ -61,6 +103,12 @@ pub mod ast {
         }
     }
 
+    /// Returns an import-all statement bound to the provided identifier.
+    ///
+    /// ```js
+    /// // Code
+    /// import * as ident from 'src';
+    /// ```
     pub fn import_star(ident: Ident, src: Atom) -> ModuleItem {
         ModuleDecl::Import(ImportDecl {
             phase: ImportPhase::Evaluation,
@@ -90,10 +138,22 @@ pub mod ast {
             .as_call(DUMMY_SP, vec![expr.into()])
     }
 
+    /// Checks whether it is a member expression of a CommonJS module.
+    ///
+    /// ```js
+    /// // Code
+    /// module.exports; // true;
+    /// ```
     pub fn is_cjs_module_member(member_expr: &MemberExpr) -> bool {
         member_expr.obj.is_ident_ref_to("module") && member_expr.prop.is_ident_with("exports")
     }
 
+    /// Returns a new expression that assigns to a member expression.
+    ///
+    /// ```js
+    /// // left = right;
+    /// member.prop = right_expr;
+    /// ```
     pub fn assign_member(left: MemberExpr, right: Expr) -> Expr {
         right.make_assign_to(
             AssignOp::Assign,
@@ -101,6 +161,20 @@ pub mod ast {
         )
     }
 
+    /// Returns a new expression that binds the CommonJS module export statement.
+    ///
+    /// ```js
+    /// // Input
+    /// module.exports = orig_expr;
+    ///
+    /// // ModulePhase::Register
+    /// ctx_ident.module.exports = module.exports = orig_expr;
+    /// ctx_ident.module.exports.foo = module.exports.foo = orig_expr;
+    ///
+    /// // ModulePhase::Runtime
+    /// ctx_ident.module.exports = orig_expr;
+    /// ctx_ident.module.exports.foo = orig_expr;
+    /// ```
     pub fn to_binding_module_from_assign_expr(
         ctx_ident: &Ident,
         assign_expr: &AssignExpr,
@@ -164,6 +238,20 @@ pub mod ast {
         }
     }
 
+    /// Returns a new expression that binds the CommonJS module export statement.
+    ///
+    /// ```js
+    /// // Input
+    /// module.exports; // Object.assign(module.exports, { ... });
+    ///
+    /// // ModulePhase::Register
+    /// ctx_ident.module.exports = module.exports;
+    /// ctx_ident.module.exports.foo = module.exports.foo;
+    ///
+    /// // ModulePhase::Runtime
+    /// ctx_ident.module.exports;
+    /// ctx_ident.module.exports.foo;
+    /// ```
     pub fn to_binding_module_from_member_expr(
         ctx_ident: &Ident,
         member_expr: &MemberExpr,
@@ -192,6 +280,18 @@ pub mod ast {
         .into()
     }
 
+    /// Returns an expression that binds the export default declaration
+    /// to the provided identifier.
+    ///
+    /// ```js
+    /// // Input
+    /// export default function foo() {};
+    /// export default class Bar {};
+    ///
+    /// // Code
+    /// ident = function foo() {};
+    /// ident = class Bar {};
+    /// ```
     pub fn expr_from_export_default_decl(
         export_default_decl: &ExportDefaultDecl,
         ident: Ident,
@@ -203,6 +303,18 @@ pub mod ast {
         .into()
     }
 
+    /// Returns an export default expression bound to the
+    /// provided identifier from an export default statement.
+    ///
+    /// ```js
+    /// // Input
+    /// export default function foo() {};
+    /// export default class Bar {};
+    ///
+    /// // Code
+    /// export default ident = function foo() {};
+    /// export default ident = class Bar {};
+    /// ```
     pub fn default_expr_from_default_export_decl(
         export_default_decl: &ExportDefaultDecl,
         ident: Ident,
@@ -218,6 +330,13 @@ pub mod ast {
         .into()
     }
 
+    /// Extracts and returns the expression with its ident from the declarations.
+    ///
+    /// ```js
+    /// function foo {}
+    /// class Bar {}
+    /// const baz = expr;
+    /// ```
     pub fn get_expr_from_decl(decl: &Decl) -> (Ident, Expr) {
         match decl {
             Decl::Class(ClassDecl {
@@ -265,6 +384,17 @@ pub mod ast {
         }
     }
 
+    /// Extracts and returns the expression from the default declaration statement.
+    ///
+    /// ```js
+    /// // Input
+    /// export default function foo() {};
+    /// export default class Bar {};
+    ///
+    /// // Code
+    /// function foo() {};
+    /// class Bar {};
+    /// ```
     pub fn get_expr_from_default_decl(default_decl: &DefaultDecl) -> Expr {
         match default_decl {
             DefaultDecl::Class(class_expr) => Expr::Class(class_expr.clone()),
@@ -273,62 +403,82 @@ pub mod ast {
         }
     }
 
-    pub fn to_export_members(specifiers: &Vec<ExportSpecifier>) -> Vec<ExportMember> {
-        let mut members = Vec::with_capacity(specifiers.len());
+    pub mod presets {
+        use swc_core::{
+            atoms::Atom,
+            common::DUMMY_SP,
+            ecma::{
+                ast::*,
+                utils::{member_expr, quote_ident, ExprFactory},
+            },
+        };
 
-        specifiers.iter().for_each(|spec| match spec {
-            ExportSpecifier::Named(
-                specifier @ ExportNamedSpecifier {
-                    is_type_only: false,
-                    ..
-                },
-            ) => members.push(specifier.into()),
-            _ => {}
-        });
+        use super::num_lit_expr;
 
-        members
-    }
+        /// Returns the global module context declaration statement (register).
+        ///
+        /// ```js
+        /// var ctx_ident = global.__modules.register(id);
+        /// ```
+        pub fn global_module_register_stmt(id: f64, ctx_ident: &Ident) -> ModuleItem {
+            member_expr!(Default::default(), DUMMY_SP, global.__modules.register)
+                .as_call(DUMMY_SP, vec![num_lit_expr(id).as_arg()])
+                .into_var_decl(VarDeclKind::Var, ctx_ident.clone().into())
+                .into()
+        }
 
-    pub fn global_module_register_stmt(id: f64, ctx_ident: &Ident) -> ModuleItem {
-        member_expr!(Default::default(), DUMMY_SP, global.__modules.register)
-            .as_call(DUMMY_SP, vec![num_lit_expr(id).as_arg()])
-            .into_var_decl(VarDeclKind::Var, ctx_ident.clone().into())
-            .into()
-    }
+        /// Returns the global module context declaration statement (getContext).
+        ///
+        /// ```js
+        /// var ctx_ident = global.__modules.getContext(id);
+        /// ```
+        pub fn global_module_get_ctx_stmt(id: f64, ctx_ident: &Ident) -> ModuleItem {
+            member_expr!(Default::default(), DUMMY_SP, global.__modules.getContext)
+                .as_call(DUMMY_SP, vec![num_lit_expr(id).as_arg()])
+                .into_var_decl(VarDeclKind::Var, ctx_ident.clone().into())
+                .into()
+        }
 
-    pub fn global_module_get_ctx_stmt(id: f64, ctx_ident: &Ident) -> ModuleItem {
-        member_expr!(Default::default(), DUMMY_SP, global.__modules.getContext)
-            .as_call(DUMMY_SP, vec![num_lit_expr(id).as_arg()])
-            .into_var_decl(VarDeclKind::Var, ctx_ident.clone().into())
-            .into()
-    }
+        /// Returns a global module's require call expression.
+        ///
+        /// ```js
+        /// // Code
+        /// ctx_ident.require(src);
+        /// ```
+        pub fn require_call(ctx_ident: &Ident, src: &Atom) -> Expr {
+            ctx_ident
+                .clone()
+                .make_member(quote_ident!("require"))
+                .as_call(DUMMY_SP, vec![src.clone().as_arg()])
+        }
 
-    /// Returns global module's require call expression.
-    ///
-    /// ```js
-    /// // Code
-    /// ident.require(src);
-    /// ```
-    pub fn require_call(ident: &Ident, src: &Atom) -> Expr {
-        ident
-            .clone()
-            .make_member(quote_ident!("require"))
-            .as_call(DUMMY_SP, vec![src.clone().as_arg()])
-    }
+        /// Returns a global module's exports call expression.
+        ///
+        /// ```js
+        /// // Code
+        /// ctx_ident.exports(function () {
+        ///   return expr;
+        /// });
+        /// ```
+        pub fn exports_call(ctx_ident: &Ident, expr: Expr) -> Expr {
+            ctx_ident
+                .clone()
+                .make_member(quote_ident!("exports"))
+                .as_call(DUMMY_SP, vec![expr.into_lazy_fn(vec![]).as_arg()])
+        }
 
-    /// Returns global module's exports call expression.
-    ///
-    /// ```js
-    /// // Code
-    /// ident.exports(function () {
-    ///   return <obj>;
-    /// });
-    /// ```
-    pub fn exports_call(ident: &Ident, obj: Expr) -> Expr {
-        ident
-            .clone()
-            .make_member(quote_ident!("exports"))
-            .as_call(DUMMY_SP, vec![obj.into_lazy_fn(vec![]).as_arg()])
+        /// Returns the global module's require call and dependency declaration statement.
+        ///
+        /// ```js
+        /// // Code
+        /// // Pat: { foo, bar, default: baz }
+        /// var { foo, bar, default: baz } = ctx_ident.require('./foo');
+        /// ```
+        pub fn decl_require_deps_stmt(ctx_ident: &Ident, src: &Atom, pat: Pat) -> Stmt {
+            require_call(ctx_ident, src)
+                .into_var_decl(VarDeclKind::Var, pat)
+                .into()
+        }
     }
 }
 

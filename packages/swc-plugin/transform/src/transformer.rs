@@ -43,6 +43,7 @@ impl VisitMut for GlobalModuleTransformer {
     fn visit_mut_module(&mut self, module: &mut Module) {
         module.visit_mut_children_with(self);
 
+        // Replace to new module body.
         module.body = self.get_module_body(mem::take(&mut module.body));
     }
 

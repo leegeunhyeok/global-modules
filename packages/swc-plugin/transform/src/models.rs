@@ -1,4 +1,4 @@
-use helpers::*;
+use presets::decl_require_deps_stmt;
 use swc_core::{
     atoms::Atom,
     ecma::{
@@ -273,7 +273,7 @@ impl NamedReExportRef {
         match phase {
             ModulePhase::Register => import_star(self.mod_ident.clone(), self.src.clone()),
             ModulePhase::Runtime => {
-                decl_required_deps_stmt(ctx_ident, &self.src, self.mod_ident.clone().into()).into()
+                decl_require_deps_stmt(ctx_ident, &self.src, self.mod_ident.clone().into()).into()
             }
         }
     }
@@ -315,13 +315,14 @@ impl ReExportAllRef {
         match phase {
             ModulePhase::Register => import_star(self.mod_ident.clone(), self.src.clone()),
             ModulePhase::Runtime => {
-                decl_required_deps_stmt(ctx_ident, &self.src, self.mod_ident.clone().into()).into()
+                decl_require_deps_stmt(ctx_ident, &self.src, self.mod_ident.clone().into()).into()
             }
         }
     }
 }
 
 pub mod helpers {
+    use presets::{decl_require_deps_stmt, exports_call};
     use swc_core::{
         common::DUMMY_SP,
         ecma::{
@@ -333,12 +334,21 @@ pub mod helpers {
     use super::*;
     use crate::{phase::ModulePhase, utils::collections::OHashMap};
 
-    /// Get `ExportRef` and `ModuleItem` from `ExportDecl`.
+    /// Converts `ExportDecl` into `ExportDeclItem`.
     pub fn get_from_export_decl(export_decl: &ExportDecl) -> ExportDeclItem {
+        // `function foo {}`
+        //
+        // - `orig_ident`: `foo`
+        // - `decl_expr`: `function foo{}`
         let (orig_ident, decl_expr) = get_expr_from_decl(&export_decl.decl);
+
+        // - `binding_name`: `__x`
+        // - `exported_name`: `foo`
         let binding_export = BindingExportMember::new(orig_ident.sym.clone());
         let binding_name = ModuleExportName::Ident(binding_export.bind_ident.clone());
         let exported_name = ModuleExportName::Ident(orig_ident);
+
+        // `binding_assign_stmt`: `__x = function foo {}`
         let binding_assign_stmt = assign_expr(&binding_export.bind_ident, decl_expr).into_stmt();
         let export_ref = ExportRef::Named(NamedExportRef::new(vec![ExportMember::Binding(
             binding_export,
@@ -363,7 +373,8 @@ pub mod helpers {
         }
     }
 
-    pub fn get_from_export_named(export_named: &NamedExport) -> ExportRef {
+    /// Returns an `ExportRef` based on the export named AST.
+    pub fn to_export_ref(export_named: &NamedExport) -> ExportRef {
         match &export_named.src {
             // Re-exports
             Some(src_str) => {
@@ -403,7 +414,7 @@ pub mod helpers {
         }
     }
 
-    /// Convert `ImportSpecifier` into `ImportMember`.
+    /// Converts `ImportSpecifier` into `ImportMember`.
     pub fn to_import_members(specifiers: &Vec<ImportSpecifier>) -> Vec<ImportMember> {
         let mut members = Vec::with_capacity(specifiers.len());
 
@@ -422,14 +433,21 @@ pub mod helpers {
         members
     }
 
-    /// ```js
-    /// // Code
-    /// var { foo, bar, default: baz } = <ident>.__require('./foo');
-    /// ```
-    pub fn decl_required_deps_stmt(ctx_ident: &Ident, src: &Atom, pat: Pat) -> Stmt {
-        require_call(ctx_ident, src)
-            .into_var_decl(VarDeclKind::Var, pat)
-            .into()
+    /// Converts the export specifiers into `ExportMember`.
+    pub fn to_export_members(specifiers: &Vec<ExportSpecifier>) -> Vec<ExportMember> {
+        let mut members = Vec::with_capacity(specifiers.len());
+
+        specifiers.iter().for_each(|spec| match spec {
+            ExportSpecifier::Named(
+                specifier @ ExportNamedSpecifier {
+                    is_type_only: false,
+                    ..
+                },
+            ) => members.push(specifier.into()),
+            _ => {}
+        });
+
+        members
     }
 
     /// Returns a list of require call expressions that reference modules from global registry.
@@ -476,12 +494,12 @@ pub mod helpers {
                     }));
                 }
                 ImportMember::Namespace(ImportNamespaceMember { ident, .. }) => requires
-                    .push(decl_required_deps_stmt(ctx_ident, src, ident.clone().into()).into()),
+                    .push(decl_require_deps_stmt(ctx_ident, src, ident.clone().into()).into()),
             });
 
         if dep_props.len() > 0 {
             requires.push(
-                decl_required_deps_stmt(
+                decl_require_deps_stmt(
                     ctx_ident,
                     src,
                     ObjectPat {

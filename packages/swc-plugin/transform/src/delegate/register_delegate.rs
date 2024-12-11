@@ -1,13 +1,13 @@
 use std::mem;
 
-use helpers::{exports_to_ast, get_from_export_decl, get_from_export_named};
+use helpers::{exports_to_ast, get_from_export_decl, to_export_ref};
 use swc_core::ecma::{ast::*, utils::private_ident};
 
 use super::traits::AstDelegate;
 use crate::{
     models::*,
     utils::ast::{
-        assign_expr, default_expr_from_default_export_decl, global_module_register_stmt,
+        assign_expr, default_expr_from_default_export_decl, presets::global_module_register_stmt,
         to_binding_module_from_assign_expr, to_binding_module_from_member_expr,
     },
 };
@@ -101,7 +101,7 @@ impl AstDelegate for RegisterDelegate {
     }
 
     fn export_named(&mut self, export_named: &NamedExport) {
-        let export_ref = get_from_export_named(export_named);
+        let export_ref = to_export_ref(export_named);
         self.exps.push(export_ref);
     }
 

@@ -14,7 +14,8 @@ use crate::{
     models::*,
     utils::{
         ast::{
-            assign_expr, expr_from_export_default_decl, global_module_get_ctx_stmt, require_call,
+            assign_expr, expr_from_export_default_decl,
+            presets::{global_module_get_ctx_stmt, require_call},
             to_binding_module_from_assign_expr, to_binding_module_from_member_expr,
         },
         collections::OHashMap,
@@ -120,7 +121,7 @@ impl AstDelegate for RuntimeDelegate {
     }
 
     fn export_named(&mut self, export_named: &NamedExport) {
-        let export_ref = get_from_export_named(export_named);
+        let export_ref = to_export_ref(export_named);
         self.exps.push(export_ref);
     }
 
