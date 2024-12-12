@@ -10,6 +10,9 @@ import {
   generateUpdatedModule,
 } from './new-module-helper.mjs';
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- allow
+type RuntimeResult = any;
+
 const ROOT = import.meta.dirname;
 const FIXTURE_ROOT = path.join(ROOT, '__fixtures__');
 
@@ -22,7 +25,7 @@ describe('@global-modules/esbuild-plugin', () => {
   function createSandboxContext(sandbox?: vm.Context): SandboxContext {
     const context = vm.createContext(sandbox);
 
-    function evaluate(code: string) {
+    function evaluate(code: string): RuntimeResult {
       return new vm.Script(code).runInContext(context);
     }
 
@@ -30,7 +33,7 @@ describe('@global-modules/esbuild-plugin', () => {
   }
 
   interface SandboxContext {
-    evaluate: (code: string) => any;
+    evaluate: (code: string) => RuntimeResult;
   }
 
   beforeAll(async () => {
@@ -49,7 +52,7 @@ describe('@global-modules/esbuild-plugin', () => {
               // Original code
               rawCode,
               // Inject `register` function call expression into module body.
-              `register(${args.id});`,
+              `register(${String(args.id)});`,
             ].join('\n'),
           };
         });
@@ -71,7 +74,7 @@ describe('@global-modules/esbuild-plugin', () => {
     expect(buildResult.errors).toHaveLength(0);
   });
 
-  it('should the `register` function added by the plugin be called', async () => {
+  it('should the `register` function added by the plugin be called', () => {
     const context = createSandboxContext({
       print: mockedPrint,
       register: mockedRegister,
@@ -79,6 +82,7 @@ describe('@global-modules/esbuild-plugin', () => {
 
     // Evaluate bundle from sandbox context.
     context.evaluate(
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- allow
       Buffer.from(buildResult.outputFiles![0].contents).toString(),
     );
 
@@ -118,17 +122,17 @@ describe('@global-modules/esbuild-plugin', () => {
 
       const { dependencyManager } = createPluginResult;
 
-      const module = await dependencyManager.addModule(
+      const module = dependencyManager.addModule(
         'src/__tests__/__fixtures__/new-module.ts',
       );
 
       expect(module.dependencies).toHaveLength(0);
     });
 
-    it('updateModule', async () => {
+    it('updateModule', () => {
       const { dependencyManager } = createPluginResult;
 
-      const module = await dependencyManager.updateModule(
+      const module = dependencyManager.updateModule(
         'src/__tests__/__fixtures__/new-module.ts',
         [],
         ['src/__tests__/__fixtures__/index.ts'],

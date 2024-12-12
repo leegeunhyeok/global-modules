@@ -22,7 +22,8 @@
     "prepack": "yarn build",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "lint": "oxlint --tsconfig tsconfig.json",
-    "test": "vitest",
+    "test": "vitest --run",
+    "test:watch": "vitest --watch",
     "cleanup": "rm -rf dist cjs esm",
     "build": "yarn cleanup && node build/index.mjs && tsc -p tsconfig.build.json"
   },

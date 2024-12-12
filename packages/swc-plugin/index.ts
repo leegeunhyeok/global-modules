@@ -1,14 +1,24 @@
+import assert from 'node:assert';
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 
-const wasmPath = join(
-  __dirname,
-  './target/wasm32-wasi/release/swc_plugin_global_module.wasm',
-);
-
-if (existsSync(wasmPath)) {
-  throw new Error('wasm binary not found');
+export enum Phase {
+  Register = 0,
+  Runtime = 1,
 }
 
-// eslint-disable-next-line import/no-default-export -- ignore
+export interface PluginConfig {
+  id: number;
+  phase: Phase;
+  dependencies?: Record<string, number>;
+}
+
+const wasmPath = join(
+  __dirname,
+  '../target/wasm32-wasip1/release/swc_plugin_global_modules.wasm',
+);
+
+assert(existsSync(wasmPath), `wasm binary not found: ${wasmPath}`);
+
 export default wasmPath;
+export * from './types';

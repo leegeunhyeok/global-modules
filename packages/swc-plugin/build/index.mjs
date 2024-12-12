@@ -28,6 +28,7 @@ await Promise.all([
   }),
   esbuild.build({
     ...baseBuildOptions,
+    entryPoints: [path.join(rootDir, 'index.mts')],
     format: 'esm',
     outExtension: {
       '.js': '.mjs',

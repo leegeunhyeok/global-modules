@@ -34,6 +34,19 @@ module.exports = {
         '@typescript-eslint/prefer-promise-reject-errors': 'off',
         '@typescript-eslint/no-unnecessary-condition': 'off',
         '@typescript-eslint/no-unsafe-assignment': 'off',
+        '@typescript-eslint/unbound-method': 'off',
+      },
+    },
+    {
+      files: ['vitest.config.mts'],
+      rules: {
+        'import/no-default-export': 'off',
+      },
+    },
+    {
+      files: ['**/swc-plugin/index.*'],
+      rules: {
+        'import/no-default-export': 'off',
       },
     },
   ],

@@ -3,5 +3,9 @@
 **/cjs/*
 **/esm/*
 
-# Test fixtures
+# Test & Fixtures
+**/fixture/*
 **/__fixtures__/*
+
+# SWC Demo
+**/swc-plugin/demo/*
