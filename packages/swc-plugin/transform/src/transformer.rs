@@ -13,9 +13,6 @@ use swc_core::{
 };
 
 pub struct GlobalModuleTransformer {
-    // TODO
-    #[allow(dead_code)]
-    deps_id: Option<AHashMap<String, f64>>,
     delegate: Box<dyn AstDelegate>,
 }
 
@@ -33,10 +30,10 @@ impl GlobalModuleTransformer {
     pub fn new(id: f64, phase: ModulePhase, deps_id: Option<AHashMap<String, f64>>) -> Self {
         let delegate: Box<dyn AstDelegate> = match phase {
             ModulePhase::Register => Box::new(RegisterDelegate::new(id)),
-            ModulePhase::Runtime => Box::new(RuntimeDelegate::new(id)),
+            ModulePhase::Runtime => Box::new(RuntimeDelegate::new(id, deps_id)),
         };
 
-        Self { deps_id, delegate }
+        Self { delegate }
     }
 }
 

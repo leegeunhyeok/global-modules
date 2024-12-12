@@ -9,9 +9,9 @@ var __mod1 = __ctx.require("./re-exp-2");
 var __mod2 = __ctx.require("./re-exp-3");
 var __mod3 = __ctx.require("./re-exp-4");
 var __mod4 = __ctx.require("./re-exp-5");
-React.lazy(()=>__ctx.require("./Component"));
+React.lazy(()=>__ctx.require('./Component'));
 if (__DEV__) {
-    __ctx.require("./cjs-1");
+    __ctx.require('./cjs-1');
 }
 const value = 'val';
 __ctx.module.exports = 'cjs';
@@ -20,10 +20,10 @@ Object.assign(__ctx.module.exports, {
     bar: 1
 });
 __x3 = function() {
-    __ctx.require("./cjs-2");
+    __ctx.require('./cjs-2');
     const inner = async ()=>{
-        await __ctx.require("./esm");
-        __ctx.require("./cjs-3");
+        await __ctx.require('./esm');
+        __ctx.require('./cjs-3');
     };
 };
 __x = 1;

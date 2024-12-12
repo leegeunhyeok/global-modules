@@ -1,4 +1,3 @@
-use helpers::to_export_members;
 use presets::decl_require_deps_stmt;
 use swc_core::{
     atoms::Atom,
@@ -129,48 +128,6 @@ pub enum ExportRef {
     ReExportAll(ReExportAllRef),
 }
 
-impl From<&NamedExport> for ExportRef {
-    fn from(value: &NamedExport) -> Self {
-        match &value.src {
-            // Re-exports
-            Some(src_str) => {
-                let src = src_str.clone().value;
-                let specifier = value.specifiers.get(0).unwrap();
-
-                if let Some(ns_specifier) = specifier.as_namespace() {
-                    // Re-export all with alias.
-                    // In this case, the size of the `specifier` vector is always 1.
-                    //
-                    // ```js
-                    // export * as foo from './foo';
-                    // ```
-                    ExportRef::ReExportAll(ReExportAllRef::new(
-                        src,
-                        Some(ns_specifier.name.atom().clone()),
-                    ))
-                } else {
-                    // Re-export specified members only.
-                    //
-                    // ```js
-                    // export { foo, bar as baz } from './foo';
-                    // export { default } from './foo';
-                    // export { default as named } from './foo';
-                    // ```
-                    ExportRef::NamedReExport(NamedReExportRef::new(
-                        src,
-                        to_export_members(&value.specifiers),
-                    ))
-                }
-            }
-            // Named export
-            None => {
-                let members = to_export_members(&value.specifiers);
-                ExportRef::Named(NamedExportRef::new(members))
-            }
-        }
-    }
-}
-
 #[derive(Debug)]
 pub struct NamedExportRef {
     pub members: Vec<ExportMember>,
@@ -299,15 +256,17 @@ pub struct NamedReExportRef {
     pub mod_ident: Ident,
     /// Source of the referenced module.
     pub src: Atom,
+    pub id: Option<f64>,
     /// Exported members.
     pub members: Vec<ExportMember>,
 }
 
 impl NamedReExportRef {
-    pub fn new(src: Atom, members: Vec<ExportMember>) -> Self {
+    pub fn new(src: Atom, id: Option<f64>, members: Vec<ExportMember>) -> Self {
         NamedReExportRef {
             mod_ident: private_ident!("__mod"),
             src,
+            id,
             members,
         }
     }
@@ -315,10 +274,14 @@ impl NamedReExportRef {
     pub fn get_binding_ast(&self, ctx_ident: Ident, phase: ModulePhase) -> ModuleItem {
         match phase {
             ModulePhase::Register => import_star(self.mod_ident.clone(), self.src.clone()),
-            ModulePhase::Runtime => {
-                decl_require_deps_stmt(ctx_ident, self.src.clone(), self.mod_ident.clone().into())
-                    .into()
-            }
+            ModulePhase::Runtime => decl_require_deps_stmt(
+                ctx_ident,
+                self.id
+                    .map(|id| Lit::from(id))
+                    .unwrap_or_else(|| Lit::from(self.src.as_str())),
+                self.mod_ident.clone().into(),
+            )
+            .into(),
         }
     }
 }
@@ -334,6 +297,7 @@ pub struct ReExportAllRef {
     pub mod_ident: Ident,
     /// Source of the referenced module.
     pub src: Atom,
+    pub id: Option<f64>,
     /// Alias name.
     ///
     /// ```js
@@ -347,10 +311,11 @@ pub struct ReExportAllRef {
 }
 
 impl ReExportAllRef {
-    pub fn new(src: Atom, name: Option<Atom>) -> Self {
+    pub fn new(src: Atom, id: Option<f64>, name: Option<Atom>) -> Self {
         ReExportAllRef {
             mod_ident: private_ident!("__mod"),
             src,
+            id,
             name,
         }
     }
@@ -358,10 +323,14 @@ impl ReExportAllRef {
     pub fn get_binding_ast(&self, ctx_ident: Ident, phase: ModulePhase) -> ModuleItem {
         match phase {
             ModulePhase::Register => import_star(self.mod_ident.clone(), self.src.clone()),
-            ModulePhase::Runtime => {
-                decl_require_deps_stmt(ctx_ident, self.src.clone(), self.mod_ident.clone().into())
-                    .into()
-            }
+            ModulePhase::Runtime => decl_require_deps_stmt(
+                ctx_ident,
+                self.id
+                    .map(|id| Lit::from(id))
+                    .unwrap_or_else(|| Lit::from(self.src.as_str())),
+                self.mod_ident.clone().into(),
+            )
+            .into(),
         }
     }
 }
@@ -369,7 +338,7 @@ impl ReExportAllRef {
 pub mod helpers {
     use presets::{decl_require_deps_stmt, exports_call};
     use swc_core::{
-        common::DUMMY_SP,
+        common::{collections::AHashMap, DUMMY_SP},
         ecma::{
             ast::*,
             utils::{quote_ident, ExprFactory},
@@ -378,6 +347,54 @@ pub mod helpers {
 
     use super::*;
     use crate::{phase::ModulePhase, utils::collections::OHashMap};
+
+    pub fn export_ref_from_named_export(
+        export_named: &NamedExport,
+        deps_id: &Option<AHashMap<String, f64>>,
+    ) -> ExportRef {
+        match &export_named.src {
+            // Re-exports
+            Some(src_str) => {
+                let src = src_str.clone().value;
+                let id = deps_id
+                    .as_ref()
+                    .and_then(|deps_id| deps_id.get(src.as_str()));
+                let specifier = export_named.specifiers.get(0).unwrap();
+
+                if let Some(ns_specifier) = specifier.as_namespace() {
+                    // Re-export all with alias.
+                    // In this case, the size of the `specifier` vector is always 1.
+                    //
+                    // ```js
+                    // export * as foo from './foo';
+                    // ```
+                    ExportRef::ReExportAll(ReExportAllRef::new(
+                        src,
+                        id.copied(),
+                        Some(ns_specifier.name.atom().clone()),
+                    ))
+                } else {
+                    // Re-export specified members only.
+                    //
+                    // ```js
+                    // export { foo, bar as baz } from './foo';
+                    // export { default } from './foo';
+                    // export { default as named } from './foo';
+                    // ```
+                    ExportRef::NamedReExport(NamedReExportRef::new(
+                        src,
+                        id.copied(),
+                        to_export_members(&export_named.specifiers),
+                    ))
+                }
+            }
+            // Named export
+            None => {
+                let members = to_export_members(&export_named.specifiers);
+                ExportRef::Named(NamedExportRef::new(members))
+            }
+        }
+    }
 
     /// Converts `ExportDecl` into `ExportDeclItem`.
     pub fn get_from_export_decl(export_decl: &ExportDecl) -> ExportDeclItem {
@@ -465,7 +482,7 @@ pub mod helpers {
     /// ```
     pub fn to_require_dep_stmts(
         ctx_ident: &Ident,
-        src: &Atom,
+        src: Lit,
         module_ref: &ModuleRef,
     ) -> Vec<ModuleItem> {
         let mut requires = Vec::new();
@@ -525,11 +542,30 @@ pub mod helpers {
     }
 
     /// Converts dependencies into `Vec<ModuleItem>`.
-    pub fn deps_to_ast(ctx_ident: &Ident, deps: &OHashMap<Atom, ModuleRef>) -> Vec<ModuleItem> {
+    pub fn deps_to_ast(
+        ctx_ident: &Ident,
+        deps: &OHashMap<Atom, ModuleRef>,
+        deps_id: &Option<AHashMap<String, f64>>,
+    ) -> Vec<ModuleItem> {
         let mut items = vec![];
 
-        deps.iter()
-            .for_each(|(src, value)| items.extend(to_require_dep_stmts(ctx_ident, src, value)));
+        deps.iter().for_each(|(src, value)| {
+            let src_lit = if let Some(deps_id) = deps_id {
+                if let Some(id) = deps_id.get(src.as_str()) {
+                    Lit::from(*id).into()
+                } else {
+                    None
+                }
+            } else {
+                None
+            };
+
+            items.extend(to_require_dep_stmts(
+                ctx_ident,
+                src_lit.unwrap_or(Lit::from(src.as_str())),
+                value,
+            ));
+        });
 
         items
     }

@@ -3,6 +3,7 @@ use std::mem;
 use helpers::*;
 use swc_core::{
     atoms::Atom,
+    common::collections::AHashMap,
     ecma::{
         ast::*,
         utils::{private_ident, ExprFactory},
@@ -14,7 +15,7 @@ use crate::{
     models::*,
     utils::{
         ast::{
-            assign_expr, expr_from_export_default_decl,
+            assign_expr, expr_from_export_default_decl, get_src_lit,
             presets::{global_module_get_ctx_stmt, require_call},
             to_binding_module_from_assign_expr, to_binding_module_from_member_expr,
         },
@@ -24,21 +25,18 @@ use crate::{
 
 pub struct RuntimeDelegate {
     id: f64,
+    deps_id: Option<AHashMap<String, f64>>,
     ctx_ident: Ident,
-    // `import ... from './foo'`;
-    // `require('./foo')`;
-    //
-    // key: './foo'
-    // value: Dep
     deps: OHashMap<Atom, ModuleRef>,
     exps: Vec<ExportRef>,
     bindings: Vec<ModuleItem>,
 }
 
 impl RuntimeDelegate {
-    pub fn new(id: f64) -> Self {
+    pub fn new(id: f64, deps_id: Option<AHashMap<String, f64>>) -> Self {
         Self {
             id,
+            deps_id,
             ctx_ident: private_ident!("__ctx"),
             deps: OHashMap::default(),
             exps: Vec::default(),
@@ -65,7 +63,7 @@ impl AstDelegate for RuntimeDelegate {
             _ => {}
         });
 
-        let deps_items = deps_to_ast(&self.ctx_ident, &self.deps);
+        let deps_items = deps_to_ast(&self.ctx_ident, &self.deps, &self.deps_id);
         let ExportsAst {
             pre_body,
             post_body,
@@ -127,12 +125,20 @@ impl AstDelegate for RuntimeDelegate {
     }
 
     fn export_named(&mut self, export_named: &NamedExport) {
-        self.exps.push(export_named.into());
+        self.exps
+            .push(export_ref_from_named_export(export_named, &self.deps_id));
     }
 
     fn export_all(&mut self, export_all: &ExportAll) {
+        let src = export_all.src.value.clone();
+        let id = self
+            .deps_id
+            .as_ref()
+            .and_then(|deps_id| deps_id.get(src.as_str()));
+
         self.exps.push(ExportRef::ReExportAll(ReExportAllRef::new(
-            export_all.src.value.clone(),
+            src,
+            id.copied(),
             None,
         )));
     }
@@ -154,8 +160,11 @@ impl AstDelegate for RuntimeDelegate {
 
                 match &*src.expr {
                     // The first argument of the `require` function must be a string type only.
-                    Expr::Lit(Lit::Str(str)) => {
-                        return Some(require_call(self.ctx_ident.clone(), str.value.clone()))
+                    Expr::Lit(lit) => {
+                        return Some(require_call(
+                            self.ctx_ident.clone(),
+                            get_src_lit(lit, &self.deps_id),
+                        ));
                     }
                     _ => panic!("invalid `require` call expression"),
                 }
@@ -175,8 +184,11 @@ impl AstDelegate for RuntimeDelegate {
 
                 match &*src.expr {
                     // The first argument of the `import` function must be a string type only.
-                    Expr::Lit(Lit::Str(str)) => {
-                        return Some(require_call(self.ctx_ident.clone(), str.value.clone()))
+                    Expr::Lit(lit) => {
+                        return Some(require_call(
+                            self.ctx_ident.clone(),
+                            get_src_lit(lit, &self.deps_id),
+                        ));
                     }
                     _ => panic!("unsupported dynamic import usage"),
                 }

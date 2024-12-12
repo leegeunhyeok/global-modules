@@ -1,7 +1,7 @@
 pub mod ast {
     use swc_core::{
         atoms::Atom,
-        common::DUMMY_SP,
+        common::{collections::AHashMap, DUMMY_SP},
         ecma::{ast::*, utils::ExprFactory},
     };
 
@@ -402,9 +402,23 @@ pub mod ast {
         }
     }
 
+    pub fn get_src_lit(lit: &Lit, deps_id: &Option<AHashMap<String, f64>>) -> Lit {
+        match lit {
+            Lit::Str(str_lit) => {
+                let src = str_lit.value.clone();
+                let src_lit = deps_id
+                    .as_ref()
+                    .and_then(|deps_id| deps_id.get(src.as_str()))
+                    .map_or_else(|| str_lit.clone().into(), |id| Lit::from(*id));
+
+                src_lit
+            }
+            _ => panic!("unsupported"),
+        }
+    }
+
     pub mod presets {
         use swc_core::{
-            atoms::Atom,
             common::DUMMY_SP,
             ecma::{
                 ast::*,
@@ -444,7 +458,7 @@ pub mod ast {
         /// // Code
         /// ctx_ident.require(src);
         /// ```
-        pub fn require_call(ctx_ident: Ident, src: Atom) -> Expr {
+        pub fn require_call(ctx_ident: Ident, src: Lit) -> Expr {
             ctx_ident
                 .make_member(quote_ident!("require"))
                 .as_call(DUMMY_SP, vec![src.as_arg()])
@@ -471,7 +485,7 @@ pub mod ast {
         /// // Pat: { foo, bar, default: baz }
         /// var { foo, bar, default: baz } = ctx_ident.require('./foo');
         /// ```
-        pub fn decl_require_deps_stmt(ctx_ident: Ident, src: Atom, pat: Pat) -> Stmt {
+        pub fn decl_require_deps_stmt(ctx_ident: Ident, src: Lit, pat: Pat) -> Stmt {
             require_call(ctx_ident, src)
                 .into_var_decl(VarDeclKind::Var, pat)
                 .into()

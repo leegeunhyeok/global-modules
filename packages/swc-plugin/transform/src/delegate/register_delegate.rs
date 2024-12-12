@@ -1,6 +1,6 @@
 use std::mem;
 
-use helpers::{exports_to_ast, get_from_export_decl};
+use helpers::{export_ref_from_named_export, exports_to_ast, get_from_export_decl};
 use swc_core::ecma::{ast::*, utils::private_ident};
 
 use super::traits::AstDelegate;
@@ -108,12 +108,14 @@ impl AstDelegate for RegisterDelegate {
     }
 
     fn export_named(&mut self, export_named: &NamedExport) {
-        self.exps.push(export_named.into());
+        self.exps
+            .push(export_ref_from_named_export(export_named, &None));
     }
 
     fn export_all(&mut self, export_all: &ExportAll) {
         self.exps.push(ExportRef::ReExportAll(ReExportAllRef::new(
             export_all.src.value.clone(),
+            None,
             None,
         )));
     }
