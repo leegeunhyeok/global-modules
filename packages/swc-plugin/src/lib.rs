@@ -11,7 +11,7 @@ use swc_global_modules::global_modules;
 struct GlobalModuleConfig {
     id: f64,
     phase: f64,
-    dependencies: Option<AHashMap<String, f64>>,
+    dependency_ids: Option<AHashMap<String, f64>>,
 }
 
 #[plugin_transform]
@@ -29,7 +29,7 @@ pub fn global_modules_plugin(
     program.visit_mut_with(&mut global_modules(
         config.id,
         config.phase,
-        config.dependencies,
+        config.dependency_ids,
     ));
 
     program
