@@ -1,5 +1,0 @@
-{
-  "$schema": "https://raw.githubusercontent.com/lerna/lerna/refs/tags/v8.1.8/packages/lerna/schemas/lerna-schema.json",
-  "version": "0.0.0",
-  "npmClient": "yarn"
-}

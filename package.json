@@ -5,16 +5,25 @@
     "packages/*"
   ],
   "scripts": {
-    "lint": "oxlint ./packages",
-    "build": "lerna run build"
+    "nx:graph": "nx graph",
+    "lint": "oxlint ./packages && nx run-many -t lint",
+    "typecheck": "nx run-many -t typecheck",
+    "test": "nx run-many -t test",
+    "build": "nx run-many -t build",
+    "release": "nx release --skip-publish",
+    "publish": "nx publish"
   },
   "engines": {
     "node": ">=22"
   },
   "devDependencies": {
+    "@nx/js": "20.2.2",
+    "@swc-node/register": "~1.9.1",
+    "@swc/core": "~1.5.7",
+    "@swc/helpers": "~0.5.11",
     "@types/node": "^22",
     "@yarnpkg/types": "^4.0.0",
-    "lerna": "^8.1.8",
+    "nx": "20.2.2",
     "oxlint": "0.15.1",
     "prettier": "^3.4.2",
     "typescript": "5.6.2"

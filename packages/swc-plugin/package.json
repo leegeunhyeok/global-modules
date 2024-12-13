@@ -13,16 +13,16 @@
     }
   },
   "scripts": {
-    "prepack": "yarn build",
+    "prepack": "yarn cleanup && yarn build",
     "demo": "node demo/index.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "fetch": "cargo fetch",
     "lint": "cargo fmt --all --check",
     "test": "cargo test --all -- --include-ignored",
-    "cleanup": "rm -rf dist cjs esm",
+    "cleanup": "rm -rf dist cjs esm target",
     "build": "yarn build:rust && yarn build:typescript",
     "build:rust": "cargo wasm32-wasip1 --release",
-    "build:typescript": "yarn cleanup && node build/index.mjs && tsc -p tsconfig.build.json"
+    "build:typescript": "node build/index.mjs && tsc -p tsconfig.build.json"
   },
   "devDependencies": {
     "@swc/core": "1.10.1",

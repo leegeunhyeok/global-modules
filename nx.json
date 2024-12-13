@@ -1,0 +1,33 @@
+{
+  "$schema": "https://raw.githubusercontent.com/nrwl/nx/refs/tags/20.2.2/packages/nx/schemas/project-schema.json",
+  "release": {
+    "projects": ["packages/*"],
+    "releaseTagPattern": "v{version}",
+    "git": {
+      "commit": true,
+      "tag": true,
+      "commitMessage": "chore(release): {version}"
+    },
+    "changelog": {
+      "workspaceChangelog": {
+        "createRelease": "github",
+        "file": false
+      }
+    }
+  },
+  "targetDefaults": {
+    "typecheck": {
+      "dependsOn": ["^build"]
+    },
+    "build": {
+      "cache": true,
+      "outputs": [
+        "{projectRoot}/dist",
+        "{projectRoot}/cjs",
+        "{projectRoot}/esm",
+        "{projectRoot}/target"
+      ]
+    }
+  },
+  "defaultBase": "main"
+}

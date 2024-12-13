@@ -18,13 +18,13 @@
     "./esm/**/*.mjs"
   ],
   "scripts": {
-    "prepack": "yarn build",
+    "prepack": "yarn cleanup && yarn build",
     "start": "node --import @swc-node/register/esm-register src/index.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest --run",
     "test:watch": "vitest --watch",
     "cleanup": "rm -rf dist cjs esm",
-    "build": "yarn cleanup && node build/index.mjs && tsc -p tsconfig.build.json"
+    "build": "node build/index.mjs && tsc -p tsconfig.build.json"
   },
   "devDependencies": {
     "@swc-node/register": "^1.10.9",

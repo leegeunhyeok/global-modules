@@ -132,7 +132,47 @@ jobs:
           yarn install --immutable --mode skip-build
 
       - name: Lint
-        run: yarn workspaces foreach --all run lint
+        run: yarn lint
+
+  typecheck:
+    name: Typecheck
+    needs: setup
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.12.0
+
+      - name: Enable corepack
+        run: corepack enable
+
+      - name: Restore rust cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cargo
+          key: ${{ needs.setup.outputs.rust-cache-key }}
+          restore-keys: ${{ needs.setup.outputs.rust-cache-restore-key }}
+          fail-on-cache-miss: true
+
+      - name: Restore yarn cache
+        uses: actions/cache/restore@v4
+        with:
+          path: |
+            ${{ needs.setup.outputs.yarn-cache-path }}
+            .pnp.*
+          key: ${{ needs.setup.outputs.yarn-cache-key }}
+          restore-keys: ${{ needs.setup.outputs.yarn-cache-restore-key }}
+          fail-on-cache-miss: true
+
+      - name: Prepare
+        run: |
+          . "$HOME/.cargo/env"
+          yarn install --immutable --mode skip-build
+
+      - name: Typecheck
+        run: yarn typecheck
 
   test:
     name: Test
@@ -172,4 +212,4 @@ jobs:
           yarn install --immutable --mode skip-build
 
       - name: Test
-        run: yarn workspaces foreach --all run test
+        run: yarn test
