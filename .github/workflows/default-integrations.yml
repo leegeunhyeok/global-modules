@@ -8,15 +8,13 @@ on:
 
 env:
   CARGO_TERM_COLOR: always
+  RUST_TOOLCHAIN_VERSION: nightly-2024-10-07
 
 jobs:
   setup:
     name: Setup
     if: contains(github.event.head_commit.message, 'skip ci') == false
     runs-on: ubuntu-latest
-
-    env:
-      RUST_TOOLCHAIN_VERSION: nightly-2024-10-07
 
     outputs:
       yarn-cache-path: ${{ steps.values.outputs.yarn-cache-path }}
@@ -226,14 +224,6 @@ jobs:
       - name: Enable corepack
         run: corepack enable
 
-      - name: Restore rust cache
-        uses: actions/cache@v4
-        with:
-          path: ~/.cargo
-          key: ${{ needs.setup.outputs.rust-cache-key }}
-          restore-keys: ${{ needs.setup.outputs.rust-cache-restore-key }}
-          fail-on-cache-miss: true
-
       - name: Restore yarn cache
         uses: actions/cache/restore@v4
         with:
@@ -244,9 +234,14 @@ jobs:
           restore-keys: ${{ needs.setup.outputs.yarn-cache-restore-key }}
           fail-on-cache-miss: true
 
+      - name: Setup rust
+        run: |
+          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- --default-toolchain=$RUST_TOOLCHAIN_VERSION -y
+          . "$HOME/.cargo/env"
+          rustup target add wasm32-wasip1
+
       - name: Prepare
         run: |
-          . "$HOME/.cargo/env"
           yarn install --immutable --mode skip-build
 
       - name: Build
