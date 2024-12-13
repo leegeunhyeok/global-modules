@@ -48,6 +48,7 @@ export function Component() {
 var __ctx = global.__modules.register(1);
 import React, { useState, useCallback } from 'react';
 import { Component } from './Container';
+export { __x as Component };
 __x = function Component() {
   // ...
 };
@@ -57,7 +58,6 @@ __ctx.exports(function () {
   };
 });
 var __x;
-export { __x as Component };
 ```
 
 </details>
@@ -68,8 +68,8 @@ export { __x as Component };
 
 ```ts
 var __ctx = global.__modules.getContext(1);
-var { default: React, useState, useCallback } = __ctx.require(1000); // `react`
-var { Component } = __ctx.require(1234); // `./Container`
+var { default: React, useState, useCallback } = __ctx.require(1000);
+var { Component } = __ctx.require('./Container');
 __x = function Component() {
   // ...
 };

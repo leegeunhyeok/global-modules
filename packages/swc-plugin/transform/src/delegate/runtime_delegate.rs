@@ -53,29 +53,31 @@ impl AstDelegate for RuntimeDelegate {
         new_body
     }
 
-    fn make_module_body(&mut self, orig_body: Vec<ModuleItem>) -> Vec<ModuleItem> {
+    fn make_module_body(&mut self, mut orig_body: Vec<ModuleItem>) -> Vec<ModuleItem> {
         let exps = mem::take(&mut self.exps);
         let bindings = mem::take(&mut self.bindings);
-        let mut body: Vec<ModuleItem> = Vec::with_capacity(orig_body.len());
 
-        orig_body.into_iter().for_each(|item| match item {
-            ModuleItem::Stmt(_) => body.push(item),
-            _ => {}
-        });
+        orig_body.retain(|item| item.is_stmt());
 
         let deps_items = deps_to_ast(&self.ctx_ident, &self.deps, &self.deps_id);
         let ExportsAst {
-            pre_body,
-            post_body,
+            leading_body,
+            trailing_body,
         } = exports_to_ast(&self.ctx_ident, exps, crate::phase::ModulePhase::Runtime);
+        let total_item_count = deps_items.len()
+            + leading_body.len()
+            + orig_body.len()
+            + bindings.len()
+            + trailing_body.len()
+            + 1;
 
-        let mut new_body: Vec<ModuleItem> = vec![];
+        let mut new_body: Vec<ModuleItem> = Vec::with_capacity(total_item_count);
         new_body.push(global_module_get_ctx_stmt(self.id, &self.ctx_ident).into());
         new_body.extend(deps_items);
-        new_body.extend(pre_body);
-        new_body.extend(body);
+        new_body.extend(leading_body);
+        new_body.extend(orig_body);
         new_body.extend(bindings);
-        new_body.extend(post_body);
+        new_body.extend(trailing_body);
         new_body
     }
 

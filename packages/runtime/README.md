@@ -49,6 +49,8 @@ import foo from './foo';
 import bar from './bar';
 import { baz } from './baz';
 
+export { __x as something };
+
 __x = function something() {
   return foo.value + bar.value + baz;
 };
@@ -58,8 +60,7 @@ __ctx.exports(function () {
     something: __x,
   };
 });
-
-export { __x as something };
+var __x;
 ```
 
 ```ts
@@ -68,17 +69,17 @@ var __ctx = global.__modules.getContext(1);
 
 var { default: foo } = __ctx.require(1000); // `./foo` module's id
 var { default: bar } = __ctx.require(1001); // `./bar` module's id
-var { baz } = __ctx.require(1002);          // `./baz` module's id
+var { baz } = __ctx.require(1002); // `./baz` module's id
 
 __x = function something() {
   return foo.value + bar.value + baz;
 };
-
 __ctx.exports(function () {
   return {
     something: __x,
   };
 });
+var __x;
 ```
 
 For transform to global module, see more: [@global-modules/swc-plugin](https://github.com/leegeunhyeok/global-modules/tree/main/packages/swc-plugin)

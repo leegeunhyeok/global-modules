@@ -576,7 +576,7 @@ pub mod helpers {
         exports: Vec<ExportRef>,
         phase: ModulePhase,
     ) -> ExportsAst {
-        let mut pre_body: Vec<ModuleItem> = vec![];
+        let mut leading_body: Vec<ModuleItem> = vec![];
         let mut export_props: Vec<PropOrSpread> = vec![];
         let mut export_decls: Vec<VarDeclarator> = vec![];
 
@@ -593,7 +593,7 @@ pub mod helpers {
                 })
             }
             ExportRef::NamedReExport(named_re_export) => {
-                pre_body.push(named_re_export.get_binding_ast(ctx_ident.clone(), phase));
+                leading_body.push(named_re_export.get_binding_ast(ctx_ident.clone(), phase));
                 export_props.extend(named_re_export.members.into_iter().map(
                     |member| match member {
                         ExportMember::Actual(actual_export) => {
@@ -609,7 +609,7 @@ pub mod helpers {
                 let ns_call =
                     to_ns_export(ctx_ident.clone(), re_export_all.mod_ident.clone().into());
 
-                pre_body.push(re_export_all.get_binding_ast(ctx_ident.clone(), phase));
+                leading_body.push(re_export_all.get_binding_ast(ctx_ident.clone(), phase));
 
                 match re_export_all.name {
                     Some(exp_name) => export_props.push(kv_prop(exp_name, ns_call)),
@@ -618,15 +618,15 @@ pub mod helpers {
             }
         });
 
-        let mut post_body = vec![];
-        post_body.push(
+        let mut trailing_body = vec![];
+        trailing_body.push(
             exports_call(ctx_ident.clone(), obj_lit_expr(export_props))
                 .into_stmt()
                 .into(),
         );
 
         if export_decls.len() > 0 {
-            post_body.push(
+            trailing_body.push(
                 VarDecl {
                     kind: VarDeclKind::Var,
                     decls: export_decls,
@@ -637,8 +637,8 @@ pub mod helpers {
         }
 
         ExportsAst {
-            pre_body,
-            post_body,
+            leading_body,
+            trailing_body,
         }
     }
 }
@@ -650,6 +650,6 @@ pub struct ExportDeclItem {
 }
 
 pub struct ExportsAst {
-    pub pre_body: Vec<ModuleItem>,
-    pub post_body: Vec<ModuleItem>,
+    pub leading_body: Vec<ModuleItem>,
+    pub trailing_body: Vec<ModuleItem>,
 }

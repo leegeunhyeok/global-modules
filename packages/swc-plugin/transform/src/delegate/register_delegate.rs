@@ -39,34 +39,19 @@ impl AstDelegate for RegisterDelegate {
     }
 
     fn make_module_body(&mut self, orig_body: Vec<ModuleItem>) -> Vec<ModuleItem> {
-        let size = orig_body.len();
         let exps = mem::take(&mut self.exps);
         let bindings = mem::take(&mut self.bindings);
-        let mut imports = Vec::with_capacity(size);
-        let mut exports = Vec::with_capacity(size);
-        let mut body = Vec::with_capacity(size);
-
-        orig_body.into_iter().for_each(|item| match item {
-            ModuleItem::Stmt(_) => body.push(item),
-            ModuleItem::ModuleDecl(ref module_decl) => match module_decl {
-                ModuleDecl::Import(_) => imports.push(item),
-                _ => exports.push(item),
-            },
-        });
-
         let ExportsAst {
-            pre_body,
-            post_body,
+            leading_body,
+            trailing_body,
         } = exports_to_ast(&self.ctx_ident, exps, crate::phase::ModulePhase::Register);
 
         let mut new_body: Vec<ModuleItem> = vec![];
         new_body.push(global_module_register_stmt(self.id, &self.ctx_ident).into());
-        new_body.extend(imports);
-        new_body.extend(pre_body);
-        new_body.extend(body);
+        new_body.extend(leading_body);
+        new_body.extend(orig_body);
         new_body.extend(bindings);
-        new_body.extend(post_body);
-        new_body.extend(exports);
+        new_body.extend(trailing_body);
 
         new_body
     }
