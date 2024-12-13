@@ -1,7 +1,6 @@
-export const __hasOwnProp = Object.prototype.hasOwnProperty;
-export const __defProp = Object.defineProperty;
-
-export const __copyProps = <T extends object>(
+const hasOwnProp = Object.prototype.hasOwnProperty;
+const defProp = Object.defineProperty;
+const copyProps = <T extends object>(
   destination: T,
   source: T,
   except?: string,
@@ -9,10 +8,10 @@ export const __copyProps = <T extends object>(
   for (const key in source) {
     if (
       key !== except &&
-      __hasOwnProp.call(source, key) &&
-      !__hasOwnProp.call(destination, key)
+      hasOwnProp.call(source, key) &&
+      !hasOwnProp.call(destination, key)
     ) {
-      __defProp(destination, key, {
+      defProp(destination, key, {
         enumerable: true,
         get: () => source[key],
       });
@@ -21,3 +20,5 @@ export const __copyProps = <T extends object>(
 
   return destination;
 };
+
+export { hasOwnProp, defProp, copyProps };
