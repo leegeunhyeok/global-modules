@@ -20,7 +20,6 @@
   "scripts": {
     "prepack": "yarn build",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "lint": "oxlint --tsconfig tsconfig.json",
     "test": "vitest --run",
     "test:watch": "vitest --watch",
     "cleanup": "rm -rf dist cjs esm",
