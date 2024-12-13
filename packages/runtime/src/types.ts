@@ -1,4 +1,4 @@
-// eslint-disable-next-line @typescript-eslint/no-explicit-any -- allow
+// oxlint-disable-next-lineno-explicit-any -- allow
 export type Global = any;
 
 export interface Module {

@@ -10,8 +10,7 @@ import {
   generateUpdatedModule,
 } from './new-module-helper.mjs';
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any -- allow
-type RuntimeResult = any;
+type RuntimeResult = unknown;
 
 const ROOT = import.meta.dirname;
 const FIXTURE_ROOT = path.join(ROOT, '__fixtures__');
@@ -82,7 +81,7 @@ describe('@global-modules/esbuild-plugin', () => {
 
     // Evaluate bundle from sandbox context.
     context.evaluate(
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- allow
+      // oxlint-disable-next-line no-non-null-assertion
       Buffer.from(buildResult.outputFiles![0].contents).toString(),
     );
 

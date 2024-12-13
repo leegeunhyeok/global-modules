@@ -4,8 +4,7 @@ import path from 'node:path';
 import { describe, it, expect, beforeAll, beforeEach, vi } from 'vitest';
 import type { GlobalModuleRegistry } from './types.js';
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any -- allow
-type RuntimeResult = any;
+type RuntimeResult = unknown;
 
 const runtimeCode = await fs.readFile(
   path.resolve(import.meta.dirname, '../esm/index.mjs'),

@@ -9,7 +9,6 @@ import type {
 export function createGlobalModuleRegistry(): GlobalModuleRegistry {
   const moduleRegistry = new Map<ModuleId, Module>();
 
-  // eslint-disable-next-line @typescript-eslint/no-empty-function -- allow
   function ExportObject(): void {}
 
   const __hasOwnProp = Object.prototype.hasOwnProperty;

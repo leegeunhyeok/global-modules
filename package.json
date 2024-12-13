@@ -5,7 +5,7 @@
     "packages/*"
   ],
   "scripts": {
-    "lint": "eslint ./packages",
+    "lint": "oxlint ./packages",
     "build": "lerna run build"
   },
   "engines": {
@@ -14,17 +14,10 @@
   "devDependencies": {
     "@types/node": "^20.11.1",
     "@vercel/style-guide": "^6.0.0",
-    "eslint": "^8.0.0",
-    "eslint-import-resolver-typescript": "^3.7.0",
-    "eslint-plugin-prettier": "^5.2.1",
     "lerna": "^8.1.8",
+    "oxlint": "0.15.1",
     "prettier": "^3.4.2",
     "typescript": "5.6.2"
-  },
-  "dependenciesMeta": {
-    "esresolve@0.3.1": {
-      "unplugged": true
-    }
   },
   "resolutions": {
     "@vercel/style-guide": "patch:@vercel/style-guide@npm%3A6.0.0#~/.yarn/patches/@vercel-style-guide.patch"

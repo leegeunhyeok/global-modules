@@ -1,4 +1,3 @@
-/* eslint-disable no-console -- allow */
 import { $ } from 'zx';
 
 function runStep(
@@ -19,7 +18,6 @@ function runStep(
     });
 }
 
-// eslint-disable-next-line import/no-default-export -- allow default export
 export default async function setup(): Promise<void> {
   await runStep(
     'Building runtime module...',
