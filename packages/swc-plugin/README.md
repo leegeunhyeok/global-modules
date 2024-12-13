@@ -1,6 +1,6 @@
 # swc-plugin
 
-A SWC plugin that transforms according to the Global Module API specifications.
+A SWC plugin that transforms according to the [@global-modules/runtime](https://github.com/leegeunhyeok/global-modules/tree/main/packages/runtime) specifications.
 
 ## Usage
 
