@@ -1,8 +1,7 @@
-import companyPrettierConfig from '@vercel/style-guide/prettier';
-
-const config = {
-  ...companyPrettierConfig,
-  plugins: [],
+export default {
+  endOfLine: 'lf',
+  tabWidth: 2,
+  printWidth: 80,
+  useTabs: false,
+  singleQuote: true,
 };
-
-export default config;
