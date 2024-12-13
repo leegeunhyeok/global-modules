@@ -27,3 +27,8 @@ target
 
 # Miscs
 .DS_Store
+
+
+
+.nx/cache
+.nx/workspace-data
