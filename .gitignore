@@ -25,10 +25,9 @@ target
 # Swc cache
 .swc/
 
-# Miscs
-.DS_Store
-
-
-
+# Nx
 .nx/cache
 .nx/workspace-data
+
+# Miscs
+.DS_Store
