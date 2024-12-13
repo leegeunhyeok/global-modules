@@ -1,4 +1,3 @@
-/* eslint-disable no-nested-ternary -- allow */
 import type { Global } from './types';
 
 export function getGlobalContext(): Global {

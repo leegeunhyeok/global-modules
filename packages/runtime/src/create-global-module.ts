@@ -1,12 +1,12 @@
 import type {
   Exports,
-  GlobalModuleRegistry,
+  GlobalModule,
   Module,
   ModuleContext,
   ModuleExports,
 } from './types';
 
-export function createGlobalModuleRegistry(): GlobalModuleRegistry {
+export function createGlobalModule(): GlobalModule {
   const moduleRegistry = new Map<ModuleId, Module>();
 
   function ExportObject(): void {}

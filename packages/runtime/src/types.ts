@@ -22,7 +22,7 @@ export interface ModuleExports {
 export type ModuleRequire = (id: ModuleId) => Exports;
 export type Exports = Record<string, unknown>;
 
-export interface GlobalModuleRegistry {
+export interface GlobalModule {
   /**
    * Register new module to the global registry.
    */

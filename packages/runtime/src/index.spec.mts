@@ -2,7 +2,7 @@ import vm from 'node:vm';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { describe, it, expect, beforeAll, beforeEach, vi } from 'vitest';
-import type { GlobalModuleRegistry } from './types.js';
+import type { GlobalModule } from './types.js';
 
 type RuntimeResult = unknown;
 
@@ -27,10 +27,10 @@ describe('@global-modules/runtime', () => {
       setup: (): RuntimeResult => {
         return evaluate(runtimeCode);
       },
-      getGlobalModuleRegistry: (): GlobalModuleRegistry => {
+      getGlobalModule: (): GlobalModule => {
         return evaluate(
           '(new Function("return this")())["__modules"];',
-        ) as GlobalModuleRegistry;
+        ) as GlobalModule;
       },
       evaluate,
     };
@@ -38,7 +38,7 @@ describe('@global-modules/runtime', () => {
 
   interface SandboxContext {
     setup: () => void;
-    getGlobalModuleRegistry: () => GlobalModuleRegistry;
+    getGlobalModule: () => GlobalModule;
     evaluate: (code: string) => RuntimeResult;
   }
 
@@ -51,7 +51,7 @@ describe('@global-modules/runtime', () => {
     });
 
     it('should define module registry into global context', () => {
-      const globalRegistry = context.getGlobalModuleRegistry();
+      const globalRegistry = context.getGlobalModule();
       expect(typeof globalRegistry.register).toEqual('function');
       expect(typeof globalRegistry.getContext).toEqual('function');
       expect(typeof globalRegistry.clear).toEqual('function');

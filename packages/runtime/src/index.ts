@@ -1,4 +1,4 @@
-import { createGlobalModuleRegistry } from './create-global-registry';
+import { createGlobalModule } from './create-global-module';
 import { getGlobalContext } from './get-global-context';
 
 const GLOBAL_MODULE_PROPERTY = '__modules';
@@ -11,7 +11,7 @@ if (GLOBAL_MODULE_PROPERTY in globalContext) {
 }
 
 Object.defineProperty(globalContext, GLOBAL_MODULE_PROPERTY, {
-  value: createGlobalModuleRegistry(),
+  value: createGlobalModule(),
 });
 
-export type { GlobalModuleRegistry } from './types';
+export type { GlobalModule } from './types';
