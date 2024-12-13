@@ -27,8 +27,10 @@ describe('@global-modules/runtime', () => {
       setup: (): RuntimeResult => {
         return evaluate(runtimeCode);
       },
-      getGlobalModuleRegistry: (): RuntimeResult => {
-        return evaluate('(new Function("return this")())["__modules"];');
+      getGlobalModuleRegistry: (): GlobalModuleRegistry => {
+        return evaluate(
+          '(new Function("return this")())["__modules"];',
+        ) as GlobalModuleRegistry;
       },
       evaluate,
     };
