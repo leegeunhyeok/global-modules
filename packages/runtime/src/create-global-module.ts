@@ -5,32 +5,12 @@ import type {
   ModuleContext,
   ModuleExports,
 } from './types';
+import * as utils from './utils';
 
 export function createGlobalModule(): GlobalModule {
   const moduleRegistry = new Map<ModuleId, Module>();
 
   function ExportObject(): void {}
-
-  const __hasOwnProp = Object.prototype.hasOwnProperty;
-  const __defProp = Object.defineProperty;
-  const __copyProps = <T extends object>(
-    destination: T,
-    source: T,
-    except?: string,
-  ): void => {
-    for (const key in source) {
-      if (
-        key !== except &&
-        __hasOwnProp.call(source, key) &&
-        !__hasOwnProp.call(destination, key)
-      ) {
-        __defProp(destination, key, {
-          enumerable: true,
-          get: () => source[key],
-        });
-      }
-    }
-  };
 
   function __get(id: ModuleId): Module {
     const module = moduleRegistry.get(id);
@@ -42,15 +22,8 @@ export function createGlobalModule(): GlobalModule {
     return module;
   }
 
-  function __exportObject(): Exports {
+  function __exportsObject(): Exports {
     return new ExportObject() as Exports;
-  }
-
-  function __exports(
-    exports: Exports,
-    definitions: () => Record<string, unknown>,
-  ): void {
-    __copyProps(exports, definitions());
   }
 
   function __require(id: ModuleId): Exports {
@@ -61,11 +34,18 @@ export function createGlobalModule(): GlobalModule {
       : { default: module.exports };
   }
 
+  function __exports(
+    exports: Exports,
+    definitions: () => Record<string, unknown>,
+  ): void {
+    utils.__copyProps(exports, definitions());
+  }
+
   function __ns(exports: Exports): Exports {
-    const nsExports = __exportObject();
+    const nsExports = __exportsObject();
 
     // In the case of namespace exports (re-export all), the `default` field must be excluded.
-    __copyProps(nsExports, exports, 'default');
+    utils.__copyProps(nsExports, exports, 'default');
 
     return nsExports;
   }
@@ -74,7 +54,7 @@ export function createGlobalModule(): GlobalModule {
     const require = __require;
     const exports = Object.assign(
       ((definitions) => {
-        return __exports(module.exports, definitions);
+        __exports(module.exports, definitions);
       }) as ModuleExports,
       { ns: __ns },
     );
@@ -90,7 +70,7 @@ export function createGlobalModule(): GlobalModule {
     const module = {} as Module;
 
     module.id = id;
-    module.exports = __exportObject();
+    module.exports = __exportsObject();
     module.context = __createContext(module);
     moduleRegistry.set(id, module);
 
@@ -100,7 +80,8 @@ export function createGlobalModule(): GlobalModule {
   function getContext(id: ModuleId): ModuleContext {
     const module = __get(id);
 
-    module.exports = __exportObject();
+    // Update to new exports object.
+    module.exports = __exportsObject();
 
     return module.context;
   }
