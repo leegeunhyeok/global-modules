@@ -1,7 +1,6 @@
-export const __hasOwnProp = Object.prototype.hasOwnProperty;
-export const __defProp = Object.defineProperty;
-
-export const __copyProps = <T extends object>(
+const __hasOwnProp = Object.prototype.hasOwnProperty;
+const __defProp = Object.defineProperty;
+const __copyProps = <T extends object>(
   destination: T,
   source: T,
   except?: string,
@@ -20,4 +19,10 @@ export const __copyProps = <T extends object>(
   }
 
   return destination;
+};
+
+export {
+  __hasOwnProp as hasOwnProp,
+  __defProp as depProp,
+  __copyProps as copyProps,
 };
