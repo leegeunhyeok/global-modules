@@ -1634,7 +1634,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@global-modules/esbuild-plugin@workspace:packages/esbuild-plugin":
+"@global-modules/esbuild-plugin@workspace:^, @global-modules/esbuild-plugin@workspace:packages/esbuild-plugin":
   version: 0.0.0-use.local
   resolution: "@global-modules/esbuild-plugin@workspace:packages/esbuild-plugin"
   dependencies:
@@ -1653,7 +1653,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@global-modules/runtime@workspace:packages/runtime":
+"@global-modules/runtime@workspace:^, @global-modules/runtime@workspace:packages/runtime":
   version: 0.0.0-use.local
   resolution: "@global-modules/runtime@workspace:packages/runtime"
   dependencies:
@@ -1670,7 +1670,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@global-modules/swc-plugin@workspace:packages/swc-plugin":
+"@global-modules/swc-plugin@workspace:^, @global-modules/swc-plugin@workspace:packages/swc-plugin":
   version: 0.0.0-use.local
   resolution: "@global-modules/swc-plugin@workspace:packages/swc-plugin"
   dependencies:
@@ -3624,6 +3624,9 @@ __metadata:
   resolution: "demo@workspace:demo"
   dependencies:
     "@fastify/websocket": "npm:^11.0.1"
+    "@global-modules/esbuild-plugin": "workspace:^"
+    "@global-modules/runtime": "workspace:^"
+    "@global-modules/swc-plugin": "workspace:^"
     "@parcel/watcher": "npm:^2.5.0"
     "@swc-node/register": "npm:^1.10.9"
     "@swc/core": "npm:^1.10.1"

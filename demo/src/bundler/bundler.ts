@@ -1,64 +1,78 @@
-import * as esbuild from 'esbuild';
 import assert from 'node:assert';
-import path from 'node:path';
+import * as fs from 'node:fs';
+import * as path from 'node:path';
+import * as esbuild from 'esbuild';
 import type pino from 'pino';
+import type { DependencyManager } from '@global-modules/esbuild-plugin';
+import { createTransformPlugin } from './transformPlugin';
 
-let logger: pino.BaseLogger | null = null;
-let cachedBuildResult: esbuild.BuildResult | null = null;
 const CLIENT_SOURCE = path.resolve(__dirname, '../client/index.ts');
 
-function setLogger<T extends pino.BaseLogger>(_logger: T) {
-  logger = _logger;
-}
+class Bundler {
+  private logger: pino.BaseLogger | null = null;
+  private cachedBuildResult: esbuild.BuildResult | null = null;
+  private dependencyManager: DependencyManager | null = null;
 
-function invalidateCache() {
-  cachedBuildResult = null;
-}
+  private async build() {
+    const transformPlugin = createTransformPlugin();
 
-async function getBundle() {
-  if (cachedBuildResult) {
-    logger?.info('Bundler :: cache hit');
-  } else {
-    logger?.info('Bundler :: build triggered');
-    cachedBuildResult = await build();
+    this.dependencyManager = transformPlugin.dependencyManager;
+
+    const buildResult = await esbuild.build({
+      entryPoints: [CLIENT_SOURCE],
+      bundle: true,
+      sourcemap: true,
+      metafile: false,
+      write: false,
+      banner: {
+        // Inject `@global-modules/runtime` as a prelude script.
+        js: await this.getPreludeScript(),
+      },
+      plugins: [transformPlugin.plugin],
+    });
+
+    return buildResult;
   }
 
-  return getSource(cachedBuildResult);
+  private async getPreludeScript() {
+    const source = await fs.promises.readFile(
+      require.resolve('@global-modules/runtime'),
+      {
+        encoding: 'utf-8',
+      },
+    );
+
+    return source;
+  }
+
+  private getSource(buildResult: esbuild.BuildResult) {
+    const data = buildResult.outputFiles?.[0].contents;
+
+    assert(data, 'invalid bundle result');
+
+    return data;
+  }
+
+  async getBundle() {
+    if (this.cachedBuildResult) {
+      this.logger?.info('Bundler :: cache hit');
+    } else {
+      this.logger?.info('Bundler :: build triggered');
+      this.cachedBuildResult = await this.build();
+    }
+
+    const bundleResult = this.cachedBuildResult;
+
+    return this.getSource(bundleResult);
+  }
+
+  setLogger<T extends pino.BaseLogger>(logger: T) {
+    this.logger = logger;
+  }
+
+  invalidateCache() {
+    this.cachedBuildResult = null;
+  }
 }
 
-async function build() {
-  const buildResult = await esbuild.build({
-    entryPoints: [CLIENT_SOURCE],
-    bundle: true,
-    sourcemap: true,
-    metafile: false,
-    write: false,
-    inject: [], // TODO
-    plugins: [], // TODO
-  });
-
-  await printMessages(buildResult);
-
-  return buildResult;
-}
-
-async function printMessages(buildResult: esbuild.BuildResult) {
-  const messages = (
-    await Promise.all([
-      esbuild.formatMessages(buildResult.errors, { kind: 'error' }),
-      esbuild.formatMessages(buildResult.warnings, { kind: 'warning' }),
-    ])
-  ).flat();
-
-  messages.forEach(console.log);
-}
-
-function getSource(buildResult: esbuild.BuildResult) {
-  const data = buildResult.outputFiles?.[0].contents;
-
-  assert(data, 'invalid bundle result');
-
-  return data;
-}
-
-export const Bundler = { setLogger, invalidateCache, getBundle };
+export const bundler = new Bundler();

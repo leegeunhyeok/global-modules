@@ -3,19 +3,15 @@
   "version": "0.0.0",
   "types": "./dist/index.d.ts",
   "main": "./dist/index.js",
-  "module": "./esm/index.mjs",
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
-      "import": "./esm/index.mjs",
-      "require": "./cjs/index.cjs",
       "default": "./dist/index.js"
     }
   },
   "files": [
     "./dist/**/*.js",
-    "./cjs/**/*.cjs",
-    "./esm/**/*.mjs"
+    "./dist/**/*.d.ts"
   ],
   "scripts": {
     "prepack": "yarn cleanup && yarn build",
@@ -23,7 +19,7 @@
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest --run",
     "test:watch": "vitest --watch",
-    "cleanup": "rm -rf dist cjs esm",
+    "cleanup": "rm -rf dist",
     "build": "node build/index.mjs && tsc -p tsconfig.build.json"
   },
   "devDependencies": {

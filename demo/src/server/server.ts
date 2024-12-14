@@ -2,7 +2,7 @@ import fastify from 'fastify';
 import fastifyWebsocket from '@fastify/websocket';
 import { handler as webSocketHandler } from './ws';
 import { indexRoute, bundleRoute } from './routes';
-import { Bundler } from '../bundler';
+import { bundler } from '../bundler';
 
 const server = fastify({
   logger: {
@@ -16,7 +16,7 @@ const server = fastify({
   },
 });
 
-Bundler.setLogger(server.log);
+bundler.setLogger(server.log);
 
 server
   .get(...indexRoute)
