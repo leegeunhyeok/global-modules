@@ -210,6 +210,28 @@ describe('@global-modules/runtime', () => {
         value: 100,
       });
     });
+
+    it('ESModule interop', () => {
+      context.evaluate(`
+        var __ctx = __modules.register(1);
+        __ctx.module.exports = {
+          default: 100,
+        };
+        Object.defineProperty(__ctx.module.exports, '__esModule', {
+          value: true,
+        });
+      `);
+
+      context.evaluate(`
+        var __ctx = __modules.register(2);
+        var mod = __ctx.require(1);
+        print(mod);
+      `);
+
+      expect(mockedPrint).toBeCalledWith({
+        default: 100,
+      });
+    });
   });
 
   describe('ESModule', () => {
