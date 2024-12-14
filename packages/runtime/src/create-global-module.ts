@@ -14,7 +14,7 @@ export function createGlobalModule(): GlobalModule {
   function __require(id: ModuleId): Exports {
     const module = getModule(id);
 
-    return isExports(module.exports)
+    return module.exports.__esModule || isExports(module.exports)
       ? module.exports
       : { default: module.exports };
   }
