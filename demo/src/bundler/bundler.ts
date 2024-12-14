@@ -6,7 +6,7 @@ import type pino from 'pino';
 import type { DependencyManager } from '@global-modules/esbuild-plugin';
 import { createTransformPlugin } from './transformPlugin';
 
-const CLIENT_SOURCE = path.resolve(__dirname, '../client/index.ts');
+const CLIENT_SOURCE = path.resolve(__dirname, '../client/index.js');
 
 class Bundler {
   private logger: pino.BaseLogger | null = null;
