@@ -2739,6 +2739,15 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@types/ws@npm:^8":
+  version: 8.5.13
+  resolution: "@types/ws@npm:8.5.13"
+  dependencies:
+    "@types/node": "npm:*"
+  checksum: 10c0/a5430aa479bde588e69cb9175518d72f9338b6999e3b2ae16fc03d3bdcff8347e486dc031e4ed14601260463c07e1f9a0d7511dfc653712b047c439c680b0b34
+  languageName: node
+  linkType: hard
+
 "@vitest/expect@npm:2.1.1":
   version: 2.1.1
   resolution: "@vitest/expect@npm:2.1.1"
@@ -3631,11 +3640,13 @@ __metadata:
     "@swc-node/register": "npm:^1.10.9"
     "@swc/core": "npm:^1.10.1"
     "@types/node": "npm:^22"
+    "@types/ws": "npm:^8"
     esbuild: "npm:^0.24.0"
     fastify: "npm:^5.1.0"
     pino: "npm:^9.5.0"
     pino-pretty: "npm:^13.0.0"
     typescript: "npm:5.6.2"
+    ws: "npm:^8.18.0"
   languageName: unknown
   linkType: soft
 
@@ -6693,7 +6704,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"ws@npm:^8.16.0":
+"ws@npm:^8.16.0, ws@npm:^8.18.0":
   version: 8.18.0
   resolution: "ws@npm:8.18.0"
   peerDependencies:

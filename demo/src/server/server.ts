@@ -1,24 +1,37 @@
-import fastify from 'fastify';
+import fastify, { FastifyInstance } from 'fastify';
 import fastifyWebsocket from '@fastify/websocket';
-import { handler as webSocketHandler } from './ws';
+import { createWebSocketHandler, WebSocketDelegate } from './ws';
 import { indexRoute, bundleRoute } from './routes';
 
-const server = fastify({
-  logger: {
-    transport: {
-      target: 'pino-pretty',
-      options: {
-        translateTime: 'yyyy-mm-dd HH:MM:ss Z',
-        ignore: 'pid,hostname',
+export function createServer(): FastifyInstance & {
+  delegate: WebSocketDelegate;
+} {
+  const server = fastify({
+    logger: {
+      transport: {
+        target: 'pino-pretty',
+        options: {
+          translateTime: 'yyyy-mm-dd HH:MM:ss Z',
+          ignore: 'pid,hostname',
+        },
       },
     },
-  },
-});
+  });
 
-server
-  .get(...indexRoute)
-  .get(...bundleRoute)
-  .register(fastifyWebsocket)
-  .register(webSocketHandler);
+  const wsHandler = createWebSocketHandler({
+    onConnection: (socket) => {
+      server.log.info(socket, 'WebSocket :: Connected');
+    },
+    onDisconnect: () => {
+      server.log.info('WebSocket :: Disconnected');
+    },
+  });
 
-export { server };
+  server
+    .get(...indexRoute)
+    .get(...bundleRoute)
+    .register(fastifyWebsocket)
+    .register(wsHandler.plugin);
+
+  return Object.assign(server, { delegate: wsHandler.delegate });
+}

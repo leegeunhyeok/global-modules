@@ -3,20 +3,25 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import * as esbuild from 'esbuild';
 import type pino from 'pino';
-import type { DependencyManager } from '@global-modules/esbuild-plugin';
+import type { DependencyManager, Module } from '@global-modules/esbuild-plugin';
 import * as watcher from './watcher';
 import { createTransformPlugin } from './transformPlugin';
 import { Event } from '@parcel/watcher';
+import { WebSocketDelegate } from '../server/ws';
+import { transform } from './transform';
+import { Phase } from '@global-modules/swc-plugin';
 
 const CLIENT_SOURCE_BASE = path.resolve(__dirname, '../client');
 const CLIENT_SOURCE_ENTRY = path.join(CLIENT_SOURCE_BASE, 'index.js');
 
 interface BundlerConfig {
+  delegate: WebSocketDelegate;
   logger: pino.BaseLogger;
 }
 
 export class Bundler {
   public static instance: Bundler | null = null;
+  private delegate: WebSocketDelegate | null = null;
   private logger: pino.BaseLogger | null = null;
   private cachedBuildResult: esbuild.BuildResult | null = null;
   private dependencyManager: DependencyManager | null = null;
@@ -72,13 +77,15 @@ export class Bundler {
 
   private watchHandler(events: Event[]) {
     events.forEach(async (event) => {
+      let affectedModule: Module | null = null;
+
       if (this.dependencyManager == null) {
         return;
       }
 
       switch (event.type) {
         case 'create':
-          this.dependencyManager.addModule(event.path);
+          affectedModule = this.dependencyManager.addModule(event.path);
           break;
 
         case 'delete':
@@ -86,24 +93,49 @@ export class Bundler {
           break;
 
         case 'update':
-          await this.dependencyManager.syncModule(event.path);
+          affectedModule = await this.dependencyManager.syncModule(event.path);
           break;
       }
 
-      try {
-        const existingModule = this.dependencyManager.getModule(event.path);
-
-        this.logger?.info(existingModule, `Target: ${event.path}`);
-      } catch {
-        this.logger?.warn(`The ${event.path} module may have been removed`);
+      if (affectedModule) {
+        this.logger?.info(affectedModule, `Affected module`);
+        this.sendHMR(affectedModule);
       }
     });
+  }
+
+  private async sendHMR(module: Module) {
+    if (this.dependencyManager == null || this.delegate == null) {
+      return;
+    }
+
+    const inverseDependencies = this.dependencyManager.inverseDependenciesOf(
+      module.id,
+    );
+
+    const transformedCodeList = await Promise.all(
+      inverseDependencies.map(async (module) => {
+        const code = await fs.promises.readFile(module.path, {
+          encoding: 'utf-8',
+        });
+
+        return transform(code, path.basename(module.path), {
+          id: module.id,
+          phase: Phase.Runtime,
+        });
+      }),
+    );
+
+    const code = transformedCodeList.join('\n\n');
+
+    console.log(code);
   }
 
   async initialize(config: BundlerConfig) {
     await watcher.watch(CLIENT_SOURCE_BASE, this.watchHandler.bind(this));
 
     this.logger = config.logger;
+    this.delegate = config.delegate;
   }
 
   async getBundle() {

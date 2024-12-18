@@ -1,10 +1,15 @@
 import { Bundler } from '../bundler';
-import { server } from './server';
+import { createServer } from './server';
 
 const PORT = 3000;
 
 async function main() {
-  await Bundler.getInstance().initialize({ logger: server.log });
+  const server = createServer();
+
+  await Bundler.getInstance().initialize({
+    logger: server.log,
+    delegate: server.delegate,
+  });
 
   server
     .listen({ port: PORT })

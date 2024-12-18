@@ -1,16 +1,13 @@
-import * as path from 'node:path';
-import * as fs from 'node:fs';
 import globalModulePlugin, { PluginConfig } from '@global-modules/swc-plugin';
 import * as swc from '@swc/core';
-import { OnLoadArgs } from 'esbuild';
 
-export async function transform(args: OnLoadArgs, pluginConfig: PluginConfig) {
-  const source = await fs.promises.readFile(args.path, {
-    encoding: 'utf-8',
-  });
-
+export async function transform(
+  source: string,
+  filename: string,
+  pluginConfig: PluginConfig,
+) {
   const { code } = await swc.transform(source, {
-    filename: path.basename(args.path),
+    filename,
     configFile: false,
     jsc: {
       parser: {

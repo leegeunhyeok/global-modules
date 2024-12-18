@@ -1,14 +1,41 @@
 import type { WebsocketHandler } from '@fastify/websocket';
+import * as ws from 'ws';
 
-export const handler: WebsocketHandler = async function (fastifyInstance) {
-  fastifyInstance.get('/websocket', { websocket: true }, (connection, req) => {
-    connection.socket.on('message', (message: string) => {
-      console.log('Received:', message);
-      connection.socket.send(`Echo: ${message}`);
-    });
+interface CreateWebSocketHandlerConfig {
+  onConnection: (ws: WebSocket) => void;
+  onDisconnect: () => void;
+}
 
-    connection.socket.on('close', () => {
-      console.log('WebSocket connection closed');
+export interface WebSocketDelegate {
+  send: (code: string) => void;
+}
+
+export function createWebSocketHandler(config: CreateWebSocketHandlerConfig): {
+  plugin: WebsocketHandler;
+  delegate: WebSocketDelegate;
+} {
+  let socket: ws.WebSocket | null = null;
+
+  const plugin = async function (fastifyInstance) {
+    fastifyInstance.get('/hot', { websocket: true }, (connection) => {
+      socket = connection.socket;
+      config.onConnection(connection.socket);
+
+      connection.socket.on('close', () => {
+        config.onDisconnect();
+      });
     });
-  });
-};
+  };
+
+  const delegate: WebSocketDelegate = {
+    send(code: string) {
+      if (socket == null) {
+        return;
+      }
+
+      socket.send(code);
+    },
+  };
+
+  return { plugin, delegate };
+}
