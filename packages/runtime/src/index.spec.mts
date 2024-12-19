@@ -7,7 +7,7 @@ import type { GlobalModule } from './types.js';
 type RuntimeResult = unknown;
 
 const runtimeCode = await fs.readFile(
-  path.resolve(import.meta.dirname, '../esm/index.mjs'),
+  path.resolve(import.meta.dirname, '../dist/index.js'),
   {
     encoding: 'utf-8',
   },

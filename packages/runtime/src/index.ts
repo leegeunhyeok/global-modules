@@ -10,6 +10,10 @@ if (GLOBAL_MODULE_PROPERTY in globalContext) {
   );
 }
 
+if (typeof global === 'undefined') {
+  globalContext.global = globalContext;
+}
+
 Object.defineProperty(globalContext, GLOBAL_MODULE_PROPERTY, {
   value: createGlobalModule(),
 });
