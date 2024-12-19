@@ -39,7 +39,7 @@
     "esbuild": "*"
   },
   "dependencies": {
-    "esbuild-dependency-graph": "^0.13.0",
+    "esbuild-dependency-graph": "^0.15.0",
     "esresolve": "^0.3.2"
   }
 }
