@@ -85,15 +85,12 @@ export class Bundler {
 
       switch (event.type) {
         case 'create':
-          affectedModule = this.dependencyManager.addModule(event.path);
+        case 'update':
+          affectedModule = await this.dependencyManager.syncModule(event.path);
           break;
 
         case 'delete':
           this.dependencyManager.removeModule(event.path);
-          break;
-
-        case 'update':
-          affectedModule = await this.dependencyManager.syncModule(event.path);
           break;
       }
 
@@ -109,26 +106,50 @@ export class Bundler {
       return;
     }
 
+    let invalid = false;
+
     const inverseDependencies = this.dependencyManager.inverseDependenciesOf(
       module.id,
     );
 
     const transformedCodeList = await Promise.all(
-      inverseDependencies.map(async (module) => {
+      [module, ...inverseDependencies].map(async (module) => {
         const code = await fs.promises.readFile(module.path, {
           encoding: 'utf-8',
         });
 
+        if (
+          module.meta?.imports &&
+          module.dependencies.length !==
+            Object.keys(module.meta?.imports ?? {}).length
+        ) {
+          invalid = true;
+          console.warn('dependency meta is mismatch');
+          return '';
+        }
+
+        const imports = Object.entries(module.meta.imports).reduce(
+          (prev, [original, value]) => {
+            return { ...prev, [original]: value.id };
+          },
+          {},
+        );
+
         return transform(code, path.basename(module.path), {
           id: module.id,
           phase: Phase.Runtime,
+          dependencyIds: imports,
         });
       }),
     );
 
-    const code = transformedCodeList.join('\n\n');
+    if (invalid) {
+      console.log('window.reload();');
+    } else {
+      const code = transformedCodeList.join('\n\n');
 
-    console.log(code);
+      console.log(code);
+    }
   }
 
   async initialize(config: BundlerConfig) {
