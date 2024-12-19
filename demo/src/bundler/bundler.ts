@@ -112,6 +112,7 @@ export class Bundler {
       module.id,
     );
 
+    const t0 = performance.now();
     const transformedCodeList = await Promise.all(
       [module, ...inverseDependencies].map(async (module) => {
         const code = await fs.promises.readFile(module.path, {
@@ -146,9 +147,11 @@ export class Bundler {
     if (invalid) {
       console.log('window.reload();');
     } else {
+      const t1 = performance.now();
       const code = transformedCodeList.join('\n\n');
 
       console.log(code);
+      console.log(`[HMR] Module transformed in ${Math.floor(t1 - t0)}ms`);
     }
   }
 
