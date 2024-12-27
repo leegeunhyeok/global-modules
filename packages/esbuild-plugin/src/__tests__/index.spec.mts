@@ -123,6 +123,10 @@ describe('@global-modules/esbuild-plugin', () => {
 
       const module = dependencyManager.addModule(
         'src/__tests__/__fixtures__/new-module.ts',
+        {
+          dependencies: [],
+          dependents: [],
+        },
       );
 
       expect(module.dependencies).toHaveLength(0);
@@ -133,8 +137,10 @@ describe('@global-modules/esbuild-plugin', () => {
 
       const module = dependencyManager.updateModule(
         'src/__tests__/__fixtures__/new-module.ts',
-        [],
-        ['src/__tests__/__fixtures__/index.ts'],
+        {
+          dependencies: [],
+          dependents: ['src/__tests__/__fixtures__/index.ts'],
+        },
       );
 
       /**

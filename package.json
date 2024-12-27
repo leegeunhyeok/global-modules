@@ -2,7 +2,8 @@
   "name": "global-modules",
   "packageManager": "yarn@4.5.3",
   "workspaces": [
-    "packages/*"
+    "packages/*",
+    "demo"
   ],
   "scripts": {
     "nx:graph": "nx graph",

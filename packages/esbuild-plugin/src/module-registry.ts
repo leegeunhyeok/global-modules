@@ -35,7 +35,7 @@ export class ModuleRegistry
   register(actualPath: string): Module {
     return this.hasModule(actualPath)
       ? this.getModule(actualPath)
-      : this.addModule(actualPath, [], []);
+      : this.addModule(actualPath, { dependents: [], dependencies: [] });
   }
 
   async syncModule(actualPath: string): Promise<Module> {
@@ -52,13 +52,21 @@ export class ModuleRegistry
       (result) => this.register(result.path).id,
     );
 
+    const imports = resolveResult.reduce((prev, curr) => {
+      return { ...prev, [curr.request]: this.getModule(curr.path).id };
+    }, {});
+
     // And register or update target module.
     return this.hasModule(actualPath)
-      ? this.updateModule(
-          actualPath,
+      ? this.updateModule(actualPath, {
           dependencies,
-          this.getModule(actualPath).dependents,
-        )
-      : this.addModule(actualPath, dependencies, []);
+          dependents: this.getModule(actualPath).dependents,
+          meta: { imports },
+        })
+      : this.addModule(actualPath, {
+          dependencies,
+          dependents: [],
+          meta: { imports },
+        });
   }
 }
