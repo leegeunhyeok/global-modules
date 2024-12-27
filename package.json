@@ -12,7 +12,7 @@
     "test": "nx run-many -t test",
     "build": "nx run-many -t build",
     "release": "nx release --skip-publish",
-    "publish": "nx publish"
+    "publish": "nx release publish"
   },
   "engines": {
     "node": ">=22"
