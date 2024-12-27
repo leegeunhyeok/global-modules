@@ -1,6 +1,6 @@
 {
   "name": "@global-modules/swc-plugin",
-  "version": "0.0.0",
+  "version": "0.0.0-dev.20241227172816",
   "types": "./dist/index.d.ts",
   "main": "./dist/index.js",
   "module": "./esm/index.mjs",
