@@ -11,4 +11,4 @@ const timestamp =
 const version = `0.0.0-dev.${timestamp}`;
 
 await $`git switch -c release/${version}`;
-await $`yarn nx release --tag dev`;
+await $`yarn nx release ${version} --tag dev`;
