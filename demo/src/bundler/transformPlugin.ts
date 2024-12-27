@@ -28,8 +28,21 @@ export function createTransformPlugin() {
           phase: Phase.Register,
         });
 
-        return { loader: 'js', contents: code };
+        return { loader: 'js', contents: registerHotModule(code, args.id) };
       });
     },
   });
+}
+
+function registerHotModule(code: string, id: number) {
+  return [
+    code,
+    `
+    if (window.__hot) {
+      const context = window.__hot.register(${id});
+      context.dispose(() => console.log('[HMR] Disposed', ${id}));
+      context.accept(() => console.log('[HMR] Accepted', ${id}));
+    }
+    `,
+  ].join('\n');
 }

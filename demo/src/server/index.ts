@@ -15,6 +15,7 @@ async function main() {
     .listen({ port: PORT })
     .then(() => {
       console.log(`Server is running at http://localhost:${PORT}`);
+      console.log('Waiting for client connection...');
     })
     .catch((error) => {
       console.error('unexpected error', error);

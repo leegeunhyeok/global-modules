@@ -95,13 +95,14 @@ export class Bundler {
       }
 
       if (affectedModule) {
-        this.logger?.info(affectedModule, `Affected module`);
-        this.sendHMR(affectedModule);
+        await this.transformAffectedModules(affectedModule).catch((error) => {
+          this.logger?.error(error?.message ?? 'unknown transform error');
+        });
       }
     });
   }
 
-  private async sendHMR(module: Module) {
+  private async transformAffectedModules(baseModule: Module) {
     if (this.dependencyManager == null || this.delegate == null) {
       return;
     }
@@ -109,12 +110,12 @@ export class Bundler {
     let invalid = false;
 
     const inverseDependencies = this.dependencyManager.inverseDependenciesOf(
-      module.id,
+      baseModule.id,
     );
 
     const t0 = performance.now();
     const transformedCodeList = await Promise.all(
-      [module, ...inverseDependencies].map(async (module) => {
+      [baseModule, ...inverseDependencies].map(async (module) => {
         const code = await fs.promises.readFile(module.path, {
           encoding: 'utf-8',
         });
@@ -145,13 +146,23 @@ export class Bundler {
     );
 
     if (invalid) {
-      console.log('window.reload();');
+      console.log('[HMR] Invalid modules (will be reloaded)');
+
+      this.delegate.send(JSON.stringify({ type: 'reload' }));
     } else {
       const t1 = performance.now();
       const code = transformedCodeList.join('\n\n');
+      console.log(
+        `[HMR] ${transformedCodeList.length} module(s) transformed in ${Math.floor(t1 - t0)}ms`,
+      );
 
-      console.log(code);
-      console.log(`[HMR] Module transformed in ${Math.floor(t1 - t0)}ms`);
+      this.delegate.send(
+        JSON.stringify({
+          type: 'update',
+          id: module.id,
+          body: code,
+        }),
+      );
     }
   }
 

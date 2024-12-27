@@ -4,6 +4,13 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>@global-modules</title>
+    <style>
+      #banner {
+        width: 100%;
+        height: 50px;
+        border: 1px solid #eee;
+      }
+    </style>
     <script type="application/javascript">
       if (!window.__hot) {
         class HotContext {
@@ -36,7 +43,7 @@
         window.global = window;
         window.__hot = {
           register(moduleId) {
-            console.log('__modules.hot.register', moduleId);
+            console.log('[HMR] Register module ::', moduleId);
             const existContext = __r[moduleId];
             if (existContext) {
               existContext.lock();
@@ -49,6 +56,8 @@
         const hmrSocket = new WebSocket('ws://localhost:3000/hot');
         hmrSocket.addEventListener('message', async (event) => {
           const payload = JSON.parse(event.data);
+          console.log('[HMR] onMessage ::', payload);
+
           switch (payload.type) {
             /**
              * {
@@ -82,8 +91,10 @@
     </script>
   </head>
   <body>
-    <h1>Open DevTools (Console)</h1>
-    <p>Edit demo/src/client/*</p>
+    <div id="banner"></div>
+    <pre id="result">
+      <!-- result -->
+    </pre>
     <script src="__BUNDLE_FILE_PATH__"></script>
   </body>
 </html>

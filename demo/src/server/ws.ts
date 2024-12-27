@@ -1,8 +1,9 @@
 import type { WebsocketHandler } from '@fastify/websocket';
+import type { FastifyPluginAsync, RouteShorthandOptions } from 'fastify';
 import * as ws from 'ws';
 
 interface CreateWebSocketHandlerConfig {
-  onConnection: (ws: WebSocket) => void;
+  onConnection: (ws: ws.WebSocket) => void;
   onDisconnect: () => void;
 }
 
@@ -11,29 +12,38 @@ export interface WebSocketDelegate {
 }
 
 export function createWebSocketHandler(config: CreateWebSocketHandlerConfig): {
-  plugin: WebsocketHandler;
+  plugin;
   delegate: WebSocketDelegate;
 } {
-  let socket: ws.WebSocket | null = null;
+  let _socket: ws.WebSocket | null = null;
 
-  const plugin = async function (fastifyInstance) {
-    fastifyInstance.get('/hot', { websocket: true }, (connection) => {
-      socket = connection.socket;
-      config.onConnection(connection.socket);
+  const plugin: FastifyPluginAsync = async function (fastifyInstance) {
+    const handler: WebsocketHandler = (socket) => {
+      _socket = socket;
 
-      connection.socket.on('close', () => {
+      socket.on('close', () => {
+        _socket = null;
         config.onDisconnect();
       });
-    });
+
+      config.onConnection(socket);
+    };
+
+    fastifyInstance.get(
+      '/hot',
+      // FIXME: Type of `websocket` is not correct.
+      { websocket: true } as RouteShorthandOptions,
+      handler,
+    );
   };
 
   const delegate: WebSocketDelegate = {
     send(code: string) {
-      if (socket == null) {
+      if (_socket == null) {
         return;
       }
 
-      socket.send(code);
+      _socket.send(code);
     },
   };
 

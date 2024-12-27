@@ -19,8 +19,8 @@ export function createServer(): FastifyInstance & {
   });
 
   const wsHandler = createWebSocketHandler({
-    onConnection: (socket) => {
-      server.log.info(socket, 'WebSocket :: Connected');
+    onConnection: (_socket) => {
+      server.log.info('WebSocket :: Connected');
     },
     onDisconnect: () => {
       server.log.info('WebSocket :: Disconnected');
