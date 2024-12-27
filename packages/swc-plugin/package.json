@@ -19,7 +19,7 @@
     "fetch": "cargo fetch",
     "lint": "cargo fmt --all --check",
     "test": "cargo test --all -- --include-ignored",
-    "cleanup": "cargo cleanup && rm -rf dist cjs esm",
+    "cleanup": "cargo clean && rm -rf dist cjs esm",
     "build": "yarn build:rust && yarn build:typescript",
     "build:rust": "cargo wasm32-wasip1 --release",
     "build:typescript": "node build/index.mjs && tsc -p tsconfig.build.json"
