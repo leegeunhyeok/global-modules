@@ -13,4 +13,4 @@ const version = `0.0.0-dev.${timestamp}`;
 await $`git switch -c release/${version}`;
 await $`yarn nx release ${version} --skip-publish`;
 
-console.log('👉 `nx release publish`');
+console.log('👉 `yarn nx release publish --access public --tag dev --otp XXX`');
