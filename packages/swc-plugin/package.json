@@ -12,6 +12,12 @@
       "default": "./dist/index.js"
     }
   },
+  "files": [
+    "dist",
+    "esm",
+    "cjs",
+    "swc_plugin_global_modules.wasm"
+  ],
   "scripts": {
     "prepack": "yarn cleanup && yarn build",
     "demo": "node demo/index.mjs",
@@ -21,7 +27,7 @@
     "test": "cargo test --all -- --include-ignored",
     "cleanup": "cargo clean && rm -rf dist cjs esm",
     "build": "yarn build:rust && yarn build:typescript",
-    "build:rust": "cargo wasm32-wasip1 --release",
+    "build:rust": "cargo wasm32-wasip1 --release && mv target/wasm32-wasip1/release/swc_plugin_global_modules.wasm .",
     "build:typescript": "node build/index.mjs && tsc -p tsconfig.build.json"
   },
   "devDependencies": {
