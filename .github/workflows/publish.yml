@@ -3,6 +3,7 @@ name: Publish
 on:
   push:
     branches:
+      - 'main'
       - 'dev/*'
 
 env:
@@ -13,6 +14,44 @@ permissions:
   contents: write
 
 jobs:
+  publish:
+    name: Publish to NPM
+    if: github.ref_name == 'main' && contains(github.event.head_commit.message, 'chore(release):')
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.12.0
+
+      - name: Enable corepack
+        run: corepack enable
+
+      - name: Setup rust
+        if: steps.rust-cache.outputs.cache-hit != 'true'
+        run: |
+          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- --default-toolchain=$RUST_TOOLCHAIN_VERSION -y
+          . "$HOME/.cargo/env"
+          rustup target add wasm32-wasip1
+
+      - name: Install dependencies
+        run: yarn install --immutable
+
+      - name: Prepare
+        env:
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          echo "//registry.npmjs.org/:_authToken=${NPM_TOKEN}" > ~/.npmrc
+
+      - name: Publish package
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: yarn nx release publish --access public --tag latest --yes
+
   publish-dev:
     name: Publish to NPM (Dev)
     if: contains(github.event.head_commit.message, 'skip ci') == false

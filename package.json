@@ -11,9 +11,7 @@
     "typecheck": "nx run-many -t typecheck",
     "test": "nx run-many -t test",
     "build": "nx run-many -t build",
-    "release": "nx release --skip-publish",
-    "publish": "nx release publish",
-    "publish:dev": "nx release 0.0.0-dev.$(date +'%Y%m%d%H%M%S')"
+    "release": "sh .scripts/release.sh"
   },
   "engines": {
     "node": ">=22"
