@@ -1,0 +1,44 @@
+name: Publish
+
+on:
+  push:
+    branches:
+      - '**' # todo: dev/*
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_TOOLCHAIN_VERSION: nightly-2024-10-07
+
+jobs:
+  publish-dev:
+    name: Publish to NPM (Dev)
+    if: contains(github.event.head_commit.message, 'skip ci') == false
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.12.0
+          cache: 'yarn'
+
+      - name: Prepare credentials
+        env:
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: echo "//registry.npmjs.org/:_authToken=${NPM_TOKEN}" > ~/.npmrc
+
+      - name: Enable corepack
+        run: corepack enable
+
+      - name: Setup rust
+        if: steps.rust-cache.outputs.cache-hit != 'true'
+        run: |
+          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- --default-toolchain=$RUST_TOOLCHAIN_VERSION -y
+          . "$HOME/.cargo/env"
+          rustup target add wasm32-wasip1
+
+      - name: Install dependencies
+        run: yarn install --immutable
+
+      - name: Publish package
+        run: yarn publish:dev --yes
