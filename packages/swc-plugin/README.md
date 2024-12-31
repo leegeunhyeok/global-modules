@@ -16,8 +16,9 @@ await swc.transform(code, {
           globalModulePlugin,
           {
             id: 1,
-            phase: Phase.Bundle, // or Phase.Runtime
-            // ID values used to replace the original sources
+            // `Phase.Bundle` or `Phase.Runtime`.
+            phase: Phase.Bundle,
+            // ID values used to replace the original sources.
             dependencyIds: {
               react: 1000,
               './Container': 1234,
@@ -69,7 +70,7 @@ var __x;
 ```ts
 var __ctx = global.__modules.getContext(1);
 var { default: React, useState, useCallback } = __ctx.require(1000);
-var { Component } = __ctx.require('./Container');
+var { Component } = __ctx.require(1234);
 __x = function Component() {
   // ...
 };
