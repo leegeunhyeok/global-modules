@@ -27,11 +27,6 @@ jobs:
       - name: Enable corepack
         run: corepack enable
 
-      - name: Prepare credentials
-        env:
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
-        run: echo "//registry.npmjs.org/:_authToken=${NPM_TOKEN}" > ~/.npmrc
-
       - name: Setup rust
         if: steps.rust-cache.outputs.cache-hit != 'true'
         run: |
@@ -41,6 +36,11 @@ jobs:
 
       - name: Install dependencies
         run: yarn install --immutable
+
+      - name: Prepare
+        env:
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: echo "//registry.npmjs.org/:_authToken=${NPM_TOKEN}" > ~/.npmrc
 
       - name: Publish package
         run: |
