@@ -221,9 +221,10 @@ pub mod ast {
             AssignTarget::Simple(SimpleAssignTarget::Member(member_expr)) => {
                 if member_expr.obj.is_ident_ref_to("exports") && member_expr.prop.is_ident() {
                     // `exports.foo = ...;`
+                    // `exports['foo'] = ...;`
                     get_new_assign_expr(
                         *assign_expr.right.clone(),
-                        member_expr.prop.as_ident().unwrap().sym.as_str().into(),
+                        get_sym_from_member_prop(&member_expr.prop).into(),
                     )
                 } else if is_cjs_module_member(member_expr) {
                     // `module.exports = ...;`
@@ -231,9 +232,10 @@ pub mod ast {
                 } else if let Some(leading_member) = member_expr.obj.as_member() {
                     if is_cjs_module_member(leading_member) {
                         // `module.exports.foo = ...;`
+                        // `module.exports['foo'] = ...;`
                         get_new_assign_expr(
                             *assign_expr.right.clone(),
-                            member_expr.prop.as_ident().unwrap().sym.as_str().into(),
+                            get_sym_from_member_prop(&member_expr.prop).into(),
                         )
                     } else {
                         None
@@ -414,6 +416,17 @@ pub mod ast {
                 src_lit
             }
             _ => panic!("unsupported"),
+        }
+    }
+
+    pub fn get_sym_from_member_prop(prop: &MemberProp) -> &str {
+        match prop {
+            MemberProp::Ident(ident) => ident.sym.as_str(),
+            MemberProp::Computed(ComputedPropName { expr, .. }) => match &**expr {
+                Expr::Lit(Lit::Str(str_lit)) => str_lit.value.as_str(),
+                _ => panic!("invalid expression for computed property"),
+            },
+            _ => panic!("unsupported property type"),
         }
     }
 
