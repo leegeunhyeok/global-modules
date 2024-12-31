@@ -42,8 +42,5 @@
   "peerDependencies": {
     "@swc/core": "*",
     "esbuild": "*"
-  },
-  "publishConfig": {
-    "access": "public"
   }
 }
