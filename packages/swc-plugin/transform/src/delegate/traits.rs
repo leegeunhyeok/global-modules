@@ -6,7 +6,7 @@ pub trait AstDelegate {
     fn import(&mut self, import_decl: &ImportDecl);
     fn export_decl(&mut self, export_decl: &ExportDecl) -> ModuleItem;
     fn export_default_decl(&mut self, export_default_decl: &ExportDefaultDecl) -> ModuleItem;
-    fn export_default_expr(&mut self, export_default_expr: &ExportDefaultExpr) -> Option<Expr>;
+    fn export_default_expr(&mut self, export_default_expr: &ExportDefaultExpr) -> Expr;
     fn export_named(&mut self, export_named: &NamedExport);
     fn export_all(&mut self, export_all: &ExportAll);
     fn call_expr(&mut self, call_expr: &CallExpr) -> Option<Expr>;

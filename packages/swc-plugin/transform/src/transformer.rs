@@ -101,12 +101,10 @@ impl VisitMut for GlobalModuleTransformer {
                         // ```
                         ModuleDecl::ExportDefaultExpr(export_default_expr) => {
                             export_default_expr.visit_mut_children_with(self);
-
-                            if let Some(new_item) =
-                                self.delegate.export_default_expr(export_default_expr)
-                            {
-                                export_default_expr.expr = new_item.into()
-                            }
+                            export_default_expr.expr = self
+                                .delegate
+                                .export_default_expr(export_default_expr)
+                                .into()
                         }
                         // Named export statements.
                         //

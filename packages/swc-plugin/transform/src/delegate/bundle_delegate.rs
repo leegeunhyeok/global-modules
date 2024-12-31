@@ -80,7 +80,7 @@ impl AstDelegate for BundleDelegate {
         export_default_expr
     }
 
-    fn export_default_expr(&mut self, export_default_expr: &ExportDefaultExpr) -> Option<Expr> {
+    fn export_default_expr(&mut self, export_default_expr: &ExportDefaultExpr) -> Expr {
         let orig_expr = export_default_expr.expr.clone();
         let binding_export = BindingExportMember::new("default".into());
         let binding_assign_expr = assign_expr(binding_export.bind_ident.clone(), *orig_expr).into();
@@ -89,7 +89,7 @@ impl AstDelegate for BundleDelegate {
             ExportMember::Binding(binding_export),
         ])));
 
-        Some(binding_assign_expr)
+        binding_assign_expr
     }
 
     fn export_named(&mut self, export_named: &NamedExport) {
