@@ -16,9 +16,11 @@ permissions:
 jobs:
   publish:
     name: Publish to NPM
-    if: github.ref_name == 'main' && contains(github.event.head_commit.message, 'chore(release):')
+    if: |
+      github.ref_name == 'main'
+      && contains(github.event.head_commit.message, 'chore(release):')
+      && contains(github.event.head_commit.message, 'skip ci') == false
     runs-on: ubuntu-latest
-
     steps:
       - uses: actions/checkout@v4
         with:
@@ -54,7 +56,9 @@ jobs:
 
   publish-dev:
     name: Publish to NPM (Dev)
-    if: contains(github.event.head_commit.message, 'skip ci') == false
+    if: |
+      startsWith(github.ref_name, 'dev/')
+      && contains(github.event.head_commit.message, 'skip ci') == false
     runs-on: ubuntu-latest
 
     steps:
