@@ -19,7 +19,7 @@ await swc.transform(code, {
             // `Phase.Bundle` or `Phase.Runtime`.
             phase: Phase.Bundle,
             // ID values used to replace the original sources.
-            dependencyIds: {
+            paths: {
               react: 1000,
               './Container': 1234,
             },

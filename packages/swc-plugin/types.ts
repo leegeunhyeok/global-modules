@@ -6,5 +6,5 @@ export enum Phase {
 export interface PluginConfig {
   id: number;
   phase: Phase;
-  dependencyIds?: Record<string, number>;
+  paths?: Record<string, number>;
 }

@@ -26,7 +26,7 @@ function runtimePreset() {
     {
       id: 1,
       phase: Phase.Runtime,
-      dependencyIds: {
+      paths: {
         react: 1000,
         './foo': 1001,
         './bar': 1002,
