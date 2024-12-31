@@ -20,15 +20,14 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22.12.0
-          cache: 'yarn'
+
+      - name: Enable corepack
+        run: corepack enable
 
       - name: Prepare credentials
         env:
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: echo "//registry.npmjs.org/:_authToken=${NPM_TOKEN}" > ~/.npmrc
-
-      - name: Enable corepack
-        run: corepack enable
 
       - name: Setup rust
         if: steps.rust-cache.outputs.cache-hit != 'true'
