@@ -4,7 +4,16 @@ export enum Phase {
 }
 
 export interface PluginConfig {
+  /**
+   * The module id.
+   */
   id: number;
+  /**
+   * The module phase.
+   */
   phase: Phase;
-  dependencyIds?: Record<string, number>;
+  /**
+   * A map for replacing module sources with IDs.
+   */
+  paths?: Record<string, number>;
 }

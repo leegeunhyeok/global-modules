@@ -27,10 +27,10 @@ impl GlobalModuleTransformer {
 }
 
 impl GlobalModuleTransformer {
-    pub fn new(id: f64, phase: ModulePhase, deps_id: Option<AHashMap<String, f64>>) -> Self {
+    pub fn new(id: f64, phase: ModulePhase, paths: Option<AHashMap<String, f64>>) -> Self {
         let delegate: Box<dyn AstDelegate> = match phase {
             ModulePhase::Bundle => Box::new(BundleDelegate::new(id)),
-            ModulePhase::Runtime => Box::new(RuntimeDelegate::new(id, deps_id)),
+            ModulePhase::Runtime => Box::new(RuntimeDelegate::new(id, paths)),
         };
 
         Self { delegate }
@@ -101,12 +101,10 @@ impl VisitMut for GlobalModuleTransformer {
                         // ```
                         ModuleDecl::ExportDefaultExpr(export_default_expr) => {
                             export_default_expr.visit_mut_children_with(self);
-
-                            if let Some(new_item) =
-                                self.delegate.export_default_expr(export_default_expr)
-                            {
-                                export_default_expr.expr = new_item.into()
-                            }
+                            export_default_expr.expr = self
+                                .delegate
+                                .export_default_expr(export_default_expr)
+                                .into()
                         }
                         // Named export statements.
                         //

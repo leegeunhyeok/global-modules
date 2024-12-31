@@ -140,7 +140,7 @@ export class Bundler {
         return transform(code, path.basename(module.path), {
           id: module.id,
           phase: Phase.Runtime,
-          dependencyIds: imports,
+          paths: imports,
         });
       }),
     );

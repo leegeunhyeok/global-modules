@@ -42,7 +42,7 @@ export function something() {
 ```
 
 ```ts
-// 1. Register phase
+// 1. Bundle phase
 const __ctx = global.__modules.register(1);
 
 import foo from './foo';

@@ -25,7 +25,7 @@ use crate::{
 
 pub struct RuntimeDelegate {
     id: f64,
-    deps_id: Option<AHashMap<String, f64>>,
+    paths: Option<AHashMap<String, f64>>,
     ctx_ident: Ident,
     deps: OHashMap<Atom, ModuleRef>,
     exps: Vec<ExportRef>,
@@ -33,10 +33,10 @@ pub struct RuntimeDelegate {
 }
 
 impl RuntimeDelegate {
-    pub fn new(id: f64, deps_id: Option<AHashMap<String, f64>>) -> Self {
+    pub fn new(id: f64, paths: Option<AHashMap<String, f64>>) -> Self {
         Self {
             id,
-            deps_id,
+            paths,
             ctx_ident: private_ident!("__ctx"),
             deps: OHashMap::default(),
             exps: Vec::default(),
@@ -59,7 +59,7 @@ impl AstDelegate for RuntimeDelegate {
 
         orig_body.retain(|item| item.is_stmt());
 
-        let deps_items = deps_to_ast(&self.ctx_ident, &self.deps, &self.deps_id);
+        let deps_items = deps_to_ast(&self.ctx_ident, &self.deps, &self.paths);
         let ExportsAst {
             leading_body,
             trailing_body,
@@ -114,7 +114,7 @@ impl AstDelegate for RuntimeDelegate {
         assign_expr
     }
 
-    fn export_default_expr(&mut self, export_default_expr: &ExportDefaultExpr) -> Option<Expr> {
+    fn export_default_expr(&mut self, export_default_expr: &ExportDefaultExpr) -> Expr {
         let orig_expr = export_default_expr.expr.clone();
         let binding_export = BindingExportMember::new("default".into());
         let binding_assign_expr = assign_expr(binding_export.bind_ident.clone(), *orig_expr).into();
@@ -123,20 +123,20 @@ impl AstDelegate for RuntimeDelegate {
             ExportMember::Binding(binding_export),
         ])));
 
-        Some(binding_assign_expr)
+        binding_assign_expr
     }
 
     fn export_named(&mut self, export_named: &NamedExport) {
         self.exps
-            .push(export_ref_from_named_export(export_named, &self.deps_id));
+            .push(export_ref_from_named_export(export_named, &self.paths));
     }
 
     fn export_all(&mut self, export_all: &ExportAll) {
         let src = export_all.src.value.clone();
         let id = self
-            .deps_id
+            .paths
             .as_ref()
-            .and_then(|deps_id| deps_id.get(src.as_str()));
+            .and_then(|paths| paths.get(src.as_str()));
 
         self.exps.push(ExportRef::ReExportAll(ReExportAllRef::new(
             src,
@@ -165,7 +165,7 @@ impl AstDelegate for RuntimeDelegate {
                     Expr::Lit(lit) => {
                         return Some(require_call(
                             self.ctx_ident.clone(),
-                            get_src_lit(lit, &self.deps_id),
+                            get_src_lit(lit, &self.paths),
                         ));
                     }
                     _ => panic!("invalid `require` call expression"),
@@ -189,7 +189,7 @@ impl AstDelegate for RuntimeDelegate {
                     Expr::Lit(lit) => {
                         return Some(require_call(
                             self.ctx_ident.clone(),
-                            get_src_lit(lit, &self.deps_id),
+                            get_src_lit(lit, &self.paths),
                         ));
                     }
                     _ => panic!("unsupported dynamic import usage"),
