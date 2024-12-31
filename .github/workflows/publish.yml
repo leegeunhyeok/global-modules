@@ -54,4 +54,4 @@ jobs:
         run: |
           timestamp=$(date +'%Y%m%d%H%M%S')
           yarn nx release "0.0.0-dev.$timestamp" --first-release --skip-publish
-          yarn nx release publish --tag dev --yes
+          yarn nx release publish --access public --tag dev --yes
