@@ -1,0 +1,57 @@
+name: Publish
+
+on:
+  push:
+    branches:
+      - 'dev/*'
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_TOOLCHAIN_VERSION: nightly-2024-10-07
+
+permissions:
+  contents: write
+
+jobs:
+  publish-dev:
+    name: Publish to NPM (Dev)
+    if: contains(github.event.head_commit.message, 'skip ci') == false
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-tags: true
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.12.0
+
+      - name: Enable corepack
+        run: corepack enable
+
+      - name: Setup rust
+        if: steps.rust-cache.outputs.cache-hit != 'true'
+        run: |
+          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- --default-toolchain=$RUST_TOOLCHAIN_VERSION -y
+          . "$HOME/.cargo/env"
+          rustup target add wasm32-wasip1
+
+      - name: Install dependencies
+        run: yarn install --immutable
+
+      - name: Prepare
+        env:
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          git config --global user.email "github-actions@github.com"
+          git config --global user.name "GitHub Actions"
+          echo "//registry.npmjs.org/:_authToken=${NPM_TOKEN}" > ~/.npmrc
+
+      - name: Publish package
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          timestamp=$(date +'%Y%m%d%H%M%S')
+          yarn nx release "0.0.0-dev.$timestamp" --first-release --skip-publish
+          yarn nx release publish --access public --tag dev --yes

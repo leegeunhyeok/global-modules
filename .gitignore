@@ -22,8 +22,9 @@ esm/
 ^target/
 target
 
-# Swc cache
+# Swc
 .swc/
+swc_plugin_global_modules.wasm
 
 # Nx
 .nx/cache
