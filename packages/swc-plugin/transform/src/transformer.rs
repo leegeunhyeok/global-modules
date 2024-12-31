@@ -1,7 +1,7 @@
 use std::mem;
 
 use crate::{
-    delegate::{traits::AstDelegate, RegisterDelegate, RuntimeDelegate},
+    delegate::{traits::AstDelegate, BundleDelegate, RuntimeDelegate},
     phase::ModulePhase,
 };
 use swc_core::{
@@ -29,7 +29,7 @@ impl GlobalModuleTransformer {
 impl GlobalModuleTransformer {
     pub fn new(id: f64, phase: ModulePhase, deps_id: Option<AHashMap<String, f64>>) -> Self {
         let delegate: Box<dyn AstDelegate> = match phase {
-            ModulePhase::Register => Box::new(RegisterDelegate::new(id)),
+            ModulePhase::Bundle => Box::new(BundleDelegate::new(id)),
             ModulePhase::Runtime => Box::new(RuntimeDelegate::new(id, deps_id)),
         };
 

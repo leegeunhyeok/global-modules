@@ -7,11 +7,11 @@ use swc_global_modules::global_modules;
 
 const MODULE_ID: f64 = 1000.0;
 
-#[testing::fixture("tests/fixture/register/**/input.js")]
-fn register_fixture(input: PathBuf) {
+#[testing::fixture("tests/fixture/bundle/**/input.js")]
+fn bundle_fixture(input: PathBuf) {
     let filename = input.to_string_lossy();
     let output = input.with_file_name("output.js");
-    let phase = 0.0; // ModulePhase::Register
+    let phase = 0.0; // ModulePhase::Bundle
 
     test_fixture(
         Syntax::Typescript(TsSyntax {
