@@ -17,6 +17,9 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-tags: true
+
       - uses: actions/setup-node@v4
         with:
           node-version: 22.12.0
@@ -40,4 +43,6 @@ jobs:
         run: yarn install --immutable
 
       - name: Publish package
-        run: yarn publish:dev --yes
+        run: |
+          timestamp=$(date +'%Y%m%d%H%M%S')
+          yarn nx release "0.0.0-dev.$timestamp" --first-release --yes
