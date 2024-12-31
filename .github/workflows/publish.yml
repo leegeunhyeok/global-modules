@@ -9,6 +9,9 @@ env:
   CARGO_TERM_COLOR: always
   RUST_TOOLCHAIN_VERSION: nightly-2024-10-07
 
+permissions:
+  contents: write
+
 jobs:
   publish-dev:
     name: Publish to NPM (Dev)
