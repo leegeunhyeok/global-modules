@@ -17,15 +17,15 @@ export function createTransformPlugin() {
           // Set the module ID provided by `@global-modules/esbuild-plugin`.
           id: args.id,
           // At the initial build, the bundling process should be
-          // delegated to the bundler(eg. esbuild) using the Phase.Register.
+          // delegated to the bundler(eg. esbuild) using the `Phase.Bundle`.
           //
-          // - Phase.Register
+          // - Phase.Bundle
           //   - Keep import & export statements.
           //   - Register module references using the Global Module API
           // - Phase.Runtime
           //   - Remove import & export statements.
           //   - Reference the module through the Global Module API.
-          phase: Phase.Register,
+          phase: Phase.Bundle,
         });
 
         return { loader: 'js', contents: registerHotModule(code, args.id) };

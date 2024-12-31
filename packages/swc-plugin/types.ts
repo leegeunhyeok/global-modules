@@ -1,5 +1,5 @@
 export enum Phase {
-  Register = 0,
+  Bundle = 0,
   Runtime = 1,
 }
 
