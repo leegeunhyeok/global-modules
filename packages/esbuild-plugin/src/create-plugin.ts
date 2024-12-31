@@ -3,6 +3,7 @@ import type { OnLoadArgs, OnLoadOptions, Plugin, PluginBuild } from 'esbuild';
 import { ModuleRegistry, type ModuleRegistryOptions } from './module-registry';
 import type { DependencyManager } from './dependency-manager';
 
+type ModuleId = number;
 type GlobalModuleOnLoad = Omit<PluginBuild, 'onLoad'> & {
   onLoad: (
     options: OnLoadOptions,

@@ -1,6 +1,8 @@
 // oxlint-disable-next-lineno-explicit-any -- allow
 export type Global = any;
 
+export type ModuleId = number;
+
 export interface Module {
   id: ModuleId;
   exports: Exports;

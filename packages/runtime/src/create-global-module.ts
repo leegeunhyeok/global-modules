@@ -5,6 +5,7 @@ import type {
   Module,
   ModuleContext,
   ModuleExports,
+  ModuleId,
 } from './types';
 import * as utils from './utils';
 
