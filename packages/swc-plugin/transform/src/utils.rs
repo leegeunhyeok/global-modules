@@ -166,7 +166,7 @@ pub mod ast {
     /// // Input
     /// module.exports = orig_expr;
     ///
-    /// // ModulePhase::Register
+    /// // ModulePhase::Bundle
     /// ctx_ident.module.exports = module.exports = orig_expr;
     /// ctx_ident.module.exports.foo = module.exports.foo = orig_expr;
     ///
@@ -209,7 +209,7 @@ pub mod ast {
                 expr,
             );
 
-            if phase == ModulePhase::Register {
+            if phase == ModulePhase::Bundle {
                 new_assign_expr.make_assign_to(AssignOp::Assign, assign_expr.left.clone())
             } else {
                 new_assign_expr
@@ -252,7 +252,7 @@ pub mod ast {
     /// // Input
     /// module.exports; // Object.assign(module.exports, { ... });
     ///
-    /// // ModulePhase::Register
+    /// // ModulePhase::Bundle
     /// ctx_ident.module.exports = module.exports;
     /// ctx_ident.module.exports.foo = module.exports.foo;
     ///
@@ -279,7 +279,7 @@ pub mod ast {
                 ..Default::default()
             });
 
-        if phase == ModulePhase::Register {
+        if phase == ModulePhase::Bundle {
             assign_member(member_expr.clone(), ctx_module_member.into())
         } else {
             Expr::from(ctx_module_member)

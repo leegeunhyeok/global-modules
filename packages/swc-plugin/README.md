@@ -16,7 +16,7 @@ await swc.transform(code, {
           globalModulePlugin,
           {
             id: 1,
-            phase: Phase.Register, // or Phase.Runtime
+            phase: Phase.Bundle, // or Phase.Runtime
             // ID values used to replace the original sources
             dependencyIds: {
               react: 1000,
@@ -42,7 +42,7 @@ export function Component() {
 
 <details>
 
-<summary>Phase.Register</summary>
+<summary>Phase.Bundle</summary>
 
 ```ts
 var __ctx = global.__modules.register(1);

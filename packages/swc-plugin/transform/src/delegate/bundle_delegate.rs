@@ -12,14 +12,14 @@ use crate::{
     },
 };
 
-pub struct RegisterDelegate {
+pub struct BundleDelegate {
     id: f64,
     ctx_ident: Ident,
     exps: Vec<ExportRef>,
     bindings: Vec<ModuleItem>,
 }
 
-impl RegisterDelegate {
+impl BundleDelegate {
     pub fn new(id: f64) -> Self {
         Self {
             id,
@@ -30,7 +30,7 @@ impl RegisterDelegate {
     }
 }
 
-impl AstDelegate for RegisterDelegate {
+impl AstDelegate for BundleDelegate {
     fn make_script_body(&mut self, orig_body: Vec<Stmt>) -> Vec<Stmt> {
         let mut new_body = Vec::with_capacity(orig_body.len() + 1);
         new_body.push(global_module_register_stmt(self.id, &self.ctx_ident));
@@ -44,7 +44,7 @@ impl AstDelegate for RegisterDelegate {
         let ExportsAst {
             leading_body,
             trailing_body,
-        } = exports_to_ast(&self.ctx_ident, exps, crate::phase::ModulePhase::Register);
+        } = exports_to_ast(&self.ctx_ident, exps, crate::phase::ModulePhase::Bundle);
 
         let mut new_body: Vec<ModuleItem> = vec![];
         new_body.push(global_module_register_stmt(self.id, &self.ctx_ident).into());
@@ -113,7 +113,7 @@ impl AstDelegate for RegisterDelegate {
         to_binding_module_from_assign_expr(
             self.ctx_ident.clone(),
             assign_expr,
-            crate::phase::ModulePhase::Register,
+            crate::phase::ModulePhase::Bundle,
         )
     }
 
@@ -121,7 +121,7 @@ impl AstDelegate for RegisterDelegate {
         to_binding_module_from_member_expr(
             self.ctx_ident.clone(),
             member_expr,
-            crate::phase::ModulePhase::Register,
+            crate::phase::ModulePhase::Bundle,
         )
     }
 }

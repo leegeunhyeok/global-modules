@@ -273,7 +273,7 @@ impl NamedReExportRef {
 
     pub fn get_binding_ast(&self, ctx_ident: Ident, phase: ModulePhase) -> ModuleItem {
         match phase {
-            ModulePhase::Register => import_star(self.mod_ident.clone(), self.src.clone()),
+            ModulePhase::Bundle => import_star(self.mod_ident.clone(), self.src.clone()),
             ModulePhase::Runtime => decl_require_deps_stmt(
                 ctx_ident,
                 self.id
@@ -322,7 +322,7 @@ impl ReExportAllRef {
 
     pub fn get_binding_ast(&self, ctx_ident: Ident, phase: ModulePhase) -> ModuleItem {
         match phase {
-            ModulePhase::Register => import_star(self.mod_ident.clone(), self.src.clone()),
+            ModulePhase::Bundle => import_star(self.mod_ident.clone(), self.src.clone()),
             ModulePhase::Runtime => decl_require_deps_stmt(
                 ctx_ident,
                 self.id

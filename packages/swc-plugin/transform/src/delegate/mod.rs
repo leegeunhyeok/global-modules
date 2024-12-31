@@ -1,6 +1,6 @@
-pub mod register_delegate;
+pub mod bundle_delegate;
 pub mod runtime_delegate;
 pub mod traits;
 
-pub use register_delegate::RegisterDelegate;
+pub use bundle_delegate::BundleDelegate;
 pub use runtime_delegate::RuntimeDelegate;

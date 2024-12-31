@@ -10,12 +10,12 @@ const code = await fs.promises.readFile(
   },
 );
 
-function registerPreset() {
+function bundlePreset() {
   return [
     globalModulePlugin,
     {
       id: 1,
-      phase: Phase.Register,
+      phase: Phase.Bundle,
     },
   ];
 }
@@ -55,7 +55,7 @@ console.log(
       jsc: {
         target: 'esnext',
         experimental: {
-          plugins: [registerPreset()],
+          plugins: [bundlePreset()],
         },
       },
     })
