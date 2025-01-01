@@ -115,7 +115,7 @@ describe('@global-modules/runtime', () => {
 
       context.evaluate(`
         var __ctx = __modules.register(2);
-        var mod = __ctx.require(1);
+        var mod = global.__modules.require(1);
         print(mod);
       `);
 
@@ -134,7 +134,7 @@ describe('@global-modules/runtime', () => {
 
       context.evaluate(`
         var __ctx = __modules.register(2);
-        var mod = __ctx.require(1);
+        var mod = global.__modules.require(1);
         print(mod);
       `);
 
@@ -157,7 +157,7 @@ describe('@global-modules/runtime', () => {
 
       context.evaluate(`
         var __ctx = __modules.register(2);
-        var mod = __ctx.require(1);
+        var mod = global.__modules.require(1);
         print(mod);
       `);
 
@@ -178,7 +178,7 @@ describe('@global-modules/runtime', () => {
 
       context.evaluate(`
         var __ctx = __modules.register(2);
-        var mod = __ctx.require(1);
+        var mod = global.__modules.require(1);
         print(mod);
       `);
 
@@ -196,7 +196,7 @@ describe('@global-modules/runtime', () => {
 
       context.evaluate(`
         var __ctx = __modules.getContext(2);
-        var mod = __ctx.require(1);
+        var mod = global.__modules.require(1);
         print(mod);
       `);
 
@@ -224,7 +224,7 @@ describe('@global-modules/runtime', () => {
 
       context.evaluate(`
         var __ctx = __modules.register(2);
-        var mod = __ctx.require(1);
+        var mod = global.__modules.require(1);
         print(mod);
       `);
 
@@ -258,7 +258,7 @@ describe('@global-modules/runtime', () => {
 
       context.evaluate(`
         var __ctx = __modules.register(2);
-        var mod = __ctx.require(1);
+        var mod = global.__modules.require(1);
         print(mod);
       `);
 
@@ -285,7 +285,7 @@ describe('@global-modules/runtime', () => {
 
       context.evaluate(`
         var __ctx = __modules.register(2);
-        var mod = __ctx.require(1);
+        var mod = global.__modules.require(1);
         print(mod);
       `);
 
@@ -314,7 +314,7 @@ describe('@global-modules/runtime', () => {
 
       context.evaluate(`
         var __ctx = __modules.register(2);
-        var mod = __ctx.require(1);
+        var mod = global.__modules.require(1);
         __ctx.exports(function () {
           return {
             a: mod.foo,
@@ -326,7 +326,7 @@ describe('@global-modules/runtime', () => {
 
       context.evaluate(`
         var __ctx = __modules.register(3);
-        var mod = __ctx.require(2);
+        var mod = global.__modules.require(2);
         print(mod);
       `);
 
@@ -357,7 +357,7 @@ describe('@global-modules/runtime', () => {
 
       context.evaluate(`
         var __ctx = __modules.register(2);
-        var mod = __ctx.require(1);
+        var mod = global.__modules.require(1);
         print('require 1', mod);
         __ctx.exports(function () {
           return {
@@ -368,7 +368,7 @@ describe('@global-modules/runtime', () => {
 
       context.evaluate(`
         var __ctx = __modules.register(3);
-        var mod = __ctx.require(2);
+        var mod = global.__modules.require(2);
         print('require 2', mod);
       `);
 
@@ -404,7 +404,7 @@ describe('@global-modules/runtime', () => {
 
       context.evaluate(`
         var __ctx = __modules.register(2);
-        var mod = __ctx.require(1);
+        var mod = global.__modules.require(1);
         print(mod);
       `);
 
@@ -428,7 +428,7 @@ describe('@global-modules/runtime', () => {
 
       context.evaluate(`
         var __ctx = __modules.getContext(2);
-        var mod = __ctx.require(1);
+        var mod = global.__modules.require(1);
         print(mod);
       `);
 

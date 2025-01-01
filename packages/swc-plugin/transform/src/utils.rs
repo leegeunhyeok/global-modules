@@ -469,10 +469,10 @@ pub mod ast {
         ///
         /// ```js
         /// // Code
-        /// ctx_ident.require(src);
+        /// global.__modules.require(src);
         /// ```
-        pub fn require_call(ctx_ident: Ident, src: Lit) -> Expr {
-            ctx_ident
+        pub fn require_call(src: Lit) -> Expr {
+            member_expr!(Default::default(), DUMMY_SP, global.__modules)
                 .make_member(quote_ident!("require"))
                 .as_call(DUMMY_SP, vec![src.as_arg()])
         }
@@ -496,10 +496,10 @@ pub mod ast {
         /// ```js
         /// // Code
         /// // Pat: { foo, bar, default: baz }
-        /// var { foo, bar, default: baz } = ctx_ident.require('./foo');
+        /// var { foo, bar, default: baz } = global.__modules.require('./foo');
         /// ```
-        pub fn decl_require_deps_stmt(ctx_ident: Ident, src: Lit, pat: Pat) -> Stmt {
-            require_call(ctx_ident, src)
+        pub fn decl_require_deps_stmt(src: Lit, pat: Pat) -> Stmt {
+            require_call(src)
                 .into_var_decl(VarDeclKind::Var, pat)
                 .into()
         }

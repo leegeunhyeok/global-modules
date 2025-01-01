@@ -12,19 +12,19 @@ import * as utils from './utils';
 export function createGlobalModule(): GlobalModule {
   const moduleRegistry = new Map<ModuleId, Module>();
 
-  function __require(id: ModuleId): Exports {
-    const module = getModule(id);
-
-    return module.exports.__esModule || isExports(module.exports)
-      ? module.exports
-      : { default: module.exports };
-  }
-
   function __exports(
     exports: Exports,
     definitions: () => Record<string, unknown>,
   ): void {
     utils.copyProps(exports, definitions());
+  }
+
+  function require(id: ModuleId): Exports {
+    const module = getModule(id);
+
+    return module.exports.__esModule || isExports(module.exports)
+      ? module.exports
+      : { default: module.exports };
   }
 
   function getModule(id: ModuleId): Module {
@@ -47,7 +47,6 @@ export function createGlobalModule(): GlobalModule {
   }
 
   function createContext(module: Module): ModuleContext {
-    const require = __require;
     const exports = Object.assign(
       ((definitions) => {
         __exports(module.exports, definitions);
@@ -55,11 +54,7 @@ export function createGlobalModule(): GlobalModule {
       { ns: toNamespaceExports },
     );
 
-    return {
-      require,
-      exports,
-      module,
-    };
+    return { exports, module };
   }
 
   function register(id: ModuleId): ModuleContext {
@@ -86,5 +81,5 @@ export function createGlobalModule(): GlobalModule {
     moduleRegistry.clear();
   }
 
-  return { register, getContext, clear };
+  return { register, getContext, require, clear };
 }

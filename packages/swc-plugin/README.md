@@ -69,8 +69,8 @@ var __x;
 
 ```ts
 var __ctx = global.__modules.getContext(1);
-var { default: React, useState, useCallback } = __ctx.require(1000);
-var { Component } = __ctx.require(1234);
+var { default: React, useState, useCallback } = global.__modules.require(1000);
+var { Component } = global.__modules.require(1234);
 __x = function Component() {
   // ...
 };
