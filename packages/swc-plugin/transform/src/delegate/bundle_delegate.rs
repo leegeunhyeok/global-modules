@@ -1,14 +1,21 @@
 use std::mem;
 
 use helpers::{export_ref_from_named_export, exports_to_ast, get_from_export_decl};
-use swc_core::ecma::{ast::*, utils::private_ident};
+use swc_core::{
+    common::DUMMY_SP,
+    ecma::{
+        ast::*,
+        utils::{private_ident, ExprFactory},
+    },
+};
 
 use super::traits::AstDelegate;
 use crate::{
     models::*,
     utils::ast::{
-        assign_expr, default_expr_from_default_export_decl, presets::global_module_register_stmt,
-        to_binding_module_from_assign_expr, to_binding_module_from_member_expr,
+        assign_expr, get_expr_from_default_decl, get_ident_from_default_decl, into_decl,
+        presets::global_module_register_stmt, to_binding_module_from_assign_expr,
+        to_binding_module_from_member_expr,
     },
 };
 
@@ -66,18 +73,41 @@ impl AstDelegate for BundleDelegate {
         item.export_stmt
     }
 
-    fn export_default_decl(&mut self, export_default_decl: &ExportDefaultDecl) -> ModuleItem {
+    fn export_default_decl(
+        &mut self,
+        export_default_decl: &ExportDefaultDecl,
+    ) -> Option<ModuleItem> {
+        let ident = get_ident_from_default_decl(&export_default_decl.decl);
         let binding_export = BindingExportMember::new("default".into());
-        let export_default_expr = default_expr_from_default_export_decl(
-            export_default_decl,
-            binding_export.bind_ident.clone(),
-        );
+        let stmts = match ident {
+            Some(ident) => {
+                vec![
+                    into_decl(&export_default_decl.decl).into(),
+                    assign_expr(binding_export.bind_ident.clone(), ident.into())
+                        .into_stmt()
+                        .into(),
+                ]
+            }
+            None => vec![assign_expr(
+                binding_export.bind_ident.clone(),
+                get_expr_from_default_decl(&export_default_decl.decl).into(),
+            )
+            .into_stmt()
+            .into()],
+        };
 
+        let binding_export_stmt =
+            ModuleItem::ModuleDecl(ModuleDecl::ExportDefaultExpr(ExportDefaultExpr {
+                span: DUMMY_SP,
+                expr: Box::new(binding_export.bind_ident.clone().into()),
+            }));
+
+        self.bindings.extend(stmts);
         self.exps.push(ExportRef::Named(NamedExportRef::new(vec![
             ExportMember::Binding(binding_export),
         ])));
 
-        export_default_expr
+        binding_export_stmt.into()
     }
 
     fn export_default_expr(&mut self, export_default_expr: &ExportDefaultExpr) -> Expr {

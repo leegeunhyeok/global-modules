@@ -19,13 +19,6 @@ __ctx.module.exports.foo = 2;
 Object.assign(__ctx.module.exports, {
     bar: 1
 });
-__x3 = function() {
-    global.__modules.require(1006);
-    const inner = async ()=>{
-        await global.__modules.require(1008);
-        global.__modules.require(1007);
-    };
-};
 const variable = 1;
 __x = variable;
 class Class {
@@ -33,6 +26,13 @@ class Class {
 __x1 = Class;
 function func() {}
 __x2 = func;
+__x3 = function() {
+    global.__modules.require(1006);
+    const inner = async ()=>{
+        await global.__modules.require(1008);
+        global.__modules.require(1007);
+    };
+};
 __ctx.exports(function() {
     return {
         ...__ctx.exports.ns(__mod),

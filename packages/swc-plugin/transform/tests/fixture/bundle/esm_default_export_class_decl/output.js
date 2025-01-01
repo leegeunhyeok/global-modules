@@ -1,5 +1,6 @@
 var __ctx = global.__modules.register(1000);
-export default __x = class {
+export default __x;
+__x = class {
 };
 __ctx.exports(function() {
     return {

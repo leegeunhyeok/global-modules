@@ -15,7 +15,8 @@ use crate::{
     models::*,
     utils::{
         ast::{
-            assign_expr, expr_from_export_default_decl, get_src_lit,
+            assign_expr, get_expr_from_default_decl, get_ident_from_default_decl, get_src_lit,
+            into_decl,
             presets::{global_module_get_ctx_stmt, require_call},
             to_binding_module_from_assign_expr, to_binding_module_from_member_expr,
         },
@@ -100,18 +101,35 @@ impl AstDelegate for RuntimeDelegate {
         item.export_stmt
     }
 
-    fn export_default_decl(&mut self, export_default_decl: &ExportDefaultDecl) -> ModuleItem {
+    fn export_default_decl(
+        &mut self,
+        export_default_decl: &ExportDefaultDecl,
+    ) -> Option<ModuleItem> {
+        let ident = get_ident_from_default_decl(&export_default_decl.decl);
         let binding_export = BindingExportMember::new("default".into());
-        let assign_expr =
-            expr_from_export_default_decl(export_default_decl, binding_export.bind_ident.clone())
-                .into_stmt()
-                .into();
+        let stmts = match ident {
+            Some(ident) => {
+                vec![
+                    into_decl(&export_default_decl.decl).into(),
+                    assign_expr(binding_export.bind_ident.clone(), ident.into())
+                        .into_stmt()
+                        .into(),
+                ]
+            }
+            None => vec![assign_expr(
+                binding_export.bind_ident.clone(),
+                get_expr_from_default_decl(&export_default_decl.decl).into(),
+            )
+            .into_stmt()
+            .into()],
+        };
 
+        self.bindings.extend(stmts);
         self.exps.push(ExportRef::Named(NamedExportRef::new(vec![
             ExportMember::Binding(binding_export),
         ])));
 
-        assign_expr
+        None
     }
 
     fn export_default_expr(&mut self, export_default_expr: &ExportDefaultExpr) -> Expr {

@@ -22,13 +22,7 @@ Object.assign(module.exports = __ctx.module.exports, {
 export { __x as variable };
 export { __x1 as Class };
 export { __x2 as func };
-export default __x3 = function() {
-    require('./cjs-2');
-    const inner = async ()=>{
-        await import('./esm');
-        require('./cjs-3');
-    };
-};
+export default __x3;
 export { value as value2 };
 export { foo, foo2 };
 export { baz, baz as baz2 };
@@ -44,6 +38,13 @@ class Class {
 __x1 = Class;
 function func() {}
 __x2 = func;
+__x3 = function() {
+    require('./cjs-2');
+    const inner = async ()=>{
+        await import('./esm');
+        require('./cjs-3');
+    };
+};
 __ctx.exports(function() {
     return {
         ...__ctx.exports.ns(__mod),
