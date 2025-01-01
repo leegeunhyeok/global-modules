@@ -331,39 +331,25 @@ pub mod ast {
         .into()
     }
 
-    /// Extracts and returns the expression with its ident from the declarations.
+    /// Extracts and returns the its ident from the declarations.
     ///
     /// ```js
     /// function foo {}
     /// class Bar {}
     /// const baz = expr;
     /// ```
-    pub fn get_expr_from_decl(decl: &Decl) -> (Ident, Expr) {
+    pub fn get_ident_from_decl(decl: &Decl) -> Ident {
         match decl {
             Decl::Class(ClassDecl {
                 class,
                 ident,
                 declare: false,
-            }) => (
-                ident.clone(),
-                ClassExpr {
-                    class: class.clone(),
-                    ident: Some(ident.clone()),
-                }
-                .into(),
-            ),
+            }) => ident.clone(),
             Decl::Fn(FnDecl {
                 function,
                 ident,
                 declare: false,
-            }) => (
-                ident.clone(),
-                FnExpr {
-                    function: function.clone(),
-                    ident: Some(ident.clone()),
-                }
-                .into(),
-            ),
+            }) => ident.clone(),
             Decl::Var(val_decl) => {
                 if val_decl.decls.len() != 1 {
                     panic!("invalid named exports");
@@ -377,7 +363,7 @@ pub mod ast {
                         init: Some(expr),
                         definite: false,
                         ..
-                    } => (id.clone(), *expr.clone()),
+                    } => id.clone(),
                     _ => panic!("invalid"),
                 }
             }

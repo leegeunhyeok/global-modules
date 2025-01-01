@@ -26,10 +26,13 @@ __x3 = function() {
         global.__modules.require('./cjs-3');
     };
 };
-__x = 1;
-__x1 = class Class {
-};
-__x2 = function func() {};
+const variable = 1;
+__x = variable;
+class Class {
+}
+__x1 = Class;
+function func() {}
+__x2 = func;
 __ctx.exports(function() {
     return {
         ...__ctx.exports.ns(__mod),

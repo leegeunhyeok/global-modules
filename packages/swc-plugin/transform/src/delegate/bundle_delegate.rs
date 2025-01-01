@@ -61,7 +61,7 @@ impl AstDelegate for BundleDelegate {
     fn export_decl(&mut self, export_decl: &ExportDecl) -> ModuleItem {
         let item = get_from_export_decl(export_decl);
         self.exps.push(item.export_ref);
-        self.bindings.push(item.binding_stmt);
+        self.bindings.extend(item.binding_stmts);
 
         item.export_stmt
     }

@@ -399,18 +399,17 @@ pub mod helpers {
         // `function foo {}`
         //
         // - `orig_ident`: `foo`
-        // - `decl_expr`: `function foo{}`
-        let (orig_ident, decl_expr) = get_expr_from_decl(&export_decl.decl);
+        let orig_ident = get_ident_from_decl(&export_decl.decl);
 
         // - `binding_name`: `__x`
         // - `exported_name`: `foo`
         let binding_export = BindingExportMember::new(orig_ident.sym.clone());
         let binding_name = ModuleExportName::Ident(binding_export.bind_ident.clone());
-        let exported_name = ModuleExportName::Ident(orig_ident);
+        let exported_name = ModuleExportName::Ident(orig_ident.clone());
 
         // `binding_assign_stmt`: `__x = function foo {}`
         let binding_assign_stmt =
-            assign_expr(binding_export.bind_ident.clone(), decl_expr).into_stmt();
+            assign_expr(binding_export.bind_ident.clone(), orig_ident.into()).into_stmt();
         let export_ref = ExportRef::Named(NamedExportRef::new(vec![ExportMember::Binding(
             binding_export,
         )]));
@@ -430,7 +429,7 @@ pub mod helpers {
                 span: DUMMY_SP,
             }))
             .into(),
-            binding_stmt: binding_assign_stmt.into(),
+            binding_stmts: vec![export_decl.decl.clone().into(), binding_assign_stmt.into()],
         }
     }
 
@@ -639,7 +638,7 @@ pub mod helpers {
 pub struct ExportDeclItem {
     pub export_ref: ExportRef,
     pub export_stmt: ModuleItem,
-    pub binding_stmt: ModuleItem,
+    pub binding_stmts: Vec<ModuleItem>,
 }
 
 pub struct ExportsAst {

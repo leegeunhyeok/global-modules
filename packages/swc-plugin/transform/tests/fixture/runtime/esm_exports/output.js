@@ -1,10 +1,13 @@
 var __ctx = global.__modules.getContext(1000);
 const foo = 'foo';
 const bar = 'bar';
-__x = 1;
-__x1 = class Class {
-};
-__x2 = function func() {};
+const variable = 1;
+__x = variable;
+class Class {
+}
+__x1 = Class;
+function func() {}
+__x2 = func;
 __ctx.exports(function() {
     return {
         "foo": foo,

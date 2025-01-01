@@ -37,10 +37,13 @@ export * as rx from './re-exp-2';
 export { rx2 } from './re-exp-3';
 export { rx3 as rx4 } from './re-exp-4';
 export { default as rx5 } from './re-exp-5';
-__x = 1;
-__x1 = class Class {
-};
-__x2 = function func() {};
+const variable = 1;
+__x = variable;
+class Class {
+}
+__x1 = Class;
+function func() {}
+__x2 = func;
 __ctx.exports(function() {
     return {
         ...__ctx.exports.ns(__mod),
