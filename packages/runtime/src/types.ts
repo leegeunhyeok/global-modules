@@ -36,7 +36,6 @@ export interface GlobalModule {
    * Get module exports from global registry.
    */
   require: (id: ModuleId) => Exports;
-
   /**
    * Clear all modules from the registry.
    */
