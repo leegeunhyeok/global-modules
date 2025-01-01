@@ -609,11 +609,14 @@ pub mod helpers {
         });
 
         let mut trailing_body = vec![];
-        trailing_body.push(
-            exports_call(ctx_ident.clone(), obj_lit_expr(export_props))
-                .into_stmt()
-                .into(),
-        );
+
+        if export_props.len() > 0 {
+            trailing_body.push(
+                exports_call(ctx_ident.clone(), obj_lit_expr(export_props))
+                    .into_stmt()
+                    .into(),
+            );
+        }
 
         if export_decls.len() > 0 {
             trailing_body.push(
