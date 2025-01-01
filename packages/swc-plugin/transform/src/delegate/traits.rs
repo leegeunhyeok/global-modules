@@ -5,7 +5,10 @@ pub trait AstDelegate {
     fn make_module_body(&mut self, orig_body: Vec<ModuleItem>) -> Vec<ModuleItem>;
     fn import(&mut self, import_decl: &ImportDecl);
     fn export_decl(&mut self, export_decl: &ExportDecl) -> ModuleItem;
-    fn export_default_decl(&mut self, export_default_decl: &ExportDefaultDecl) -> Option<ModuleItem>;
+    fn export_default_decl(
+        &mut self,
+        export_default_decl: &ExportDefaultDecl,
+    ) -> Option<ModuleItem>;
     fn export_default_expr(&mut self, export_default_expr: &ExportDefaultExpr) -> Expr;
     fn export_named(&mut self, export_named: &NamedExport);
     fn export_all(&mut self, export_all: &ExportAll);
