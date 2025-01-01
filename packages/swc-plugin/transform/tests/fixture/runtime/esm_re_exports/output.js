@@ -1,8 +1,8 @@
 var __ctx = global.__modules.getContext(1000);
-var __mod = __ctx.require("./mod-1");
-var __mod1 = __ctx.require("./mod-2");
-var __mod2 = __ctx.require("./mod-3");
-var __mod3 = __ctx.require("./mod-4");
+var __mod = global.__modules.require("./mod-1");
+var __mod1 = global.__modules.require("./mod-2");
+var __mod2 = global.__modules.require("./mod-3");
+var __mod3 = global.__modules.require("./mod-4");
 __ctx.exports(function() {
     return {
         ...__ctx.exports.ns(__mod),

@@ -10,7 +10,6 @@ export interface Module {
 }
 
 export interface ModuleContext {
-  require: ModuleRequire;
   exports: ModuleExports;
   module: {
     exports: Exports;
@@ -33,6 +32,11 @@ export interface GlobalModule {
    * Get module context from global registry.
    */
   getContext: (id: ModuleId) => ModuleContext;
+  /**
+   * Get module exports from global registry.
+   */
+  require: (id: ModuleId) => Exports;
+
   /**
    * Clear all modules from the registry.
    */

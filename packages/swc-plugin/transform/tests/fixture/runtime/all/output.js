@@ -1,17 +1,17 @@
 var __ctx = global.__modules.getContext(1000);
-var { default: React, useState, useCallback } = __ctx.require("react");
-var foo2 = __ctx.require("./foo");
-var { foo } = __ctx.require("./foo");
-var { bar: bar2 } = __ctx.require("./bar");
-var baz = __ctx.require("./baz");
-var __mod = __ctx.require("./re-exp");
-var __mod1 = __ctx.require("./re-exp-2");
-var __mod2 = __ctx.require("./re-exp-3");
-var __mod3 = __ctx.require("./re-exp-4");
-var __mod4 = __ctx.require("./re-exp-5");
-React.lazy(()=>__ctx.require('./Component'));
+var { default: React, useState, useCallback } = global.__modules.require("react");
+var foo2 = global.__modules.require("./foo");
+var { foo } = global.__modules.require("./foo");
+var { bar: bar2 } = global.__modules.require("./bar");
+var baz = global.__modules.require("./baz");
+var __mod = global.__modules.require("./re-exp");
+var __mod1 = global.__modules.require("./re-exp-2");
+var __mod2 = global.__modules.require("./re-exp-3");
+var __mod3 = global.__modules.require("./re-exp-4");
+var __mod4 = global.__modules.require("./re-exp-5");
+React.lazy(()=>global.__modules.require('./Component'));
 if (__DEV__) {
-    __ctx.require('./cjs-1');
+    global.__modules.require('./cjs-1');
 }
 const value = 'val';
 __ctx.module.exports = 'cjs';
@@ -20,10 +20,10 @@ Object.assign(__ctx.module.exports, {
     bar: 1
 });
 __x3 = function() {
-    __ctx.require('./cjs-2');
+    global.__modules.require('./cjs-2');
     const inner = async ()=>{
-        await __ctx.require('./esm');
-        __ctx.require('./cjs-3');
+        await global.__modules.require('./esm');
+        global.__modules.require('./cjs-3');
     };
 };
 __x = 1;

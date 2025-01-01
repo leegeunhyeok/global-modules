@@ -1,17 +1,17 @@
 var __ctx = global.__modules.getContext(1000);
-var { default: React, useState, useCallback } = __ctx.require(1000);
-var foo2 = __ctx.require(1001);
-var { foo } = __ctx.require(1001);
-var { bar: bar2 } = __ctx.require(1002);
-var baz = __ctx.require(1003);
-var __mod = __ctx.require(1009);
-var __mod1 = __ctx.require(1011);
-var __mod2 = __ctx.require(1012);
-var __mod3 = __ctx.require(1013);
-var __mod4 = __ctx.require(1014);
-React.lazy(()=>__ctx.require(1004));
+var { default: React, useState, useCallback } = global.__modules.require(1000);
+var foo2 = global.__modules.require(1001);
+var { foo } = global.__modules.require(1001);
+var { bar: bar2 } = global.__modules.require(1002);
+var baz = global.__modules.require(1003);
+var __mod = global.__modules.require(1009);
+var __mod1 = global.__modules.require(1011);
+var __mod2 = global.__modules.require(1012);
+var __mod3 = global.__modules.require(1013);
+var __mod4 = global.__modules.require(1014);
+React.lazy(()=>global.__modules.require(1004));
 if (__DEV__) {
-    __ctx.require(1005);
+    global.__modules.require(1005);
 }
 const value = 'val';
 __ctx.module.exports = 'cjs';
@@ -20,10 +20,10 @@ Object.assign(__ctx.module.exports, {
     bar: 1
 });
 __x3 = function() {
-    __ctx.require(1006);
+    global.__modules.require(1006);
     const inner = async ()=>{
-        await __ctx.require(1008);
-        __ctx.require(1007);
+        await global.__modules.require(1008);
+        global.__modules.require(1007);
     };
 };
 __x = 1;

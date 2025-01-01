@@ -59,7 +59,7 @@ impl AstDelegate for RuntimeDelegate {
 
         orig_body.retain(|item| item.is_stmt());
 
-        let deps_items = deps_to_ast(&self.ctx_ident, &self.deps, &self.paths);
+        let deps_items = deps_to_ast(&self.deps, &self.paths);
         let ExportsAst {
             leading_body,
             trailing_body,
@@ -163,10 +163,7 @@ impl AstDelegate for RuntimeDelegate {
                 match &*src.expr {
                     // The first argument of the `require` function must be a string type only.
                     Expr::Lit(lit) => {
-                        return Some(require_call(
-                            self.ctx_ident.clone(),
-                            get_src_lit(lit, &self.paths),
-                        ));
+                        return Some(require_call(get_src_lit(lit, &self.paths)));
                     }
                     _ => panic!("invalid `require` call expression"),
                 }
@@ -187,10 +184,7 @@ impl AstDelegate for RuntimeDelegate {
                 match &*src.expr {
                     // The first argument of the `import` function must be a string type only.
                     Expr::Lit(lit) => {
-                        return Some(require_call(
-                            self.ctx_ident.clone(),
-                            get_src_lit(lit, &self.paths),
-                        ));
+                        return Some(require_call(get_src_lit(lit, &self.paths)));
                     }
                     _ => panic!("unsupported dynamic import usage"),
                 }

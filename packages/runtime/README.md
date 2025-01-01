@@ -67,9 +67,9 @@ var __x;
 // 2. Runtime phase
 var __ctx = global.__modules.getContext(1);
 
-var { default: foo } = __ctx.require(1000); // `./foo` module's id
-var { default: bar } = __ctx.require(1001); // `./bar` module's id
-var { baz } = __ctx.require(1002); // `./baz` module's id
+var { default: foo } = global.__modules.require(1000); // `./foo` module's id
+var { default: bar } = global.__modules.require(1001); // `./bar` module's id
+var { baz } = global.__modules.require(1002); // `./baz` module's id
 
 __x = function something() {
   return foo.value + bar.value + baz;
