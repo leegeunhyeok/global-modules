@@ -15,7 +15,8 @@ use crate::{
     models::*,
     utils::{
         ast::{
-            assign_expr, expr_from_export_default_decl, get_src_lit,
+            assign_expr, get_expr_from_default_decl, get_ident_from_default_decl, get_src_lit,
+            into_decl,
             presets::{global_module_get_ctx_stmt, require_call},
             to_binding_module_from_assign_expr, to_binding_module_from_member_expr,
         },
@@ -29,6 +30,7 @@ pub struct RuntimeDelegate {
     ctx_ident: Ident,
     deps: OHashMap<Atom, ModuleRef>,
     exps: Vec<ExportRef>,
+    hoisted_decls: Vec<ModuleItem>,
     bindings: Vec<ModuleItem>,
 }
 
@@ -40,6 +42,7 @@ impl RuntimeDelegate {
             ctx_ident: private_ident!("__ctx"),
             deps: OHashMap::default(),
             exps: Vec::default(),
+            hoisted_decls: Vec::default(),
             bindings: Vec::default(),
         }
     }
@@ -55,6 +58,7 @@ impl AstDelegate for RuntimeDelegate {
 
     fn make_module_body(&mut self, mut orig_body: Vec<ModuleItem>) -> Vec<ModuleItem> {
         let exps = mem::take(&mut self.exps);
+        let hoisted_decls = mem::take(&mut self.hoisted_decls);
         let bindings = mem::take(&mut self.bindings);
 
         orig_body.retain(|item| item.is_stmt());
@@ -75,6 +79,7 @@ impl AstDelegate for RuntimeDelegate {
         new_body.push(global_module_get_ctx_stmt(self.id, &self.ctx_ident).into());
         new_body.extend(deps_items);
         new_body.extend(leading_body);
+        new_body.extend(hoisted_decls);
         new_body.extend(orig_body);
         new_body.extend(bindings);
         new_body.extend(trailing_body);
@@ -95,23 +100,44 @@ impl AstDelegate for RuntimeDelegate {
     fn export_decl(&mut self, export_decl: &ExportDecl) -> ModuleItem {
         let item = get_from_export_decl(export_decl);
         self.exps.push(item.export_ref);
+        self.hoisted_decls.push(export_decl.decl.clone().into());
         self.bindings.push(item.binding_stmt);
 
         item.export_stmt
     }
 
-    fn export_default_decl(&mut self, export_default_decl: &ExportDefaultDecl) -> ModuleItem {
+    fn export_default_decl(
+        &mut self,
+        export_default_decl: &ExportDefaultDecl,
+    ) -> Option<ModuleItem> {
+        let ident = get_ident_from_default_decl(&export_default_decl.decl);
         let binding_export = BindingExportMember::new("default".into());
-        let assign_expr =
-            expr_from_export_default_decl(export_default_decl, binding_export.bind_ident.clone())
+
+        match ident {
+            Some(ident) => {
+                self.hoisted_decls
+                    .push(into_decl(&export_default_decl.decl).into());
+                self.bindings.push(
+                    assign_expr(binding_export.bind_ident.clone(), ident.into())
+                        .into_stmt()
+                        .into(),
+                );
+            }
+            None => self.bindings.push(
+                assign_expr(
+                    binding_export.bind_ident.clone(),
+                    get_expr_from_default_decl(&export_default_decl.decl).into(),
+                )
                 .into_stmt()
-                .into();
+                .into(),
+            ),
+        };
 
         self.exps.push(ExportRef::Named(NamedExportRef::new(vec![
             ExportMember::Binding(binding_export),
         ])));
 
-        assign_expr
+        None
     }
 
     fn export_default_expr(&mut self, export_default_expr: &ExportDefaultExpr) -> Expr {

@@ -289,81 +289,25 @@ pub mod ast {
         .into()
     }
 
-    /// Returns an expression that binds the export default declaration
-    /// to the provided identifier.
-    ///
-    /// ```js
-    /// // Input
-    /// export default function foo() {};
-    /// export default class Bar {};
-    ///
-    /// // Code
-    /// ident = function foo() {};
-    /// ident = class Bar {};
-    /// ```
-    pub fn expr_from_export_default_decl(
-        export_default_decl: &ExportDefaultDecl,
-        ident: Ident,
-    ) -> Expr {
-        assign_expr(ident, get_expr_from_default_decl(&export_default_decl.decl)).into()
-    }
-
-    /// Returns an export default expression bound to the
-    /// provided identifier from an export default statement.
-    ///
-    /// ```js
-    /// // Input
-    /// export default function foo() {};
-    /// export default class Bar {};
-    ///
-    /// // Code
-    /// export default ident = function foo() {};
-    /// export default ident = class Bar {};
-    /// ```
-    pub fn default_expr_from_default_export_decl(
-        export_default_decl: &ExportDefaultDecl,
-        ident: Ident,
-    ) -> ModuleItem {
-        ModuleItem::ModuleDecl(ModuleDecl::ExportDefaultExpr(ExportDefaultExpr {
-            expr: assign_expr(ident, get_expr_from_default_decl(&export_default_decl.decl)).into(),
-            span: DUMMY_SP,
-        }))
-        .into()
-    }
-
-    /// Extracts and returns the expression with its ident from the declarations.
+    /// Extracts and returns the its ident from the declarations.
     ///
     /// ```js
     /// function foo {}
     /// class Bar {}
     /// const baz = expr;
     /// ```
-    pub fn get_expr_from_decl(decl: &Decl) -> (Ident, Expr) {
+    pub fn get_ident_from_decl(decl: &Decl) -> Ident {
         match decl {
             Decl::Class(ClassDecl {
-                class,
                 ident,
                 declare: false,
-            }) => (
-                ident.clone(),
-                ClassExpr {
-                    class: class.clone(),
-                    ident: Some(ident.clone()),
-                }
-                .into(),
-            ),
+                ..
+            }) => ident.clone(),
             Decl::Fn(FnDecl {
-                function,
                 ident,
                 declare: false,
-            }) => (
-                ident.clone(),
-                FnExpr {
-                    function: function.clone(),
-                    ident: Some(ident.clone()),
-                }
-                .into(),
-            ),
+                ..
+            }) => ident.clone(),
             Decl::Var(val_decl) => {
                 if val_decl.decls.len() != 1 {
                     panic!("invalid named exports");
@@ -374,14 +318,28 @@ pub mod ast {
                 match var_decl {
                     VarDeclarator {
                         name: Pat::Ident(BindingIdent { id, type_ann: None }),
-                        init: Some(expr),
+                        init: Some(_),
                         definite: false,
                         ..
-                    } => (id.clone(), *expr.clone()),
+                    } => id.clone(),
                     _ => panic!("invalid"),
                 }
             }
             _ => panic!("invalid"),
+        }
+    }
+
+    /// Extracts and returns the its ident from the declarations.
+    ///
+    /// ```js
+    /// export default function foo() {};
+    /// export default class Bar {}
+    /// ```
+    pub fn get_ident_from_default_decl(default_decl: &DefaultDecl) -> Option<Ident> {
+        match default_decl {
+            DefaultDecl::Class(ClassExpr { ident, .. }) => ident.clone().into(),
+            DefaultDecl::Fn(FnExpr { ident, .. }) => ident.clone().into(),
+            _ => None,
         }
     }
 
@@ -400,6 +358,15 @@ pub mod ast {
         match default_decl {
             DefaultDecl::Class(class_expr) => Expr::Class(class_expr.clone()),
             DefaultDecl::Fn(fn_expr) => Expr::Fn(fn_expr.clone()),
+            _ => panic!("not implemented"),
+        }
+    }
+
+    /// Converts `DefaultDecl` into `Decl`.
+    pub fn into_decl(default_decl: &DefaultDecl) -> Decl {
+        match default_decl {
+            DefaultDecl::Class(class_expr) => class_expr.clone().as_class_decl().unwrap().into(),
+            DefaultDecl::Fn(fn_expr) => fn_expr.clone().as_fn_decl().unwrap().into(),
             _ => panic!("not implemented"),
         }
     }

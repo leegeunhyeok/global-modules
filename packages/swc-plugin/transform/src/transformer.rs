@@ -92,7 +92,11 @@ impl VisitMut for GlobalModuleTransformer {
                         ModuleDecl::ExportDefaultDecl(export_default_decl) => {
                             export_default_decl.visit_mut_children_with(self);
 
-                            *item = self.delegate.export_default_decl(export_default_decl)
+                            if let Some(new_item) =
+                                self.delegate.export_default_decl(export_default_decl)
+                            {
+                                *item = new_item;
+                            }
                         }
                         // Default export statements.
                         //

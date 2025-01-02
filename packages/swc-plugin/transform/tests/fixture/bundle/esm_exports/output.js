@@ -1,15 +1,13 @@
 var __ctx = global.__modules.register(1000);
+const variable = 1;
+class Class {
+}
+function func() {}
 const foo = 'foo';
 const bar = 'bar';
-// Export named
-export { foo, bar, baz as named };
-export { __x as variable };
-export { __x1 as Class };
-export { __x2 as func };
-__x = 1;
-__x1 = class Class {
-};
-__x2 = function func() {};
+__x = variable;
+__x1 = Class;
+__x2 = func;
 __ctx.exports(function() {
     return {
         "foo": foo,
@@ -21,3 +19,8 @@ __ctx.exports(function() {
     };
 });
 var __x, __x1, __x2;
+// Export named
+export { foo, bar, baz as named };
+export { __x as variable };
+export { __x1 as Class };
+export { __x2 as func };
