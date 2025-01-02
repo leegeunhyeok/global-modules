@@ -1,7 +1,7 @@
 {
   "name": "@global-modules/runtime",
   "description": "Runtime for global modules",
-  "version": "0.0.0",
+  "version": "0.0.0-dev.20250102111607",
   "types": "./dist/index.d.ts",
   "main": "./dist/index.js",
   "exports": {
