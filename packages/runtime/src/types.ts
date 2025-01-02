@@ -14,6 +14,7 @@ export interface ModuleContext {
   module: {
     exports: Exports;
   };
+  reset: () => void;
 }
 
 export interface ModuleExports {

@@ -46,19 +46,20 @@ export function Component() {
 <summary>Phase.Bundle</summary>
 
 ```ts
-var __ctx = global.__modules.register(1);
 import React, { useState, useCallback } from 'react';
 import { Component } from './Container';
-export { __x as Component };
-__x = function Component() {
+var __ctx = global.__modules.register(1);
+function Component() {
   // ...
-};
+}
+__x = Component;
 __ctx.exports(function () {
   return {
     Component: __x,
   };
 });
 var __x;
+export { __x as Component };
 ```
 
 </details>
@@ -69,11 +70,13 @@ var __x;
 
 ```ts
 var __ctx = global.__modules.getContext(1);
+__ctx.reset();
 var { default: React, useState, useCallback } = global.__modules.require(1000);
 var { Component } = global.__modules.require(1234);
-__x = function Component() {
+function Component() {
   // ...
-};
+}
+__x = Component;
 __ctx.exports(function () {
   return {
     Component: __x,

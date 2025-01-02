@@ -432,6 +432,18 @@ pub mod ast {
                 .into()
         }
 
+        /// Returns the global module context reset call expression.
+        ///
+        /// ```js
+        /// ctx_ident.reset();
+        /// ```
+        pub fn ctx_reset_call(ctx_ident: &Ident) -> Expr {
+            ctx_ident
+                .clone()
+                .make_member(quote_ident!("reset"))
+                .as_call(DUMMY_SP, vec![])
+        }
+
         /// Returns a global module's require call expression.
         ///
         /// ```js

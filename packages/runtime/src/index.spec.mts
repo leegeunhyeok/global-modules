@@ -191,12 +191,14 @@ describe('@global-modules/runtime', () => {
       // Update
       context.evaluate(`
         var __ctx = __modules.getContext(1);
+        __ctx.reset();
         __ctx.module.exports.value = 100;
       `);
 
       context.evaluate(`
         var __ctx = __modules.getContext(2);
         var mod = global.__modules.require(1);
+        __ctx.reset();
         print(mod);
       `);
 
@@ -417,6 +419,7 @@ describe('@global-modules/runtime', () => {
       // Update
       context.evaluate(`
         var __ctx = __modules.getContext(1);
+        __ctx.reset();
         __x = 100;
         __ctx.exports(function () {
           return {
@@ -428,6 +431,7 @@ describe('@global-modules/runtime', () => {
 
       context.evaluate(`
         var __ctx = __modules.getContext(2);
+        __ctx.reset();
         var mod = global.__modules.require(1);
         print(mod);
       `);

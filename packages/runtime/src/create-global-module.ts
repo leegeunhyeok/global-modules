@@ -54,7 +54,11 @@ export function createGlobalModule(): GlobalModule {
       { ns: toNamespaceExports },
     );
 
-    return { exports, module };
+    return {
+      exports,
+      module,
+      reset: () => void (module.exports = createExports()),
+    };
   }
 
   function register(id: ModuleId): ModuleContext {
@@ -69,12 +73,7 @@ export function createGlobalModule(): GlobalModule {
   }
 
   function getContext(id: ModuleId): ModuleContext {
-    const module = getModule(id);
-
-    // Update to new exports object.
-    module.exports = createExports();
-
-    return module.context;
+    return getModule(id).context;
   }
 
   function clear(): void {
