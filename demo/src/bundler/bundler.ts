@@ -137,11 +137,20 @@ export class Bundler {
           {},
         );
 
-        return transform(code, path.basename(module.path), {
-          id: module.id,
-          phase: Phase.Runtime,
-          paths: imports,
-        });
+        const transformedCode = await transform(
+          code,
+          path.basename(module.path),
+          {
+            id: module.id,
+            phase: Phase.Runtime,
+            paths: imports,
+          },
+        );
+
+        // Wrap with IIFE to prevent global scope pollution.
+        return `(function () {
+          ${transformedCode}
+        })();`;
       }),
     );
 
