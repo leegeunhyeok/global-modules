@@ -33,6 +33,10 @@ export interface GlobalModule {
    */
   getContext: (id: ModuleId) => ModuleContext;
   /**
+   * Get global module registry.
+   */
+  getRegistry: () => Map<ModuleId, Module>;
+  /**
    * Get module exports from global registry.
    */
   require: (id: ModuleId) => Exports;

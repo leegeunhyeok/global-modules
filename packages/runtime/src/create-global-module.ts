@@ -77,9 +77,13 @@ export function createGlobalModule(): GlobalModule {
     return module.context;
   }
 
+  function getRegistry(): Map<ModuleId, Module> {
+    return moduleRegistry;
+  }
+
   function clear(): void {
     moduleRegistry.clear();
   }
 
-  return { register, getContext, require, clear };
+  return { register, getContext, getRegistry, require, clear };
 }
