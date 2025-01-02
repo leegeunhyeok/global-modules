@@ -53,14 +53,27 @@ impl AstDelegate for BundleDelegate {
             trailing_body,
         } = exports_to_ast(&self.ctx_ident, exps, crate::phase::ModulePhase::Bundle);
 
-        let mut new_body: Vec<ModuleItem> = vec![];
+        let mut stmts = Vec::with_capacity(orig_body.len());
+        let mut imports = Vec::with_capacity(orig_body.len());
+        let mut exports = Vec::with_capacity(orig_body.len());
+        let mut new_body: Vec<ModuleItem> = Vec::with_capacity(
+            1 + leading_body.len() + orig_body.len() + bindings.len() + trailing_body.len(),
+        );
         new_body.push(global_module_register_stmt(self.id, &self.ctx_ident).into());
         new_body.extend(leading_body);
         new_body.extend(orig_body);
         new_body.extend(bindings);
         new_body.extend(trailing_body);
 
-        new_body
+        new_body.into_iter().for_each(|item| match item {
+            ModuleItem::ModuleDecl(ref module_decl) => match module_decl {
+                ModuleDecl::Import(_) => imports.push(item),
+                _ => exports.push(item),
+            },
+            ModuleItem::Stmt(_) => stmts.push(item),
+        });
+
+        [imports, stmts, exports].concat()
     }
 
     fn import(&mut self, _: &ImportDecl) {}

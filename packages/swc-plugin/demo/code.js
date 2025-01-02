@@ -1,43 +1,41 @@
-// @ts-nocheck
-import React, { useState, useCallback } from 'react';
-import { foo } from './foo';
-import { bar as bar2 } from './bar';
-import * as baz from './baz';
-import * as foo2 from './foo';
+export default class DOMRect extends DOMRectReadOnly {
+  get x(): number {
+    return this.__getInternalX();
+  }
 
-// @ts-ignore
-React.lazy(() => import('./Component'));
+  set x(x?: number) {
+    this.__setInternalX(x);
+  }
 
-if (__DEV__) {
-  require('./cjs-1');
+  get y(): number {
+    return this.__getInternalY();
+  }
+
+  set y(y?: number) {
+    this.__setInternalY(y);
+  }
+
+  get width(): number {
+    return this.__getInternalWidth();
+  }
+
+  set width(width?: number) {
+    this.__setInternalWidth(width);
+  }
+
+  get height(): number {
+    return this.__getInternalHeight();
+  }
+
+  set height(height?: number) {
+    this.__setInternalHeight(height);
+  }
+
+  static fromRect(rect?: DOMRectInit): DOMRect {
+    if (!rect) {
+      return new DOMRect();
+    }
+
+    return new DOMRect(rect.x, rect.y, rect.width, rect.height);
+  }
 }
-
-const value = 'val';
-
-module.exports = 'cjs';
-module.exports.foo = 2;
-Object.assign(module.exports, {
-  bar: 1,
-});
-
-export const variable = 1;
-export class Class {}
-export function func() {}
-export default function () {
-  require('./cjs-2');
-
-  const inner = async () => {
-    await import('./esm');
-    require('./cjs-3');
-  };
-}
-
-export { value as value2 };
-export { foo, foo2 };
-export { baz, baz as baz2 };
-
-export * from './re-exp';
-export * as rx from './re-exp-2';
-export { rx2 } from './re-exp-3';
-export { rx3 as rx4 } from './re-exp-4';
-export { default as rx5 } from './re-exp-5';

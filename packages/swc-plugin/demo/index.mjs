@@ -53,6 +53,9 @@ console.log(
     await swc.transform(code, {
       filename: 'test.js',
       jsc: {
+        parser: {
+          syntax: 'typescript',
+        },
         target: 'esnext',
         experimental: {
           plugins: [bundlePreset()],
@@ -62,17 +65,20 @@ console.log(
   ).code,
 );
 
-// Runtime
-console.log(
-  (
-    await swc.transform(code, {
-      filename: 'test.js',
-      jsc: {
-        target: 'esnext',
-        experimental: {
-          plugins: [runtimePreset()],
-        },
-      },
-    })
-  ).code,
-);
+// // Runtime
+// console.log(
+//   (
+//     await swc.transform(code, {
+//       filename: 'test.js',
+//       jsc: {
+//         parser: {
+//           syntax: 'typescript',
+//         },
+//         target: 'esnext',
+//         experimental: {
+//           plugins: [runtimePreset()],
+//         },
+//       },
+//     })
+//   ).code,
+// );
