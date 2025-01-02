@@ -1,4 +1,5 @@
 var __ctx = global.__modules.getContext(1000);
+__ctx.reset();
 var __mod = global.__modules.require("./mod-1");
 var __mod1 = global.__modules.require("./mod-2");
 var __mod2 = global.__modules.require("./mod-3");

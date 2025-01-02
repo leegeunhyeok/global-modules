@@ -1,4 +1,5 @@
 var __ctx = global.__modules.getContext(1000);
+__ctx.reset();
 var { default: React, useState, useCallback } = global.__modules.require("react");
 var foo2 = global.__modules.require("./foo");
 var { foo } = global.__modules.require("./foo");

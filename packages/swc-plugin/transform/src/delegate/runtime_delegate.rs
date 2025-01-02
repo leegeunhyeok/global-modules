@@ -17,7 +17,7 @@ use crate::{
         ast::{
             assign_expr, get_expr_from_default_decl, get_ident_from_default_decl, get_src_lit,
             into_decl,
-            presets::{global_module_get_ctx_stmt, require_call},
+            presets::{ctx_reset_call, global_module_get_ctx_stmt, require_call},
             to_binding_module_from_assign_expr, to_binding_module_from_member_expr,
         },
         collections::OHashMap,
@@ -52,6 +52,7 @@ impl AstDelegate for RuntimeDelegate {
     fn make_script_body(&mut self, orig_body: Vec<Stmt>) -> Vec<Stmt> {
         let mut new_body = Vec::with_capacity(orig_body.len() + 1);
         new_body.push(global_module_get_ctx_stmt(self.id, &self.ctx_ident));
+        new_body.push(ctx_reset_call(&self.ctx_ident).into_stmt());
         new_body.extend(orig_body);
         new_body
     }
@@ -77,6 +78,7 @@ impl AstDelegate for RuntimeDelegate {
 
         let mut new_body: Vec<ModuleItem> = Vec::with_capacity(total_item_count);
         new_body.push(global_module_get_ctx_stmt(self.id, &self.ctx_ident).into());
+        new_body.push(ctx_reset_call(&self.ctx_ident).into_stmt().into());
         new_body.extend(deps_items);
         new_body.extend(leading_body);
         new_body.extend(hoisted_decls);
