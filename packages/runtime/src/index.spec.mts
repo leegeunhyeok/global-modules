@@ -97,6 +97,19 @@ describe('@global-modules/runtime', () => {
     });
   });
 
+  describe('getRegistry', () => {
+    let context: SandboxContext;
+
+    beforeAll(() => {
+      context = createSandboxContext();
+      context.setup();
+    });
+
+    it('should return the global module registry', () => {
+      expect(context.getGlobalModule().getRegistry()).toBeTruthy();
+    });
+  });
+
   describe('CommonJS', () => {
     const mockedPrint = vi.fn();
     let context: SandboxContext;
