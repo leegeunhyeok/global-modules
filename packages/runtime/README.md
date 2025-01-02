@@ -43,37 +43,40 @@ export function something() {
 
 ```ts
 // 1. Bundle phase
-const __ctx = global.__modules.register(1);
-
 import foo from './foo';
 import bar from './bar';
 import { baz } from './baz';
 
-export { __x as something };
+const __ctx = global.__modules.register(1);
 
-__x = function something() {
+function something() {
   return foo.value + bar.value + baz;
-};
+}
 
+__x = something;
 __ctx.exports(function () {
   return {
     something: __x,
   };
 });
 var __x;
+
+export { __x as something };
 ```
 
 ```ts
 // 2. Runtime phase
 var __ctx = global.__modules.getContext(1);
+__ctx.reset();
 
 var { default: foo } = global.__modules.require(1000); // `./foo` module's id
 var { default: bar } = global.__modules.require(1001); // `./bar` module's id
 var { baz } = global.__modules.require(1002); // `./baz` module's id
 
-__x = function something() {
+function something() {
   return foo.value + bar.value + baz;
-};
+}
+__x = something;
 __ctx.exports(function () {
   return {
     something: __x,
