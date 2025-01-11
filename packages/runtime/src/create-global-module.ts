@@ -1,4 +1,5 @@
 import { createExports, isExports } from './exports';
+import { interopDefaultExport } from './interopDefaultExport';
 import type {
   Exports,
   GlobalModule,
@@ -24,7 +25,7 @@ export function createGlobalModule(): GlobalModule {
 
     return module.exports.__esModule || isExports(module.exports)
       ? module.exports
-      : { default: module.exports };
+      : interopDefaultExport(module);
   }
 
   function getModule(id: ModuleId): Module {
