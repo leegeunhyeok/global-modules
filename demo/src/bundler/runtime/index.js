@@ -112,6 +112,7 @@ if (!window.__hot) {
         break;
     }
   });
-}
 
-window.React = require('react');
+  // Import the jsx runtime code after the `window.__hot.reactRefresh` is initialized.
+  window.__hot.jsxDevRuntime = require('react/jsx-dev-runtime');
+}

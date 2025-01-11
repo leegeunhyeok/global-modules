@@ -3742,6 +3742,7 @@ __metadata:
     "@types/react-dom": "npm:^19"
     "@types/react-refresh": "npm:^0"
     "@types/ws": "npm:^8"
+    es-module-lexer: "npm:^1.6.0"
     esbuild: "npm:^0.24.0"
     fastify: "npm:^5.1.0"
     pino: "npm:^9.5.0"
@@ -3904,6 +3905,13 @@ __metadata:
   dependencies:
     is-arrayish: "npm:^0.2.1"
   checksum: 10c0/ba827f89369b4c93382cfca5a264d059dfefdaa56ecc5e338ffa58a6471f5ed93b71a20add1d52290a4873d92381174382658c885ac1a2305f7baca363ce9cce
+  languageName: node
+  linkType: hard
+
+"es-module-lexer@npm:^1.6.0":
+  version: 1.6.0
+  resolution: "es-module-lexer@npm:1.6.0"
+  checksum: 10c0/667309454411c0b95c476025929881e71400d74a746ffa1ff4cb450bd87f8e33e8eef7854d68e401895039ac0bac64e7809acbebb6253e055dd49ea9e3ea9212
   languageName: node
   linkType: hard
 

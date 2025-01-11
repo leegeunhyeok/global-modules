@@ -8,10 +8,11 @@ import * as watcher from './watcher';
 import { createTransformPlugin } from './transformPlugin';
 import { Event } from '@parcel/watcher';
 import { WebSocketDelegate } from '../server/ws';
-import { transform } from './transform';
+import { transform, transformJsxRuntime } from './transform';
 import { Phase } from '@global-modules/swc-plugin';
 import { CLIENT_SOURCE_BASE, CLIENT_SOURCE_ENTRY } from '../shared';
 import { metafilePlugin } from './metafilePlugin';
+const esModuleLexer = require('es-module-lexer');
 
 interface BundlerConfig {
   delegate: WebSocketDelegate;
@@ -111,6 +112,8 @@ export class Bundler {
       baseModule.id,
     );
 
+    // this.dependencyManager.getModule('react/jsx')
+
     const t0 = performance.now();
     const transformedCodeList = await Promise.all(
       [baseModule, ...inverseDependencies].map(async (module) => {
@@ -133,7 +136,7 @@ export class Bundler {
             phase: Phase.Runtime,
             paths: imports,
           },
-        );
+        ).then(transformJsxRuntime);
 
         // Wrap with IIFE to prevent global scope pollution.
         return `(function () {
@@ -164,6 +167,7 @@ export class Bundler {
   }
 
   async initialize(config: BundlerConfig) {
+    esModuleLexer.init;
     await watcher.watch(CLIENT_SOURCE_BASE, this.watchHandler.bind(this));
 
     this.logger = config.logger;
