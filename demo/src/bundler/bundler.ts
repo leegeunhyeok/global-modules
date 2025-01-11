@@ -8,11 +8,13 @@ import * as watcher from './watcher';
 import { createTransformPlugin } from './transformPlugin';
 import { Event } from '@parcel/watcher';
 import { WebSocketDelegate } from '../server/ws';
-import { transform } from './transform';
+import { transform, transformJsxRuntime } from './transform';
 import { Phase } from '@global-modules/swc-plugin';
-
-const CLIENT_SOURCE_BASE = path.resolve(__dirname, '../client');
-const CLIENT_SOURCE_ENTRY = path.join(CLIENT_SOURCE_BASE, 'index.js');
+import { CLIENT_SOURCE_BASE, CLIENT_SOURCE_ENTRY } from '../shared';
+import { metafilePlugin } from './metafilePlugin';
+import { loadSource } from '../utils/loadSource';
+import { wrapWithIIFE } from '../utils/wrapWithIIFE';
+const esModuleLexer = require('es-module-lexer');
 
 interface BundlerConfig {
   delegate: WebSocketDelegate;
@@ -44,27 +46,26 @@ export class Bundler {
       entryPoints: [CLIENT_SOURCE_ENTRY],
       bundle: true,
       sourcemap: true,
-      metafile: false,
       write: false,
+      inject: [path.join(__dirname, 'runtime/index.js')],
       banner: {
-        // Inject `@global-modules/runtime` as a prelude script.
         js: await this.getPreludeScript(),
       },
-      plugins: [transformPlugin.plugin],
+      plugins: [transformPlugin.plugin, metafilePlugin],
     });
 
     return buildResult;
   }
 
   private async getPreludeScript() {
-    const source = await fs.promises.readFile(
+    const preludeSourcePaths = [
       require.resolve('@global-modules/runtime'),
-      {
-        encoding: 'utf-8',
-      },
-    );
+      path.join(__dirname, 'runtime/hot-context.js'),
+    ];
 
-    return source;
+    return Promise.all(preludeSourcePaths.map(loadSource)).then((sources) =>
+      sources.map(wrapWithIIFE).join('\n'),
+    );
   }
 
   private getSource(buildResult: esbuild.BuildResult) {
@@ -120,16 +121,6 @@ export class Bundler {
           encoding: 'utf-8',
         });
 
-        if (
-          module.meta?.imports &&
-          module.dependencies.length !==
-            Object.keys(module.meta?.imports ?? {}).length
-        ) {
-          invalid = true;
-          console.warn('dependency meta is mismatch');
-          return '';
-        }
-
         const imports = Object.entries(module.meta.imports).reduce(
           (prev, [original, value]) => {
             return { ...prev, [original]: value.id };
@@ -145,12 +136,9 @@ export class Bundler {
             phase: Phase.Runtime,
             paths: imports,
           },
-        );
+        ).then(transformJsxRuntime);
 
-        // Wrap with IIFE to prevent global scope pollution.
-        return `(function () {
-          ${transformedCode}
-        })();`;
+        return wrapWithIIFE(transformedCode);
       }),
     );
 
@@ -168,7 +156,7 @@ export class Bundler {
       this.delegate.send(
         JSON.stringify({
           type: 'update',
-          id: module.id,
+          id: baseModule.id,
           body: code,
         }),
       );
@@ -176,6 +164,7 @@ export class Bundler {
   }
 
   async initialize(config: BundlerConfig) {
+    esModuleLexer.init;
     await watcher.watch(CLIENT_SOURCE_BASE, this.watchHandler.bind(this));
 
     this.logger = config.logger;

@@ -3,6 +3,7 @@ import * as fs from 'node:fs';
 import { createPlugin } from '@global-modules/esbuild-plugin';
 import { Phase } from '@global-modules/swc-plugin';
 import { transform } from './transform';
+import { registerHotModule } from './hmr';
 
 export function createTransformPlugin() {
   return createPlugin({
@@ -32,17 +33,4 @@ export function createTransformPlugin() {
       });
     },
   });
-}
-
-function registerHotModule(code: string, id: number) {
-  return [
-    code,
-    `
-    if (window.__hot) {
-      const context = window.__hot.register(${id});
-      context.dispose(() => console.log('[HMR] Disposed', ${id}));
-      context.accept(() => console.log('[HMR] Accepted', ${id}));
-    }
-    `,
-  ].join('\n');
 }
