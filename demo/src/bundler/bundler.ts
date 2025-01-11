@@ -112,8 +112,6 @@ export class Bundler {
       baseModule.id,
     );
 
-    // this.dependencyManager.getModule('react/jsx')
-
     const t0 = performance.now();
     const transformedCodeList = await Promise.all(
       [baseModule, ...inverseDependencies].map(async (module) => {
