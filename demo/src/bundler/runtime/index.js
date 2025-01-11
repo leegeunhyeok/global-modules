@@ -2,84 +2,54 @@ const RefreshRuntime = require('react-refresh/runtime');
 
 RefreshRuntime.injectIntoGlobalHook(window);
 
-if (!window.__hot) {
-  // To avoid 'direct-eval' warning in esbuild
-  const _eval = eval;
-  let performReactRefreshTimeout = null;
+// To avoid 'direct-eval' warning in esbuild
+const _eval = eval;
+let performReactRefreshTimeout = null;
 
-  class HotContext {
-    id = '';
-    locked = false;
-    acceptCallbacks = [];
-    disposeCallbacks = [];
+// TODO
+class HotContext {
+  id = '';
+  locked = false;
+  acceptCallbacks = [];
+  disposeCallbacks = [];
 
-    constructor(id) {
-      this.id = id;
-    }
-
-    accept(callback) {
-      if (this.locked) return;
-      this.acceptCallbacks.push(callback);
-    }
-
-    dispose(callback) {
-      if (this.locked) return;
-      this.disposeCallbacks.push(callback);
-    }
-
-    lock() {
-      this.locked = true;
-    }
+  constructor(id) {
+    this.id = id;
   }
 
-  const __r = (window.__r = {});
+  accept(callback) {
+    if (this.locked) return;
+    this.acceptCallbacks.push(callback);
+  }
 
-  window.global = window;
-  window.__hot = {
-    register(moduleId) {
-      console.log('[HMR] Register module ::', moduleId);
-      const existContext = __r[moduleId];
-      if (existContext) {
-        existContext.lock();
-        return existContext;
-      }
-      return (__r[moduleId] = new HotContext(moduleId));
-    },
-    get(moduleId) {
-      return __r[moduleId];
-    },
-    reactRefresh: {
-      register: RefreshRuntime.register,
-      getSignature:
-        () =>
-        (...args) => {
-          RefreshRuntime.createSignatureFunctionForTransform.call(
-            this,
-            ...args,
-          );
-          return args[0];
-        },
-      performReactRefresh: () => {
-        if (performReactRefreshTimeout !== null) {
-          return;
-        }
+  dispose(callback) {
+    if (this.locked) return;
+    this.disposeCallbacks.push(callback);
+  }
 
-        performReactRefreshTimeout = setTimeout(() => {
-          performReactRefreshTimeout = null;
-        }, 30);
+  lock() {
+    this.locked = true;
+  }
+}
 
-        if (RefreshRuntime.hasUnrecoverableErrors()) {
-          console.error('[HMR] has unrecoverable errors on react-refresh');
-          return;
-        }
+class HMRClient {
+  connect() {
+    const socket = new WebSocket('ws://localhost:3000/hot');
 
-        RefreshRuntime.performReactRefresh();
-      },
-    },
-  };
+    socket.addEventListener('open', () => {
+      console.log('[HMR] Socket connected');
+    });
 
-  const hmrSocket = new WebSocket('ws://localhost:3000/hot');
-  hmrSocket.addEventListener('message', async (event) => {
+    socket.addEventListener('close', () => {
+      console.log('[HMR] Socket disconnected');
+    });
+
+    socket.addEventListener('message', async (event) => {
+      this.handleMessage(event);
+    });
+  }
+
+  handleMessage(event) {
     const payload = JSON.parse(event.data);
     console.log('[HMR] onMessage ::', payload);
 
@@ -90,7 +60,7 @@ if (!window.__hot) {
        * }
        */
       case 'reload':
-        window.location.reload();
+        this.handleReload();
         break;
 
       /**
@@ -101,18 +71,66 @@ if (!window.__hot) {
        * }
        */
       case 'update':
-        const targetModule = __r[payload.id] || {};
-        const acceptCallbacks = targetModule.acceptCallbacks || [];
-        const disposeCallbacks = targetModule.disposeCallbacks || [];
-        disposeCallbacks.forEach((callback) => callback());
-        _eval(payload.body);
-        acceptCallbacks.forEach((callback) => {
-          callback({ body: payload.body });
-        });
+        try {
+          this.handleModuleUpdate(payload.id, payload.body);
+        } catch (error) {
+          console.error(
+            '[HMR] Unexpected error on module update. fully reload instead ::',
+            error,
+          );
+          // this.handleReload();
+        }
         break;
     }
-  });
+  }
 
-  // Import the jsx runtime code after the `window.__hot.reactRefresh` is initialized.
-  window.__hot.jsxDevRuntime = require('react/jsx-dev-runtime');
+  handleReload() {
+    window.location.reload();
+  }
+
+  handleModuleUpdate(id, body) {
+    const targetModule = global.__modules.getContext(id);
+    // TODO
+    // const acceptCallbacks = targetModule.acceptCallbacks || [];
+    // const disposeCallbacks = targetModule.disposeCallbacks || [];
+    const acceptCallbacks = [targetModule.accept];
+    const disposeCallbacks = [targetModule.dispose];
+
+    disposeCallbacks.forEach((callback) => callback());
+    _eval(body);
+    acceptCallbacks.forEach((callback) => callback({ body }));
+  }
 }
+
+const reactRefresh = {
+  register: RefreshRuntime.register,
+  getSignature:
+    () =>
+    (...args) => {
+      RefreshRuntime.createSignatureFunctionForTransform.call(this, ...args);
+      return args[0];
+    },
+  performReactRefresh: () => {
+    if (performReactRefreshTimeout !== null) {
+      return;
+    }
+
+    performReactRefreshTimeout = setTimeout(() => {
+      performReactRefreshTimeout = null;
+    }, 30);
+
+    if (RefreshRuntime.hasUnrecoverableErrors()) {
+      console.error('[HMR] has unrecoverable errors on react-refresh');
+      return;
+    }
+
+    RefreshRuntime.performReactRefresh();
+  },
+};
+
+window.global = window;
+window.$$reactRefresh$$ = reactRefresh;
+// Import the jsx runtime code after the `window.$$reactRefresh$$` is initialized.
+window.$$jsxDevRuntime$$ = require('react/jsx-dev-runtime');
+
+new HMRClient().connect();

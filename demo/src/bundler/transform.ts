@@ -26,8 +26,8 @@ export async function transform(
           development: true,
           // @ts-ignore -- wrong type definition
           refresh: {
-            refreshReg: 'window.__hot.reactRefresh.register',
-            refreshSig: 'window.__hot.reactRefresh.getSignature',
+            refreshReg: 'window.$$reactRefresh$$.register',
+            refreshSig: 'window.$$reactRefresh$$.getSignature',
           } as unknown,
         },
       },
@@ -63,17 +63,9 @@ export async function transformJsxRuntime(source: string) {
     throw new Error(`invalid module source: ${n}`);
   }
 
-  // `import { jsxDEV as _jsxDEV } from "react/jsx-dev-runtime"`
+  // eg. `import { jsxDEV as _jsxDEV } from "react/jsx-dev-runtime"`
   const statement = source.slice(ss, se);
   const members: string[] = [];
-
-  if (statement.includes('jsxDEV')) {
-    members.push('jsxDev: _jsxDev');
-  }
-
-  if (statement.includes('Fragment')) {
-    members.push('Fragment: _Fragment');
-  }
 
   const ast = await swc.parse(statement);
   const node = ast.body[0];
@@ -89,10 +81,9 @@ export async function transformJsxRuntime(source: string) {
       }
     });
   }
-
-  // See `runtime/index.js`
-  return source.replace(
-    statement,
-    `var { ${members.join(', ')} } = window.__hot.jsxDevRuntime;`,
-  );
+  return [
+    // `$$jsxDevRuntime$$`: See `runtime/index.js`
+    `var { ${members.join(', ')} } = window.$$jsxDevRuntime$$;`,
+    source.replace(statement, ''),
+  ].join('\n');
 }
