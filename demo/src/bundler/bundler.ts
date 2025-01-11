@@ -10,9 +10,8 @@ import { Event } from '@parcel/watcher';
 import { WebSocketDelegate } from '../server/ws';
 import { transform } from './transform';
 import { Phase } from '@global-modules/swc-plugin';
-
-const CLIENT_SOURCE_BASE = path.resolve(__dirname, '../client');
-const CLIENT_SOURCE_ENTRY = path.join(CLIENT_SOURCE_BASE, 'index.js');
+import { CLIENT_SOURCE_BASE, CLIENT_SOURCE_ENTRY } from '../shared';
+import { metafilePlugin } from './metafilePlugin';
 
 interface BundlerConfig {
   delegate: WebSocketDelegate;
@@ -44,13 +43,12 @@ export class Bundler {
       entryPoints: [CLIENT_SOURCE_ENTRY],
       bundle: true,
       sourcemap: true,
-      metafile: false,
       write: false,
+      inject: [path.join(__dirname, 'runtime/index.js')],
       banner: {
-        // Inject `@global-modules/runtime` as a prelude script.
         js: await this.getPreludeScript(),
       },
-      plugins: [transformPlugin.plugin],
+      plugins: [transformPlugin.plugin, metafilePlugin],
     });
 
     return buildResult;
@@ -120,16 +118,6 @@ export class Bundler {
           encoding: 'utf-8',
         });
 
-        if (
-          module.meta?.imports &&
-          module.dependencies.length !==
-            Object.keys(module.meta?.imports ?? {}).length
-        ) {
-          invalid = true;
-          console.warn('dependency meta is mismatch');
-          return '';
-        }
-
         const imports = Object.entries(module.meta.imports).reduce(
           (prev, [original, value]) => {
             return { ...prev, [original]: value.id };
@@ -168,7 +156,7 @@ export class Bundler {
       this.delegate.send(
         JSON.stringify({
           type: 'update',
-          id: module.id,
+          id: baseModule.id,
           body: code,
         }),
       );

@@ -1,13 +1,13 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { RouteHandler } from './types';
-import { BUNDLE_FILE_PATH } from '../../shared';
+import { BUNDLE_FILE_PATH, CLIENT_SOURCE_BASE } from '../../shared';
 
 export const indexRoute: RouteHandler = [
   '/',
   async (_request, reply) => {
     const content = await fs.promises.readFile(
-      path.resolve(__dirname, '../index.html'),
+      path.resolve(CLIENT_SOURCE_BASE, 'public/index.html'),
       {
         encoding: 'utf-8',
       },
