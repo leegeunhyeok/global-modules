@@ -6,32 +6,6 @@ RefreshRuntime.injectIntoGlobalHook(window);
 const _eval = eval;
 let performReactRefreshTimeout = null;
 
-// TODO
-class HotContext {
-  id = '';
-  locked = false;
-  acceptCallbacks = [];
-  disposeCallbacks = [];
-
-  constructor(id) {
-    this.id = id;
-  }
-
-  accept(callback) {
-    if (this.locked) return;
-    this.acceptCallbacks.push(callback);
-  }
-
-  dispose(callback) {
-    if (this.locked) return;
-    this.disposeCallbacks.push(callback);
-  }
-
-  lock() {
-    this.locked = true;
-  }
-}
-
 class HMRClient {
   connect() {
     const socket = new WebSocket('ws://localhost:3000/hot');
@@ -78,7 +52,7 @@ class HMRClient {
             '[HMR] Unexpected error on module update. fully reload instead ::',
             error,
           );
-          // this.handleReload();
+          this.handleReload();
         }
         break;
     }
@@ -90,15 +64,9 @@ class HMRClient {
 
   handleModuleUpdate(id, body) {
     const targetModule = global.__modules.getContext(id);
-    // TODO
-    // const acceptCallbacks = targetModule.acceptCallbacks || [];
-    // const disposeCallbacks = targetModule.disposeCallbacks || [];
-    const acceptCallbacks = [targetModule.accept];
-    const disposeCallbacks = [targetModule.dispose];
-
-    disposeCallbacks.forEach((callback) => callback());
+    targetModule.hot.disposeCallbacks.forEach((callback) => callback());
     _eval(body);
-    acceptCallbacks.forEach((callback) => callback({ body }));
+    targetModule.hot.acceptCallbacks.forEach((callback) => callback({ body }));
   }
 }
 
@@ -128,7 +96,6 @@ const reactRefresh = {
   },
 };
 
-window.global = window;
 window.$$reactRefresh$$ = reactRefresh;
 // Import the jsx runtime code after the `window.$$reactRefresh$$` is initialized.
 window.$$jsxDevRuntime$$ = require('react/jsx-dev-runtime');

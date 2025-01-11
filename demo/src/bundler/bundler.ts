@@ -12,6 +12,8 @@ import { transform, transformJsxRuntime } from './transform';
 import { Phase } from '@global-modules/swc-plugin';
 import { CLIENT_SOURCE_BASE, CLIENT_SOURCE_ENTRY } from '../shared';
 import { metafilePlugin } from './metafilePlugin';
+import { loadSource } from '../utils/loadSource';
+import { wrapWithIIFE } from '../utils/wrapWithIIFE';
 const esModuleLexer = require('es-module-lexer');
 
 interface BundlerConfig {
@@ -56,14 +58,14 @@ export class Bundler {
   }
 
   private async getPreludeScript() {
-    const source = await fs.promises.readFile(
+    const preludeSourcePaths = [
       require.resolve('@global-modules/runtime'),
-      {
-        encoding: 'utf-8',
-      },
-    );
+      path.join(__dirname, 'runtime/hot-context.js'),
+    ];
 
-    return source;
+    return Promise.all(preludeSourcePaths.map(loadSource)).then((sources) =>
+      sources.map(wrapWithIIFE).join('\n'),
+    );
   }
 
   private getSource(buildResult: esbuild.BuildResult) {
@@ -136,10 +138,7 @@ export class Bundler {
           },
         ).then(transformJsxRuntime);
 
-        // Wrap with IIFE to prevent global scope pollution.
-        return `(function () {
-          ${transformedCode}
-        })();`;
+        return wrapWithIIFE(transformedCode);
       }),
     );
 
