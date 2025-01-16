@@ -29,8 +29,9 @@ pub struct RuntimeDelegate {
     paths: Option<AHashMap<String, f64>>,
     ctx_ident: Ident,
     deps: OHashMap<Atom, ModuleRef>,
-    exps: Vec<ExportRef>,
+    exports: Vec<ExportRef>,
     hoisted_decls: Vec<ModuleItem>,
+    export_decls: Vec<ModuleItem>,
     bindings: Vec<ModuleItem>,
 }
 
@@ -41,8 +42,9 @@ impl RuntimeDelegate {
             paths,
             ctx_ident: private_ident!("__ctx"),
             deps: OHashMap::default(),
-            exps: Vec::default(),
+            exports: Vec::default(),
             hoisted_decls: Vec::default(),
+            export_decls: Vec::default(),
             bindings: Vec::default(),
         }
     }
@@ -58,7 +60,7 @@ impl AstDelegate for RuntimeDelegate {
     }
 
     fn make_module_body(&mut self, mut orig_body: Vec<ModuleItem>) -> Vec<ModuleItem> {
-        let exps = mem::take(&mut self.exps);
+        let exports = mem::take(&mut self.exports);
         let hoisted_decls = mem::take(&mut self.hoisted_decls);
         let bindings = mem::take(&mut self.bindings);
 
@@ -68,7 +70,7 @@ impl AstDelegate for RuntimeDelegate {
         let ExportsAst {
             leading_body,
             trailing_body,
-        } = exports_to_ast(&self.ctx_ident, exps, crate::phase::ModulePhase::Runtime);
+        } = exports_to_ast(&self.ctx_ident, exports, crate::phase::ModulePhase::Runtime);
         let total_item_count = deps_items.len()
             + leading_body.len()
             + orig_body.len()
@@ -88,7 +90,7 @@ impl AstDelegate for RuntimeDelegate {
         new_body
     }
 
-    fn import(&mut self, import_decl: &ImportDecl) {
+    fn import(&mut self, import_decl: &mut ImportDecl) {
         let members = to_import_members(&import_decl.specifiers);
         let src = &import_decl.src.value;
 
@@ -99,18 +101,18 @@ impl AstDelegate for RuntimeDelegate {
         }
     }
 
-    fn export_decl(&mut self, export_decl: &ExportDecl) -> ModuleItem {
+    fn export_decl(&mut self, export_decl: &mut ExportDecl) -> ModuleItem {
         let item = get_from_export_decl(export_decl);
-        self.exps.push(item.export_ref);
-        self.hoisted_decls.push(export_decl.decl.clone().into());
+        self.exports.push(item.export_ref);
+        self.export_decls.push(item.export_stmt);
         self.bindings.push(item.binding_stmt);
 
-        item.export_stmt
+        export_decl.decl.clone().into()
     }
 
     fn export_default_decl(
         &mut self,
-        export_default_decl: &ExportDefaultDecl,
+        export_default_decl: &mut ExportDefaultDecl,
     ) -> Option<ModuleItem> {
         let ident = get_ident_from_default_decl(&export_default_decl.decl);
         let binding_export = BindingExportMember::new("default".into());
@@ -135,45 +137,49 @@ impl AstDelegate for RuntimeDelegate {
             ),
         };
 
-        self.exps.push(ExportRef::Named(NamedExportRef::new(vec![
+        self.exports.push(ExportRef::Named(NamedExportRef::new(vec![
             ExportMember::Binding(binding_export),
         ])));
 
         None
     }
 
-    fn export_default_expr(&mut self, export_default_expr: &ExportDefaultExpr) -> Expr {
+    fn export_default_expr(
+        &mut self,
+        export_default_expr: &mut ExportDefaultExpr,
+    ) -> Option<ModuleItem> {
         let orig_expr = export_default_expr.expr.clone();
         let binding_export = BindingExportMember::new("default".into());
-        let binding_assign_expr = assign_expr(binding_export.bind_ident.clone(), *orig_expr).into();
+        let binding_assign_expr = assign_expr(binding_export.bind_ident.clone(), *orig_expr);
 
-        self.exps.push(ExportRef::Named(NamedExportRef::new(vec![
+        self.exports.push(ExportRef::Named(NamedExportRef::new(vec![
             ExportMember::Binding(binding_export),
         ])));
 
-        binding_assign_expr
+        Some(binding_assign_expr.into_stmt().into())
     }
 
-    fn export_named(&mut self, export_named: &NamedExport) {
-        self.exps
+    fn export_named(&mut self, export_named: &mut NamedExport) {
+        self.exports
             .push(export_ref_from_named_export(export_named, &self.paths));
     }
 
-    fn export_all(&mut self, export_all: &ExportAll) {
+    fn export_all(&mut self, export_all: &mut ExportAll) {
         let src = export_all.src.value.clone();
         let id = self
             .paths
             .as_ref()
             .and_then(|paths| paths.get(src.as_str()));
 
-        self.exps.push(ExportRef::ReExportAll(ReExportAllRef::new(
-            src,
-            id.copied(),
-            None,
-        )));
+        self.exports
+            .push(ExportRef::ReExportAll(ReExportAllRef::new(
+                src,
+                id.copied(),
+                None,
+            )));
     }
 
-    fn call_expr(&mut self, call_expr: &CallExpr) -> Option<Expr> {
+    fn call_expr(&mut self, call_expr: &mut CallExpr) -> Option<Expr> {
         match call_expr {
             // Replace CommonJS requires.
             //
@@ -221,7 +227,7 @@ impl AstDelegate for RuntimeDelegate {
         }
     }
 
-    fn assign_expr(&mut self, assign_expr: &AssignExpr) -> Option<Expr> {
+    fn assign_expr(&mut self, assign_expr: &mut AssignExpr) -> Option<Expr> {
         to_binding_module_from_assign_expr(
             self.ctx_ident.clone(),
             assign_expr,
@@ -229,7 +235,7 @@ impl AstDelegate for RuntimeDelegate {
         )
     }
 
-    fn member_expr(&mut self, member_expr: &MemberExpr) -> Option<Expr> {
+    fn member_expr(&mut self, member_expr: &mut MemberExpr) -> Option<Expr> {
         to_binding_module_from_member_expr(
             self.ctx_ident.clone(),
             member_expr,

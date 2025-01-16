@@ -1,0 +1,241 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`@global-modules/swc-plugin > Bundle phase > [CJS] Basics 1`] = `
+"(() => {
+  var __getOwnPropNames = Object.getOwnPropertyNames;
+  var __commonJS = (cb, mod2) => function __require() {
+    return mod2 || (0, cb[__getOwnPropNames(cb)[0]])((mod2 = { exports: {} }).exports, mod2), mod2.exports;
+  };
+
+  // linker:@
+  var require__ = __commonJS({
+    "linker:@"(exports, module) {
+      var __ctx = global.__modules.register(0);
+      var foo = "foo";
+      var bar = "bar";
+      var value = "baz";
+      if (true) {
+        module.exports = __ctx.module.exports = {
+          foo,
+          bar,
+          baz: value
+        };
+      }
+    }
+  });
+
+  // <stdin>
+  var mod = require__();
+  bridge(mod);
+})();
+"
+`;
+
+exports[`@global-modules/swc-plugin > Bundle phase > [ESM] Basics 1`] = `
+"(() => {
+  var __defProp = Object.defineProperty;
+  var __export = (target, all) => {
+    for (var name in all)
+      __defProp(target, name, { get: all[name], enumerable: true });
+  };
+
+  // linker:@
+  var __exports = {};
+  __export(__exports, {
+    bar: () => bar,
+    baz: () => value,
+    default: () => __default,
+    foo: () => __x1
+  });
+  var __ctx = global.__modules.register(0);
+  var foo = "foo";
+  var bar = "bar";
+  var value = "baz";
+  var foo = "foo";
+  __x1 = foo;
+  __ctx.exports(function() {
+    return {
+      "default": __x,
+      "foo": __x1,
+      "bar": bar,
+      "baz": value
+    };
+  });
+  var __x;
+  var __x1;
+  var __default = __x = 1;
+
+  // <stdin>
+  bridge(__exports);
+})();
+"
+`;
+
+exports[`@global-modules/swc-plugin > Bundle phase > [ESM] Export with declaration statements 1`] = `
+"(() => {
+  // linker:@
+  var __ctx = global.__modules.register(0);
+  var obj = {
+    value: 0
+  };
+  var newObj = obj;
+  newObj.key = "key";
+  __x = newObj;
+  __ctx.exports(function() {
+    return {
+      "newObj": __x
+    };
+  });
+  var __x;
+
+  // <stdin>
+  bridge(__x);
+})();
+"
+`;
+
+exports[`@global-modules/swc-plugin > Runtime phase > [CJS] Basics 1`] = `
+"(() => {
+  var __getOwnPropNames = Object.getOwnPropertyNames;
+  var __commonJS = (cb, mod2) => function __require() {
+    return mod2 || (0, cb[__getOwnPropNames(cb)[0]])((mod2 = { exports: {} }).exports, mod2), mod2.exports;
+  };
+
+  // linker:@
+  var require__ = __commonJS({
+    "linker:@"() {
+      var __ctx = global.__modules.getContext(0);
+      __ctx.reset();
+      var foo = "foo";
+      var bar = "bar";
+      var value = "baz";
+      if (true) {
+        __ctx.module.exports = {
+          foo,
+          bar,
+          baz: value
+        };
+      }
+    }
+  });
+
+  // <stdin>
+  var mod = require__();
+  bridge(global.__modules.getContext(0).module.exports);
+})();
+"
+`;
+
+exports[`@global-modules/swc-plugin > Runtime phase > [ESM] Basics 1`] = `
+"(() => {
+  var __create = Object.create;
+  var __defProp = Object.defineProperty;
+  var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
+  var __getOwnPropNames = Object.getOwnPropertyNames;
+  var __getProtoOf = Object.getPrototypeOf;
+  var __hasOwnProp = Object.prototype.hasOwnProperty;
+  var __commonJS = (cb, mod2) => function __require() {
+    return mod2 || (0, cb[__getOwnPropNames(cb)[0]])((mod2 = { exports: {} }).exports, mod2), mod2.exports;
+  };
+  var __copyProps = (to, from, except, desc) => {
+    if (from && typeof from === "object" || typeof from === "function") {
+      for (let key of __getOwnPropNames(from))
+        if (!__hasOwnProp.call(to, key) && key !== except)
+          __defProp(to, key, { get: () => from[key], enumerable: !(desc = __getOwnPropDesc(from, key)) || desc.enumerable });
+    }
+    return to;
+  };
+  var __toESM = (mod2, isNodeMode, target) => (target = mod2 != null ? __create(__getProtoOf(mod2)) : {}, __copyProps(
+    // If the importer is in node compatibility mode or this is not an ESM
+    // file that has been converted to a CommonJS file using a Babel-
+    // compatible transform (i.e. "__esModule" has not been set), then set
+    // "default" to the CommonJS "module.exports" for node compatibility.
+    isNodeMode || !mod2 || !mod2.__esModule ? __defProp(target, "default", { value: mod2, enumerable: true }) : target,
+    mod2
+  ));
+
+  // linker:@
+  var require__ = __commonJS({
+    "linker:@"() {
+      var __ctx = global.__modules.getContext(0);
+      __ctx.reset();
+      var foo = "foo";
+      var bar = "bar";
+      var value = "baz";
+      __x = 1;
+      var foo = "foo";
+      __x1 = foo;
+      __ctx.exports(function() {
+        return {
+          "default": __x,
+          "foo": __x1,
+          "bar": bar,
+          "baz": value
+        };
+      });
+      var __x;
+      var __x1;
+    }
+  });
+
+  // <stdin>
+  var mod = __toESM(require__());
+  bridge(global.__modules.getContext(0).module.exports);
+})();
+"
+`;
+
+exports[`@global-modules/swc-plugin > Runtime phase > [ESM] Export with declaration statements 1`] = `
+"(() => {
+  var __create = Object.create;
+  var __defProp = Object.defineProperty;
+  var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
+  var __getOwnPropNames = Object.getOwnPropertyNames;
+  var __getProtoOf = Object.getPrototypeOf;
+  var __hasOwnProp = Object.prototype.hasOwnProperty;
+  var __commonJS = (cb, mod2) => function __require() {
+    return mod2 || (0, cb[__getOwnPropNames(cb)[0]])((mod2 = { exports: {} }).exports, mod2), mod2.exports;
+  };
+  var __copyProps = (to, from, except, desc) => {
+    if (from && typeof from === "object" || typeof from === "function") {
+      for (let key of __getOwnPropNames(from))
+        if (!__hasOwnProp.call(to, key) && key !== except)
+          __defProp(to, key, { get: () => from[key], enumerable: !(desc = __getOwnPropDesc(from, key)) || desc.enumerable });
+    }
+    return to;
+  };
+  var __toESM = (mod2, isNodeMode, target) => (target = mod2 != null ? __create(__getProtoOf(mod2)) : {}, __copyProps(
+    // If the importer is in node compatibility mode or this is not an ESM
+    // file that has been converted to a CommonJS file using a Babel-
+    // compatible transform (i.e. "__esModule" has not been set), then set
+    // "default" to the CommonJS "module.exports" for node compatibility.
+    isNodeMode || !mod2 || !mod2.__esModule ? __defProp(target, "default", { value: mod2, enumerable: true }) : target,
+    mod2
+  ));
+
+  // linker:@
+  var require__ = __commonJS({
+    "linker:@"() {
+      var __ctx = global.__modules.getContext(0);
+      __ctx.reset();
+      var obj = {
+        value: 0
+      };
+      var newObj = obj;
+      newObj.key = "key";
+      __x = newObj;
+      __ctx.exports(function() {
+        return {
+          "newObj": __x
+        };
+      });
+      var __x;
+    }
+  });
+
+  // <stdin>
+  var mod = __toESM(require__());
+  bridge(global.__modules.getContext(0).module.exports);
+})();
+"
+`;

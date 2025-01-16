@@ -10,10 +10,6 @@ var __mod1 = global.__modules.require("./re-exp-2");
 var __mod2 = global.__modules.require("./re-exp-3");
 var __mod3 = global.__modules.require("./re-exp-4");
 var __mod4 = global.__modules.require("./re-exp-5");
-const variable = 1;
-class Class {
-}
-function func() {}
 React.lazy(()=>global.__modules.require('./Component'));
 if (__DEV__) {
     global.__modules.require('./cjs-1');
@@ -24,6 +20,10 @@ __ctx.module.exports.foo = 2;
 Object.assign(__ctx.module.exports, {
     bar: 1
 });
+const variable = 1;
+class Class {
+}
+function func() {}
 __x = variable;
 __x1 = Class;
 __x2 = func;

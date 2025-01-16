@@ -1,11 +1,11 @@
 var __ctx = global.__modules.getContext(1000);
 __ctx.reset();
+const foo = 'foo';
+const bar = 'bar';
 const variable = 1;
 class Class {
 }
 function func() {}
-const foo = 'foo';
-const bar = 'bar';
 __x = variable;
 __x1 = Class;
 __x2 = func;

@@ -81,7 +81,7 @@ impl VisitMut for GlobalModuleTransformer {
                         ModuleDecl::ExportDecl(export_decl) => {
                             export_decl.visit_mut_children_with(self);
 
-                            *item = self.delegate.export_decl(&export_decl);
+                            *item = self.delegate.export_decl(export_decl);
                         }
                         // Default export statements with declarations.
                         //
@@ -105,10 +105,12 @@ impl VisitMut for GlobalModuleTransformer {
                         // ```
                         ModuleDecl::ExportDefaultExpr(export_default_expr) => {
                             export_default_expr.visit_mut_children_with(self);
-                            export_default_expr.expr = self
-                                .delegate
-                                .export_default_expr(export_default_expr)
-                                .into()
+
+                            if let Some(new_item) =
+                                self.delegate.export_default_expr(export_default_expr)
+                            {
+                                *item = new_item;
+                            }
                         }
                         // Named export statements.
                         //
