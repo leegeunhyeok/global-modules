@@ -162,6 +162,7 @@ exports[`@global-modules/swc-plugin > Runtime phase > [ESM] Basics 1`] = `
       var foo = "foo";
       var bar = "bar";
       var value = "baz";
+      __x = 1;
       var foo = "foo";
       __x1 = foo;
       __ctx.exports(function() {

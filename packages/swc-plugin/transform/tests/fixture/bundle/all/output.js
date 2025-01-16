@@ -9,10 +9,6 @@ import { bar as bar2 } from './bar';
 import * as baz from './baz';
 import * as foo2 from './foo';
 var __ctx = global.__modules.register(1000);
-const variable = 1;
-class Class {
-}
-function func() {}
 React.lazy(()=>import('./Component'));
 if (__DEV__) {
     require('./cjs-1');
@@ -23,6 +19,10 @@ module.exports.foo = __ctx.module.exports.foo = 2;
 Object.assign(module.exports = __ctx.module.exports, {
     bar: 1
 });
+const variable = 1;
+class Class {
+}
+function func() {}
 __x = variable;
 __x1 = Class;
 __x2 = func;
@@ -52,9 +52,6 @@ __ctx.exports(function() {
     };
 });
 var __x, __x1, __x2, __x3;
-export { __x as variable };
-export { __x1 as Class };
-export { __x2 as func };
 export default __x3;
 export { value as value2 };
 export { foo, foo2 };
@@ -64,3 +61,6 @@ export * as rx from './re-exp-2';
 export { rx2 } from './re-exp-3';
 export { rx3 as rx4 } from './re-exp-4';
 export { default as rx5 } from './re-exp-5';
+export { __x as variable };
+export { __x1 as Class };
+export { __x2 as func };

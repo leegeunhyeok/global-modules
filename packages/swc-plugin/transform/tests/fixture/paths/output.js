@@ -10,10 +10,6 @@ var __mod1 = global.__modules.require(1011);
 var __mod2 = global.__modules.require(1012);
 var __mod3 = global.__modules.require(1013);
 var __mod4 = global.__modules.require(1014);
-const variable = 1;
-class Class {
-}
-function func() {}
 React.lazy(()=>global.__modules.require(1004));
 if (__DEV__) {
     global.__modules.require(1005);
@@ -24,6 +20,10 @@ __ctx.module.exports.foo = 2;
 Object.assign(__ctx.module.exports, {
     bar: 1
 });
+const variable = 1;
+class Class {
+}
+function func() {}
 __x = variable;
 __x1 = Class;
 __x2 = func;

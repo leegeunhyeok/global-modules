@@ -170,7 +170,7 @@ describe('@global-modules/swc-plugin', () => {
     });
   });
 
-  describe.skip('Runtime phase', () => {
+  describe('Runtime phase', () => {
     it('[ESM] Basics', async () => {
       const bundleCode = await bundle(
         `
@@ -203,7 +203,7 @@ describe('@global-modules/swc-plugin', () => {
       });
     });
 
-    it('[ESM] Export with declaration statements', async () => {
+    it.only('[ESM] Export with declaration statements', async () => {
       const bundleCode = await bundle(
         `
         import * as mod from '.';

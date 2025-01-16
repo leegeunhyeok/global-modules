@@ -91,9 +91,9 @@ impl AstDelegate for BundleDelegate {
         [imports, stmts, exports].concat()
     }
 
-    fn import(&mut self, _: &ImportDecl) {}
+    fn import(&mut self, _: &mut ImportDecl) {}
 
-    fn export_decl(&mut self, export_decl: &ExportDecl) -> ModuleItem {
+    fn export_decl(&mut self, export_decl: &mut ExportDecl) -> ModuleItem {
         let item = get_from_export_decl(export_decl);
         self.exports.push(item.export_ref);
         self.export_decls.push(item.export_stmt);
@@ -104,7 +104,7 @@ impl AstDelegate for BundleDelegate {
 
     fn export_default_decl(
         &mut self,
-        export_default_decl: &ExportDefaultDecl,
+        export_default_decl: &mut ExportDefaultDecl,
     ) -> Option<ModuleItem> {
         let ident = get_ident_from_default_decl(&export_default_decl.decl);
         let binding_export = BindingExportMember::new("default".into());
@@ -141,24 +141,31 @@ impl AstDelegate for BundleDelegate {
         binding_export_stmt.into()
     }
 
-    fn export_default_expr(&mut self, export_default_expr: &ExportDefaultExpr) -> Expr {
-        let orig_expr = export_default_expr.expr.clone();
+    fn export_default_expr(
+        &mut self,
+        export_default_expr: &mut ExportDefaultExpr,
+    ) -> Option<ModuleItem> {
         let binding_export = BindingExportMember::new("default".into());
-        let binding_assign_expr = assign_expr(binding_export.bind_ident.clone(), *orig_expr).into();
+        let binding_assign_expr = assign_expr(
+            binding_export.bind_ident.clone(),
+            *export_default_expr.expr.clone(),
+        );
 
         self.exports.push(ExportRef::Named(NamedExportRef::new(vec![
             ExportMember::Binding(binding_export),
         ])));
 
-        binding_assign_expr
+        *export_default_expr.expr = binding_assign_expr.into();
+
+        None
     }
 
-    fn export_named(&mut self, export_named: &NamedExport) {
+    fn export_named(&mut self, export_named: &mut NamedExport) {
         self.exports
             .push(export_ref_from_named_export(export_named, &None));
     }
 
-    fn export_all(&mut self, export_all: &ExportAll) {
+    fn export_all(&mut self, export_all: &mut ExportAll) {
         self.exports
             .push(ExportRef::ReExportAll(ReExportAllRef::new(
                 export_all.src.value.clone(),
@@ -167,11 +174,11 @@ impl AstDelegate for BundleDelegate {
             )));
     }
 
-    fn call_expr(&mut self, _: &CallExpr) -> Option<Expr> {
+    fn call_expr(&mut self, _: &mut CallExpr) -> Option<Expr> {
         None
     }
 
-    fn assign_expr(&mut self, assign_expr: &AssignExpr) -> Option<Expr> {
+    fn assign_expr(&mut self, assign_expr: &mut AssignExpr) -> Option<Expr> {
         to_binding_module_from_assign_expr(
             self.ctx_ident.clone(),
             assign_expr,
@@ -179,7 +186,7 @@ impl AstDelegate for BundleDelegate {
         )
     }
 
-    fn member_expr(&mut self, member_expr: &MemberExpr) -> Option<Expr> {
+    fn member_expr(&mut self, member_expr: &mut MemberExpr) -> Option<Expr> {
         to_binding_module_from_member_expr(
             self.ctx_ident.clone(),
             member_expr,
