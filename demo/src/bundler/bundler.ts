@@ -1,12 +1,13 @@
 import assert from 'node:assert';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
+import { Event } from '@parcel/watcher';
 import * as esbuild from 'esbuild';
+import * as esresolve from 'esresolve';
+import { DependencyGraph, type Module } from 'esbuild-dependency-graph';
 import type pino from 'pino';
-import type { DependencyManager, Module } from '@global-modules/esbuild-plugin';
 import * as watcher from './watcher';
 import { createTransformPlugin } from './transformPlugin';
-import { Event } from '@parcel/watcher';
 import { WebSocketDelegate } from '../server/ws';
 import { transform, transformJsxRuntime } from './transform';
 import { Phase } from '@global-modules/swc-plugin';
@@ -26,7 +27,7 @@ export class Bundler {
   private delegate: WebSocketDelegate | null = null;
   private logger: pino.BaseLogger | null = null;
   private cachedBuildResult: esbuild.BuildResult | null = null;
-  private dependencyManager: DependencyManager | null = null;
+  private graph: DependencyGraph;
 
   public static getInstance() {
     if (Bundler.instance === null) {
@@ -35,13 +36,11 @@ export class Bundler {
     return Bundler.instance;
   }
 
-  private constructor() {}
+  private constructor() {
+    this.graph = new DependencyGraph({ root: CLIENT_SOURCE_BASE });
+  }
 
   private async build() {
-    const transformPlugin = createTransformPlugin();
-
-    this.dependencyManager = transformPlugin.dependencyManager;
-
     const buildResult = await esbuild.build({
       entryPoints: [CLIENT_SOURCE_ENTRY],
       bundle: true,
@@ -51,7 +50,18 @@ export class Bundler {
       banner: {
         js: await this.getPreludeScript(),
       },
-      plugins: [transformPlugin.plugin, metafilePlugin],
+      plugins: [
+        createTransformPlugin({
+          resolveId: (id) => {
+            const module = this.graph.hasModule(id)
+              ? this.graph.getModule(id)
+              : this.graph.addModule(id, { dependencies: [] });
+
+            return module.id;
+          },
+        }),
+        metafilePlugin,
+      ],
     });
 
     return buildResult;
@@ -78,20 +88,37 @@ export class Bundler {
 
   private watchHandler(events: Event[]) {
     events.forEach(async (event) => {
-      let affectedModule: Module | null = null;
-
-      if (this.dependencyManager == null) {
+      if (this.graph.size === 0) {
+        // To avoid unnecessary transform when the graph is not loaded.
         return;
       }
 
+      let affectedModule: Module | null = null;
+
       switch (event.type) {
         case 'create':
-        case 'update':
-          affectedModule = await this.dependencyManager.syncModule(event.path);
+        case 'update': {
+          const resolveResults = await esresolve.resolveFrom(event.path);
+          const dependencies = resolveResults.map((result) => ({
+            key: result.path,
+            source: result.request,
+          }));
+
+          if (event.type === 'create') {
+            affectedModule = await this.graph.addModule(event.path, {
+              dependencies,
+            });
+          } else {
+            affectedModule = await this.graph.updateModule(event.path, {
+              dependencies,
+            });
+          }
+
           break;
+        }
 
         case 'delete':
-          this.dependencyManager.removeModule(event.path);
+          this.graph.removeModule(event.path);
           break;
       }
 
@@ -104,29 +131,28 @@ export class Bundler {
   }
 
   private async transformAffectedModules(baseModule: Module) {
-    if (this.dependencyManager == null || this.delegate == null) {
+    if (this.delegate == null) {
+      console.warn('Websocket delegate is not initialized');
       return;
     }
 
     let invalid = false;
 
-    const inverseDependencies = this.dependencyManager.inverseDependenciesOf(
-      baseModule.id,
-    );
+    const inverseDependencies = this.graph.inverseDependenciesOf(baseModule.id);
 
     const t0 = performance.now();
     const transformedCodeList = await Promise.all(
       [baseModule, ...inverseDependencies].map(async (module) => {
-        const code = await fs.promises.readFile(module.path, {
-          encoding: 'utf-8',
-        });
-
-        const imports = Object.entries(module.meta.imports).reduce(
-          (prev, [original, value]) => {
-            return { ...prev, [original]: value.id };
+        const code = await fs.promises.readFile(
+          path.resolve(CLIENT_SOURCE_BASE, module.path),
+          {
+            encoding: 'utf-8',
           },
-          {},
         );
+
+        const imports = module.dependencies.reduce((prev, dependency) => {
+          return { ...prev, [dependency.source]: dependency.id };
+        }, {});
 
         const transformedCode = await transform(
           code,
