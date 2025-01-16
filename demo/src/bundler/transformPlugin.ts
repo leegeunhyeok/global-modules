@@ -1,12 +1,16 @@
 import * as path from 'node:path';
 import * as fs from 'node:fs';
-import { createPlugin } from '@global-modules/esbuild-plugin';
 import { Phase } from '@global-modules/swc-plugin';
+import { Plugin } from 'esbuild';
 import { transform } from './transform';
 import { registerHotModule } from './hmr';
 
-export function createTransformPlugin() {
-  return createPlugin({
+export interface TransformPluginOptions {
+  resolveId: (id: string) => number;
+}
+
+export function createTransformPlugin(options: TransformPluginOptions): Plugin {
+  return {
     name: 'transform-plugin',
     setup(build) {
       build.onLoad({ filter: /\.(?:[mc]js|[tj]sx?)$/ }, async (args) => {
@@ -14,9 +18,9 @@ export function createTransformPlugin() {
           encoding: 'utf-8',
         });
 
+        const moduleId = options.resolveId(args.path);
         const code = await transform(source, path.basename(args.path), {
-          // Set the module ID provided by `@global-modules/esbuild-plugin`.
-          id: args.id,
+          id: moduleId,
           // At the initial build, the bundling process should be
           // delegated to the bundler(eg. esbuild) using the `Phase.Bundle`.
           //
@@ -29,8 +33,8 @@ export function createTransformPlugin() {
           phase: Phase.Bundle,
         });
 
-        return { loader: 'js', contents: registerHotModule(code, args.id) };
+        return { loader: 'js', contents: registerHotModule(code, moduleId) };
       });
     },
-  });
+  };
 }
