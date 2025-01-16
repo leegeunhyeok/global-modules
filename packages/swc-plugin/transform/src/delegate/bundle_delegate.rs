@@ -22,8 +22,9 @@ use crate::{
 pub struct BundleDelegate {
     id: f64,
     ctx_ident: Ident,
-    exps: Vec<ExportRef>,
+    exports: Vec<ExportRef>,
     hoisted_decls: Vec<ModuleItem>,
+    export_decls: Vec<ModuleItem>,
     bindings: Vec<ModuleItem>,
 }
 
@@ -32,8 +33,9 @@ impl BundleDelegate {
         Self {
             id,
             ctx_ident: private_ident!("__ctx"),
-            exps: Vec::default(),
+            exports: Vec::default(),
             hoisted_decls: Vec::default(),
+            export_decls: Vec::default(),
             bindings: Vec::default(),
         }
     }
@@ -48,24 +50,33 @@ impl AstDelegate for BundleDelegate {
     }
 
     fn make_module_body(&mut self, orig_body: Vec<ModuleItem>) -> Vec<ModuleItem> {
-        let exps = mem::take(&mut self.exps);
+        let exports = mem::take(&mut self.exports);
         let hoisted_decls = mem::take(&mut self.hoisted_decls);
+        let export_decls = mem::take(&mut self.export_decls);
         let bindings = mem::take(&mut self.bindings);
         let ExportsAst {
             leading_body,
             trailing_body,
-        } = exports_to_ast(&self.ctx_ident, exps, crate::phase::ModulePhase::Bundle);
+        } = exports_to_ast(&self.ctx_ident, exports, crate::phase::ModulePhase::Bundle);
+
+        let total_capacity = 1
+            + leading_body.len()
+            + hoisted_decls.len()
+            + orig_body.len()
+            + export_decls.len()
+            + bindings.len()
+            + trailing_body.len();
 
         let mut stmts = Vec::with_capacity(orig_body.len());
         let mut imports = Vec::with_capacity(orig_body.len());
         let mut exports = Vec::with_capacity(orig_body.len());
-        let mut new_body: Vec<ModuleItem> = Vec::with_capacity(
-            1 + leading_body.len() + orig_body.len() + bindings.len() + trailing_body.len(),
-        );
+        let mut new_body: Vec<ModuleItem> = Vec::with_capacity(total_capacity);
+
         new_body.push(global_module_register_stmt(self.id, &self.ctx_ident).into());
         new_body.extend(leading_body);
         new_body.extend(hoisted_decls);
         new_body.extend(orig_body);
+        new_body.extend(export_decls);
         new_body.extend(bindings);
         new_body.extend(trailing_body);
 
@@ -84,11 +95,11 @@ impl AstDelegate for BundleDelegate {
 
     fn export_decl(&mut self, export_decl: &ExportDecl) -> ModuleItem {
         let item = get_from_export_decl(export_decl);
-        self.exps.push(item.export_ref);
-        self.hoisted_decls.push(export_decl.decl.clone().into());
+        self.exports.push(item.export_ref);
+        self.export_decls.push(item.export_stmt);
         self.bindings.push(item.binding_stmt);
 
-        item.export_stmt
+        export_decl.decl.clone().into()
     }
 
     fn export_default_decl(
@@ -123,7 +134,7 @@ impl AstDelegate for BundleDelegate {
             ),
         };
 
-        self.exps.push(ExportRef::Named(NamedExportRef::new(vec![
+        self.exports.push(ExportRef::Named(NamedExportRef::new(vec![
             ExportMember::Binding(binding_export),
         ])));
 
@@ -135,7 +146,7 @@ impl AstDelegate for BundleDelegate {
         let binding_export = BindingExportMember::new("default".into());
         let binding_assign_expr = assign_expr(binding_export.bind_ident.clone(), *orig_expr).into();
 
-        self.exps.push(ExportRef::Named(NamedExportRef::new(vec![
+        self.exports.push(ExportRef::Named(NamedExportRef::new(vec![
             ExportMember::Binding(binding_export),
         ])));
 
@@ -143,16 +154,17 @@ impl AstDelegate for BundleDelegate {
     }
 
     fn export_named(&mut self, export_named: &NamedExport) {
-        self.exps
+        self.exports
             .push(export_ref_from_named_export(export_named, &None));
     }
 
     fn export_all(&mut self, export_all: &ExportAll) {
-        self.exps.push(ExportRef::ReExportAll(ReExportAllRef::new(
-            export_all.src.value.clone(),
-            None,
-            None,
-        )));
+        self.exports
+            .push(ExportRef::ReExportAll(ReExportAllRef::new(
+                export_all.src.value.clone(),
+                None,
+                None,
+            )));
     }
 
     fn call_expr(&mut self, _: &CallExpr) -> Option<Expr> {
