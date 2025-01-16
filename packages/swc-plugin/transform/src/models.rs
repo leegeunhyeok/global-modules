@@ -1,9 +1,12 @@
 use presets::decl_require_deps_stmt;
 use swc_core::{
-    atoms::Atom, common::Spanned, ecma::{
+    atoms::Atom,
+    common::Spanned,
+    ecma::{
         ast::*,
         utils::{private_ident, ExprFactory},
-    }, plugin::errors::HANDLER
+    },
+    plugin::errors::HANDLER,
 };
 
 use crate::{phase::ModulePhase, utils::ast::*};
