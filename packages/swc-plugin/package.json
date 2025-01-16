@@ -1,7 +1,7 @@
 {
   "name": "@global-modules/swc-plugin",
   "description": "SWC plugin for global modules",
-  "version": "0.0.0",
+  "version": "0.0.0-dev.20250116183733",
   "types": "./dist/index.d.ts",
   "main": "./dist/index.js",
   "module": "./esm/index.mjs",
