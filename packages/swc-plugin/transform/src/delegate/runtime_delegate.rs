@@ -3,11 +3,12 @@ use std::mem;
 use helpers::*;
 use swc_core::{
     atoms::Atom,
-    common::collections::AHashMap,
+    common::{collections::AHashMap, Spanned},
     ecma::{
         ast::*,
         utils::{private_ident, ExprFactory},
     },
+    plugin::errors::HANDLER,
 };
 
 use super::traits::AstDelegate;
@@ -199,7 +200,13 @@ impl AstDelegate for RuntimeDelegate {
                     Expr::Lit(lit) => {
                         return Some(require_call(get_src_lit(lit, &self.paths)));
                     }
-                    _ => panic!("invalid `require` call expression"),
+                    _ => HANDLER.with(|handler| {
+                        handler
+                            .struct_span_err(callee_expr.span(), "invalid require call")
+                            .emit();
+
+                        None
+                    }),
                 }
             }
             // Replace ESModule's dynamic imports.
@@ -220,7 +227,13 @@ impl AstDelegate for RuntimeDelegate {
                     Expr::Lit(lit) => {
                         return Some(require_call(get_src_lit(lit, &self.paths)));
                     }
-                    _ => panic!("unsupported dynamic import usage"),
+                    _ => HANDLER.with(|handler| {
+                        handler
+                            .struct_span_err(call_expr.span(), "unsupported dynamic import usage")
+                            .emit();
+
+                        None
+                    }),
                 }
             }
             _ => return None,

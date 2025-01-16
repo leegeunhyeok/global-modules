@@ -5,6 +5,7 @@ use swc_core::{
         ast::*,
         utils::{private_ident, ExprFactory},
     },
+    plugin::errors::HANDLER,
 };
 
 use crate::{phase::ModulePhase, utils::ast::*};
@@ -156,7 +157,13 @@ impl From<&ExportNamedSpecifier> for ExportMember {
                     None
                 },
             )),
-            ModuleExportName::Str(_) => unimplemented!("TODO"),
+            ModuleExportName::Str(_) => HANDLER.with(|handler| {
+                handler
+                    .struct_span_err(value.span, "unsupported named export specifier")
+                    .emit();
+
+                ExportMember::Actual(ActualExportMember::new(&Ident::default(), None))
+            }),
         }
     }
 }
