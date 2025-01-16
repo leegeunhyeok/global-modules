@@ -327,7 +327,6 @@ pub mod ast {
                 match var_decl {
                     VarDeclarator {
                         name: Pat::Ident(BindingIdent { id, type_ann: None }),
-                        init: Some(_),
                         definite: false,
                         ..
                     } => id.clone(),
