@@ -4,7 +4,7 @@ import * as vm from 'node:vm';
 import * as swc from '@swc/core';
 import * as esbuild from 'esbuild';
 import { vi, describe, it, expect } from 'vitest';
-import { Phase } from '../types';
+import { Phase } from '../types.js';
 
 async function bundle(
   entryCode: string,
@@ -29,6 +29,7 @@ async function bundle(
   });
 
   const buildResult = await esbuild.build({
+    absWorkingDir: '/',
     bundle: true,
     write: false,
     format: 'iife',
@@ -40,8 +41,12 @@ async function bundle(
       {
         name: 'linker',
         setup(build) {
-          build.onResolve({ filter: /.*/ }, async () => ({ path: '/dummy' }));
-          build.onLoad({ filter: /.*/ }, async () => ({
+          build.onResolve({ filter: /.*/ }, async () => ({
+            path: '@',
+            namespace: 'linker',
+          }));
+
+          build.onLoad({ filter: /.*/, namespace: 'linker' }, async () => ({
             contents: result.code,
             loader: 'js',
           }));

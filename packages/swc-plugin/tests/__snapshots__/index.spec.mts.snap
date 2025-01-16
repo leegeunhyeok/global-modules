@@ -7,9 +7,9 @@ exports[`@global-modules/swc-plugin > Bundle phase > [CJS] Basics 1`] = `
     return mod2 || (0, cb[__getOwnPropNames(cb)[0]])((mod2 = { exports: {} }).exports, mod2), mod2.exports;
   };
 
-  // ../../../../../../dummy
-  var require_dummy = __commonJS({
-    "../../../../../../dummy"(exports, module) {
+  // linker:@
+  var require__ = __commonJS({
+    "linker:@"(exports, module) {
       var __ctx = global.__modules.register(0);
       var foo = "foo";
       var bar = "bar";
@@ -25,7 +25,7 @@ exports[`@global-modules/swc-plugin > Bundle phase > [CJS] Basics 1`] = `
   });
 
   // <stdin>
-  var mod = require_dummy();
+  var mod = require__();
   bridge(mod);
 })();
 "
@@ -39,12 +39,12 @@ exports[`@global-modules/swc-plugin > Bundle phase > [ESM] Basics 1`] = `
       __defProp(target, name, { get: all[name], enumerable: true });
   };
 
-  // ../../../../../../dummy
-  var dummy_exports = {};
-  __export(dummy_exports, {
+  // linker:@
+  var __exports = {};
+  __export(__exports, {
     bar: () => bar,
     baz: () => value,
-    default: () => dummy_default,
+    default: () => __default,
     foo: () => __x1
   });
   var __ctx = global.__modules.register(0);
@@ -63,17 +63,17 @@ exports[`@global-modules/swc-plugin > Bundle phase > [ESM] Basics 1`] = `
   });
   var __x;
   var __x1;
-  var dummy_default = __x = 1;
+  var __default = __x = 1;
 
   // <stdin>
-  bridge(dummy_exports);
+  bridge(__exports);
 })();
 "
 `;
 
 exports[`@global-modules/swc-plugin > Bundle phase > [ESM] Export with declaration statements 1`] = `
 "(() => {
-  // ../../../../../../dummy
+  // linker:@
   var __ctx = global.__modules.register(0);
   var obj = {
     value: 0
@@ -101,9 +101,9 @@ exports[`@global-modules/swc-plugin > Runtime phase > [CJS] Basics 1`] = `
     return mod2 || (0, cb[__getOwnPropNames(cb)[0]])((mod2 = { exports: {} }).exports, mod2), mod2.exports;
   };
 
-  // ../../../../../../dummy
-  var require_dummy = __commonJS({
-    "../../../../../../dummy"() {
+  // linker:@
+  var require__ = __commonJS({
+    "linker:@"() {
       var __ctx = global.__modules.getContext(0);
       __ctx.reset();
       var foo = "foo";
@@ -120,7 +120,7 @@ exports[`@global-modules/swc-plugin > Runtime phase > [CJS] Basics 1`] = `
   });
 
   // <stdin>
-  var mod = require_dummy();
+  var mod = require__();
   bridge(global.__modules.getContext(0).module.exports);
 })();
 "
@@ -154,9 +154,9 @@ exports[`@global-modules/swc-plugin > Runtime phase > [ESM] Basics 1`] = `
     mod2
   ));
 
-  // ../../../../../../dummy
-  var require_dummy = __commonJS({
-    "../../../../../../dummy"() {
+  // linker:@
+  var require__ = __commonJS({
+    "linker:@"() {
       var __ctx = global.__modules.getContext(0);
       __ctx.reset();
       var foo = "foo";
@@ -179,7 +179,7 @@ exports[`@global-modules/swc-plugin > Runtime phase > [ESM] Basics 1`] = `
   });
 
   // <stdin>
-  var mod = __toESM(require_dummy());
+  var mod = __toESM(require__());
   bridge(global.__modules.getContext(0).module.exports);
 })();
 "
@@ -213,9 +213,9 @@ exports[`@global-modules/swc-plugin > Runtime phase > [ESM] Export with declarat
     mod2
   ));
 
-  // ../../../../../../dummy
-  var require_dummy = __commonJS({
-    "../../../../../../dummy"() {
+  // linker:@
+  var require__ = __commonJS({
+    "linker:@"() {
       var __ctx = global.__modules.getContext(0);
       __ctx.reset();
       var obj = {
@@ -234,7 +234,7 @@ exports[`@global-modules/swc-plugin > Runtime phase > [ESM] Export with declarat
   });
 
   // <stdin>
-  var mod = __toESM(require_dummy());
+  var mod = __toESM(require__());
   bridge(global.__modules.getContext(0).module.exports);
 })();
 "
