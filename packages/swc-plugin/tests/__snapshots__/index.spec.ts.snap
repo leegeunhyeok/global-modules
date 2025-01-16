@@ -121,7 +121,7 @@ exports[`@global-modules/swc-plugin > Runtime phase > [CJS] Basics 1`] = `
 
   // <stdin>
   var mod = require_dummy();
-  bridge(mod);
+  bridge(global.__modules.getContext(0).module.exports);
 })();
 "
 `;
@@ -221,9 +221,9 @@ exports[`@global-modules/swc-plugin > Runtime phase > [ESM] Export with declarat
       var obj = {
         value: 0
       };
-      var newObj2 = obj;
-      newObj2.key = "key";
-      __x = newObj2;
+      var newObj = obj;
+      newObj.key = "key";
+      __x = newObj;
       __ctx.exports(function() {
         return {
           "newObj": __x
@@ -235,7 +235,7 @@ exports[`@global-modules/swc-plugin > Runtime phase > [ESM] Export with declarat
 
   // <stdin>
   var mod = __toESM(require_dummy());
-  bridge(void 0);
+  bridge(global.__modules.getContext(0).module.exports);
 })();
 "
 `;

@@ -135,8 +135,6 @@ describe('@global-modules/swc-plugin', () => {
       );
 
       const bridge = vi.fn();
-      console.log(bundleCode);
-
       evaluate(bundleCode, { bridge });
 
       expect(bundleCode).toMatchSnapshot();
@@ -191,7 +189,6 @@ describe('@global-modules/swc-plugin', () => {
       );
 
       const bridge = vi.fn();
-      console.log(bundleCode);
       evaluate(bundleCode, { bridge });
 
       expect(bundleCode).toMatchSnapshot();
@@ -203,12 +200,12 @@ describe('@global-modules/swc-plugin', () => {
       });
     });
 
-    it.only('[ESM] Export with declaration statements', async () => {
+    it('[ESM] Export with declaration statements', async () => {
       const bundleCode = await bundle(
         `
         import * as mod from '.';
 
-        bridge(mod.newObj);
+        bridge(global.__modules.getContext(0).module.exports);
         `,
         `
         const obj = { value: 0 };
@@ -220,12 +217,10 @@ describe('@global-modules/swc-plugin', () => {
       );
 
       const bridge = vi.fn();
-      console.log(bundleCode);
-
       evaluate(bundleCode, { bridge });
 
       expect(bundleCode).toMatchSnapshot();
-      expect(bridge).toBeCalledWith({ value: 0, key: 'key' });
+      expect(bridge).toBeCalledWith({ newObj: { value: 0, key: 'key' } });
     });
 
     it('[CJS] Basics', async () => {
@@ -233,7 +228,7 @@ describe('@global-modules/swc-plugin', () => {
         `
         const mod = require('.');
 
-        bridge(mod);
+        bridge(global.__modules.getContext(0).module.exports);
         `,
         `
         const foo = 'foo';
