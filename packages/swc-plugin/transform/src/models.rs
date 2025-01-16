@@ -1,11 +1,9 @@
 use presets::decl_require_deps_stmt;
 use swc_core::{
-    atoms::Atom,
-    ecma::{
+    atoms::Atom, common::Spanned, ecma::{
         ast::*,
         utils::{private_ident, ExprFactory},
-    },
-    plugin::errors::HANDLER,
+    }, plugin::errors::HANDLER
 };
 
 use crate::{phase::ModulePhase, utils::ast::*};
@@ -159,7 +157,7 @@ impl From<&ExportNamedSpecifier> for ExportMember {
             )),
             ModuleExportName::Str(_) => HANDLER.with(|handler| {
                 handler
-                    .struct_span_err(value.span, "unsupported named export specifier")
+                    .struct_span_err(value.orig.span(), "unsupported named export specifier")
                     .emit();
 
                 ExportMember::Actual(ActualExportMember::new(&Ident::default(), None))

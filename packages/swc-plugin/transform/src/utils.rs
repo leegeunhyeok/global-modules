@@ -334,7 +334,7 @@ pub mod ast {
                     _ => {
                         HANDLER.with(|handler| {
                             handler
-                                .struct_span_err(DUMMY_SP, "unsupported variable declaration")
+                                .struct_span_err(var_decl.span, "unsupported variable declaration")
                                 .emit();
                         });
                         panic!(); // FIXME
