@@ -1,8 +1,9 @@
 pub mod ast {
     use swc_core::{
         atoms::Atom,
-        common::{collections::AHashMap, DUMMY_SP},
+        common::{collections::AHashMap, Spanned, DUMMY_SP},
         ecma::{ast::*, utils::ExprFactory},
+        plugin::errors::HANDLER,
     };
 
     use crate::phase::ModulePhase;
@@ -310,7 +311,15 @@ pub mod ast {
             }) => ident.clone(),
             Decl::Var(val_decl) => {
                 if val_decl.decls.len() != 1 {
-                    panic!("invalid named exports");
+                    HANDLER.with(|handler| {
+                        handler
+                            .struct_span_err(
+                                val_decl.span,
+                                "multiple variable declarations are not allowed",
+                            )
+                            .emit();
+                    });
+                    panic!(); // FIXME
                 }
 
                 let var_decl = val_decl.decls.get(0).unwrap();
@@ -318,14 +327,27 @@ pub mod ast {
                 match var_decl {
                     VarDeclarator {
                         name: Pat::Ident(BindingIdent { id, type_ann: None }),
-                        init: Some(_),
                         definite: false,
                         ..
                     } => id.clone(),
-                    _ => panic!("invalid"),
+                    _ => {
+                        HANDLER.with(|handler| {
+                            handler
+                                .struct_span_err(var_decl.span, "unsupported variable declaration")
+                                .emit();
+                        });
+                        panic!(); // FIXME
+                    }
                 }
             }
-            _ => panic!("invalid"),
+            _ => {
+                HANDLER.with(|handler| {
+                    handler
+                        .struct_span_err(decl.span(), "unsupported declaration")
+                        .emit();
+                });
+                panic!(); // FIXME
+            }
         }
     }
 
@@ -358,7 +380,16 @@ pub mod ast {
         match default_decl {
             DefaultDecl::Class(class_expr) => Expr::Class(class_expr.clone()),
             DefaultDecl::Fn(fn_expr) => Expr::Fn(fn_expr.clone()),
-            _ => panic!("not implemented"),
+            _ => HANDLER.with(|handler| {
+                handler
+                    .struct_span_err(
+                        default_decl.span(),
+                        "unsupported default export declaration",
+                    )
+                    .emit();
+
+                Expr::default()
+            }),
         }
     }
 
@@ -367,7 +398,20 @@ pub mod ast {
         match default_decl {
             DefaultDecl::Class(class_expr) => class_expr.clone().as_class_decl().unwrap().into(),
             DefaultDecl::Fn(fn_expr) => fn_expr.clone().as_fn_decl().unwrap().into(),
-            _ => panic!("not implemented"),
+            _ => HANDLER.with(|handler| {
+                handler
+                    .struct_span_err(
+                        default_decl.span(),
+                        "unsupported default export declaration",
+                    )
+                    .emit();
+
+                Decl::Var(Box::new(VarDecl {
+                    kind: VarDeclKind::Var,
+                    decls: vec![],
+                    ..Default::default()
+                }))
+            }),
         }
     }
 
@@ -382,7 +426,13 @@ pub mod ast {
 
                 src_lit
             }
-            _ => panic!("unsupported"),
+            _ => HANDLER.with(|handler| {
+                handler
+                    .struct_span_err(lit.span(), "unsupported literal type")
+                    .emit();
+
+                Lit::Null(Null { span: DUMMY_SP })
+            }),
         }
     }
 
@@ -391,9 +441,21 @@ pub mod ast {
             MemberProp::Ident(ident) => ident.sym.as_str(),
             MemberProp::Computed(ComputedPropName { expr, .. }) => match &**expr {
                 Expr::Lit(Lit::Str(str_lit)) => str_lit.value.as_str(),
-                _ => panic!("invalid expression for computed property"),
+                _ => HANDLER.with(|handler| {
+                    handler
+                        .struct_span_err(prop.span(), "invalid expression for computed property")
+                        .emit();
+
+                    ""
+                }),
             },
-            _ => panic!("unsupported property type"),
+            _ => HANDLER.with(|handler| {
+                handler
+                    .struct_span_err(prop.span(), "unsupported property type")
+                    .emit();
+
+                ""
+            }),
         }
     }
 
