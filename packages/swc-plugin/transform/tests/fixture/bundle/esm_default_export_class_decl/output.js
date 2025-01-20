@@ -1,4 +1,4 @@
-var __ctx = global.__modules.register(1000);
+var __ctx = global.__modules.register("1000");
 __x = class {
 };
 __ctx.exports(function() {

@@ -1,4 +1,4 @@
-var __ctx = global.__modules.getContext(1000);
+var __ctx = global.__modules.getContext("1000");
 __ctx.reset();
 __ctx.module.exports.foo = 'foo';
 __ctx.module.exports.bar = 'bar';

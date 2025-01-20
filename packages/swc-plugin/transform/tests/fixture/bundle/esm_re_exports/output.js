@@ -2,7 +2,7 @@ import * as __mod from "./mod-1";
 import * as __mod1 from "./mod-2";
 import * as __mod2 from "./mod-3";
 import * as __mod3 from "./mod-4";
-var __ctx = global.__modules.register(1000);
+var __ctx = global.__modules.register("1000");
 __ctx.exports(function() {
     return {
         ...__ctx.exports.ns(__mod),

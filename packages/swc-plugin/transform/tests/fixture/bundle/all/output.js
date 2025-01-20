@@ -8,7 +8,7 @@ import { foo } from './foo';
 import { bar as bar2 } from './bar';
 import * as baz from './baz';
 import * as foo2 from './foo';
-var __ctx = global.__modules.register(1000);
+var __ctx = global.__modules.register("1000");
 React.lazy(()=>import('./Component'));
 if (__DEV__) {
     require('./cjs-1');

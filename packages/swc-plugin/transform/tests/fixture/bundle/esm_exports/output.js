@@ -1,4 +1,4 @@
-var __ctx = global.__modules.register(1000);
+var __ctx = global.__modules.register("1000");
 const foo = 'foo';
 const bar = 'bar';
 var lazy;

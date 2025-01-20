@@ -8,9 +8,9 @@ use swc_core::{
 use transformer::GlobalModuleTransformer;
 
 pub fn global_modules(
-    id: f64,
+    id: String,
     phase: f64,
-    paths: Option<AHashMap<String, f64>>,
+    paths: Option<AHashMap<String, String>>,
 ) -> impl VisitMut + Pass {
     visit_mut_pass(GlobalModuleTransformer::new(
         id,

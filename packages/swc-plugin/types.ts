@@ -7,7 +7,7 @@ export interface PluginConfig {
   /**
    * The module id.
    */
-  id: number;
+  id: string;
   /**
    * The module phase.
    */
@@ -15,5 +15,5 @@ export interface PluginConfig {
   /**
    * A map for replacing module sources with IDs.
    */
-  paths?: Record<string, number>;
+  paths?: Record<string, string>;
 }

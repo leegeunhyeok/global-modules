@@ -20,7 +20,7 @@ use crate::{
 };
 
 pub struct BundleDelegate {
-    id: f64,
+    id: String,
     ctx_ident: Ident,
     exports: Vec<ExportRef>,
     hoisted_decls: Vec<ModuleItem>,
@@ -29,7 +29,7 @@ pub struct BundleDelegate {
 }
 
 impl BundleDelegate {
-    pub fn new(id: f64) -> Self {
+    pub fn new(id: String) -> Self {
         Self {
             id,
             ctx_ident: private_ident!("__ctx"),
@@ -44,7 +44,7 @@ impl BundleDelegate {
 impl AstDelegate for BundleDelegate {
     fn make_script_body(&mut self, orig_body: Vec<Stmt>) -> Vec<Stmt> {
         let mut new_body = Vec::with_capacity(orig_body.len() + 1);
-        new_body.push(global_module_register_stmt(self.id, &self.ctx_ident));
+        new_body.push(global_module_register_stmt(&self.id, &self.ctx_ident));
         new_body.extend(orig_body);
         new_body
     }
@@ -72,7 +72,7 @@ impl AstDelegate for BundleDelegate {
         let mut exports = Vec::with_capacity(orig_body.len());
         let mut new_body: Vec<ModuleItem> = Vec::with_capacity(total_capacity);
 
-        new_body.push(global_module_register_stmt(self.id, &self.ctx_ident).into());
+        new_body.push(global_module_register_stmt(&self.id, &self.ctx_ident).into());
         new_body.extend(leading_body);
         new_body.extend(hoisted_decls);
         new_body.extend(orig_body);

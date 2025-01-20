@@ -26,8 +26,8 @@ use crate::{
 };
 
 pub struct RuntimeDelegate {
-    id: f64,
-    paths: Option<AHashMap<String, f64>>,
+    id: String,
+    paths: Option<AHashMap<String, String>>,
     ctx_ident: Ident,
     deps: OHashMap<Atom, ModuleRef>,
     exports: Vec<ExportRef>,
@@ -37,7 +37,7 @@ pub struct RuntimeDelegate {
 }
 
 impl RuntimeDelegate {
-    pub fn new(id: f64, paths: Option<AHashMap<String, f64>>) -> Self {
+    pub fn new(id: String, paths: Option<AHashMap<String, String>>) -> Self {
         Self {
             id,
             paths,
@@ -54,7 +54,7 @@ impl RuntimeDelegate {
 impl AstDelegate for RuntimeDelegate {
     fn make_script_body(&mut self, orig_body: Vec<Stmt>) -> Vec<Stmt> {
         let mut new_body = Vec::with_capacity(orig_body.len() + 1);
-        new_body.push(global_module_get_ctx_stmt(self.id, &self.ctx_ident));
+        new_body.push(global_module_get_ctx_stmt(&self.id, &self.ctx_ident));
         new_body.push(ctx_reset_call(&self.ctx_ident).into_stmt());
         new_body.extend(orig_body);
         new_body
@@ -80,7 +80,7 @@ impl AstDelegate for RuntimeDelegate {
             + 1;
 
         let mut new_body: Vec<ModuleItem> = Vec::with_capacity(total_item_count);
-        new_body.push(global_module_get_ctx_stmt(self.id, &self.ctx_ident).into());
+        new_body.push(global_module_get_ctx_stmt(&self.id, &self.ctx_ident).into());
         new_body.push(ctx_reset_call(&self.ctx_ident).into_stmt().into());
         new_body.extend(deps_items);
         new_body.extend(leading_body);
@@ -175,7 +175,7 @@ impl AstDelegate for RuntimeDelegate {
         self.exports
             .push(ExportRef::ReExportAll(ReExportAllRef::new(
                 src,
-                id.copied(),
+                id.as_ref().map(|id| id.as_str().into()),
                 None,
             )));
     }

@@ -72,17 +72,17 @@ pub mod ast {
         })
     }
 
-    /// Returns a number literal expression.
+    /// Returns a string literal expression.
     ///
     /// ```js
     /// // Code
-    /// 100
+    /// 'foo'
     /// ```
-    pub fn num_lit_expr(num: f64) -> Expr {
-        Expr::Lit(Lit::Num(Number {
-            span: DUMMY_SP,
-            value: num,
+    pub fn str_lit_expr(str: &String) -> Expr {
+        Expr::Lit(Lit::Str(Str {
+            value: str.as_str().into(),
             raw: None,
+            span: DUMMY_SP,
         }))
     }
 
@@ -415,14 +415,14 @@ pub mod ast {
         }
     }
 
-    pub fn get_src_lit(lit: &Lit, deps_id: &Option<AHashMap<String, f64>>) -> Lit {
+    pub fn get_src_lit(lit: &Lit, deps_id: &Option<AHashMap<String, String>>) -> Lit {
         match lit {
             Lit::Str(str_lit) => {
                 let src = str_lit.value.clone();
                 let src_lit = deps_id
                     .as_ref()
                     .and_then(|deps_id| deps_id.get(src.as_str()))
-                    .map_or_else(|| str_lit.clone().into(), |id| Lit::from(*id));
+                    .map_or_else(|| str_lit.clone().into(), |id| Lit::from(id.as_str()));
 
                 src_lit
             }
@@ -468,16 +468,16 @@ pub mod ast {
             },
         };
 
-        use super::num_lit_expr;
+        use super::str_lit_expr;
 
         /// Returns the global module context declaration statement (register).
         ///
         /// ```js
         /// var ctx_ident = global.__modules.register(id);
         /// ```
-        pub fn global_module_register_stmt(id: f64, ctx_ident: &Ident) -> Stmt {
+        pub fn global_module_register_stmt(id: &String, ctx_ident: &Ident) -> Stmt {
             member_expr!(Default::default(), DUMMY_SP, global.__modules.register)
-                .as_call(DUMMY_SP, vec![num_lit_expr(id).as_arg()])
+                .as_call(DUMMY_SP, vec![str_lit_expr(id).as_arg()])
                 .into_var_decl(VarDeclKind::Var, ctx_ident.clone().into())
                 .into()
         }
@@ -487,9 +487,9 @@ pub mod ast {
         /// ```js
         /// var ctx_ident = global.__modules.getContext(id);
         /// ```
-        pub fn global_module_get_ctx_stmt(id: f64, ctx_ident: &Ident) -> Stmt {
+        pub fn global_module_get_ctx_stmt(id: &String, ctx_ident: &Ident) -> Stmt {
             member_expr!(Default::default(), DUMMY_SP, global.__modules.getContext)
-                .as_call(DUMMY_SP, vec![num_lit_expr(id).as_arg()])
+                .as_call(DUMMY_SP, vec![str_lit_expr(id).as_arg()])
                 .into_var_decl(VarDeclKind::Var, ctx_ident.clone().into())
                 .into()
         }

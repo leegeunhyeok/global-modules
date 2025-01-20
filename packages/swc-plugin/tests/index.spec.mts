@@ -21,7 +21,7 @@ async function bundle(
               import.meta.dirname,
               '../swc_plugin_global_modules.wasm',
             ),
-            { id: 0, phase },
+            { id: '0', phase },
           ],
         ],
       },

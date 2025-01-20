@@ -10,7 +10,7 @@ exports[`@global-modules/swc-plugin > Bundle phase > [CJS] Basics 1`] = `
   // linker:@
   var require__ = __commonJS({
     "linker:@"(exports, module) {
-      var __ctx = global.__modules.register(0);
+      var __ctx = global.__modules.register("0");
       var foo = "foo";
       var bar = "bar";
       var value = "baz";
@@ -47,7 +47,7 @@ exports[`@global-modules/swc-plugin > Bundle phase > [ESM] Basics 1`] = `
     default: () => __default,
     foo: () => __x1
   });
-  var __ctx = global.__modules.register(0);
+  var __ctx = global.__modules.register("0");
   var foo = "foo";
   var bar = "bar";
   var value = "baz";
@@ -74,7 +74,7 @@ exports[`@global-modules/swc-plugin > Bundle phase > [ESM] Basics 1`] = `
 exports[`@global-modules/swc-plugin > Bundle phase > [ESM] Export with declaration statements 1`] = `
 "(() => {
   // linker:@
-  var __ctx = global.__modules.register(0);
+  var __ctx = global.__modules.register("0");
   var obj = {
     value: 0
   };
@@ -104,7 +104,7 @@ exports[`@global-modules/swc-plugin > Runtime phase > [CJS] Basics 1`] = `
   // linker:@
   var require__ = __commonJS({
     "linker:@"() {
-      var __ctx = global.__modules.getContext(0);
+      var __ctx = global.__modules.getContext("0");
       __ctx.reset();
       var foo = "foo";
       var bar = "bar";
@@ -157,7 +157,7 @@ exports[`@global-modules/swc-plugin > Runtime phase > [ESM] Basics 1`] = `
   // linker:@
   var require__ = __commonJS({
     "linker:@"() {
-      var __ctx = global.__modules.getContext(0);
+      var __ctx = global.__modules.getContext("0");
       __ctx.reset();
       var foo = "foo";
       var bar = "bar";
@@ -216,7 +216,7 @@ exports[`@global-modules/swc-plugin > Runtime phase > [ESM] Export with declarat
   // linker:@
   var require__ = __commonJS({
     "linker:@"() {
-      var __ctx = global.__modules.getContext(0);
+      var __ctx = global.__modules.getContext("0");
       __ctx.reset();
       var obj = {
         value: 0
