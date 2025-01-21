@@ -1851,6 +1851,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@global-modules/swc-plugin@workspace:packages/swc-plugin"
   dependencies:
+    "@global-modules/runtime": "workspace:^"
     "@swc/core": "npm:1.10.1"
     "@types/node": "npm:^22"
     esbuild: "npm:^0.24.2"

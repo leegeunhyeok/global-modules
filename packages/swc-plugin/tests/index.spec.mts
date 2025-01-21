@@ -1,40 +1,13 @@
-import * as vm from 'node:vm';
 import { vi, describe, it, expect } from 'vitest';
 import { Phase } from '../types.js';
-import { bundle } from './utils/bundle.js';
+import { bundle, bundleWithFoo } from './utils/bundle.js';
 import { evaluateOnSandbox } from './utils/sandbox.js';
-
-function evaluateOnGlobalModuleSandbox(code: string, context?: vm.Context) {
-  const modules = {};
-
-  function register(id) {
-    if (modules[id]) {
-      return { ...modules[id], reset: vi.fn() };
-    }
-
-    const module = { exports: {} };
-
-    modules[id] = { module };
-
-    return {
-      module,
-      exports: (factory) => {
-        modules[id].module.exports = factory();
-      },
-      reset: vi.fn(),
-    };
-  }
-
-  return evaluateOnSandbox(code, {
-    global: { __modules: { register, getContext: register } },
-    ...context,
-  });
-}
+import { tests } from './module-tests.mjs';
 
 describe('@global-modules/swc-plugin', () => {
   describe('Bundle phase', () => {
     it('[ESM] Basics', async () => {
-      const bundleCode = await bundle(
+      const bundleCode = await bundleWithFoo(
         {
           entry: `
           import * as mod from './foo';
@@ -55,7 +28,7 @@ describe('@global-modules/swc-plugin', () => {
       );
 
       const bridge = vi.fn();
-      evaluateOnGlobalModuleSandbox(bundleCode, { bridge });
+      evaluateOnSandbox(bundleCode, { bridge });
 
       expect(bundleCode).toMatchSnapshot();
       expect(bridge).toBeCalledWith({
@@ -67,7 +40,7 @@ describe('@global-modules/swc-plugin', () => {
     });
 
     it('[ESM] Export with declaration statements', async () => {
-      const bundleCode = await bundle(
+      const bundleCode = await bundleWithFoo(
         {
           entry: `
           import * as mod from './foo';
@@ -85,14 +58,14 @@ describe('@global-modules/swc-plugin', () => {
       );
 
       const bridge = vi.fn();
-      evaluateOnGlobalModuleSandbox(bundleCode, { bridge });
+      evaluateOnSandbox(bundleCode, { bridge });
 
       expect(bundleCode).toMatchSnapshot();
       expect(bridge).toBeCalledWith({ value: 0, key: 'key' });
     });
 
     it('[CJS] Basics', async () => {
-      const bundleCode = await bundle(
+      const bundleCode = await bundleWithFoo(
         {
           entry: `
           const mod = require('./foo');
@@ -113,7 +86,7 @@ describe('@global-modules/swc-plugin', () => {
       );
 
       const bridge = vi.fn();
-      evaluateOnGlobalModuleSandbox(bundleCode, { bridge });
+      evaluateOnSandbox(bundleCode, { bridge });
 
       expect(bundleCode).toMatchSnapshot();
       expect(bridge).toBeCalledWith({ foo: 'foo', bar: 'bar', baz: 'baz' });
@@ -122,12 +95,12 @@ describe('@global-modules/swc-plugin', () => {
 
   describe('Runtime phase', () => {
     it('[ESM] Basics', async () => {
-      const bundleCode = await bundle(
+      const bundleCode = await bundleWithFoo(
         {
           entry: `
           import * as mod from './foo';
 
-          bridge(global.__modules.getContext(0).module.exports);
+          bridge(global.__modules.getContext('0').module.exports);
           `,
           foo: `
           const foo = 'foo';
@@ -143,7 +116,7 @@ describe('@global-modules/swc-plugin', () => {
       );
 
       const bridge = vi.fn();
-      evaluateOnGlobalModuleSandbox(bundleCode, { bridge });
+      evaluateOnSandbox(bundleCode, { bridge });
 
       expect(bundleCode).toMatchSnapshot();
       expect(bridge).toBeCalledWith({
@@ -155,12 +128,12 @@ describe('@global-modules/swc-plugin', () => {
     });
 
     it('[ESM] Export with declaration statements', async () => {
-      const bundleCode = await bundle(
+      const bundleCode = await bundleWithFoo(
         {
           entry: `
           import * as mod from './foo';
 
-          bridge(global.__modules.getContext(0).module.exports);
+          bridge(global.__modules.getContext('0').module.exports);
           `,
           foo: `
           const obj = { value: 0 };
@@ -173,19 +146,19 @@ describe('@global-modules/swc-plugin', () => {
       );
 
       const bridge = vi.fn();
-      evaluateOnGlobalModuleSandbox(bundleCode, { bridge });
+      evaluateOnSandbox(bundleCode, { bridge });
 
       expect(bundleCode).toMatchSnapshot();
       expect(bridge).toBeCalledWith({ newObj: { value: 0, key: 'key' } });
     });
 
     it('[CJS] Basics', async () => {
-      const bundleCode = await bundle(
+      const bundleCode = await bundleWithFoo(
         {
           entry: `
           const mod = require('./foo');
 
-          bridge(global.__modules.getContext(0).module.exports);
+          bridge(global.__modules.getContext('0').module.exports);
           `,
           foo: `
           const foo = 'foo';
@@ -201,10 +174,28 @@ describe('@global-modules/swc-plugin', () => {
       );
 
       const bridge = vi.fn();
-      evaluateOnGlobalModuleSandbox(bundleCode, { bridge });
+      evaluateOnSandbox(bundleCode, { bridge });
 
       expect(bundleCode).toMatchSnapshot();
       expect(bridge).toBeCalledWith({ foo: 'foo', bar: 'bar', baz: 'baz' });
+    });
+  });
+
+  describe.each(tests)('Module tests', (input) => {
+    const index = tests.indexOf(input);
+
+    it(`Case #${index}`, async () => {
+      const bundleCode = await bundle(input, { index, phase: Phase.Bundle });
+
+      const resultBridgeObject = {
+        input: {
+          works: undefined,
+        },
+      };
+
+      evaluateOnSandbox(bundleCode, resultBridgeObject);
+
+      expect(await Promise.resolve(resultBridgeObject.input.works)).toBe(true);
     });
   });
 });
