@@ -27,7 +27,7 @@ impl GlobalModuleTransformer {
 }
 
 impl GlobalModuleTransformer {
-    pub fn new(id: f64, phase: ModulePhase, paths: Option<AHashMap<String, f64>>) -> Self {
+    pub fn new(id: String, phase: ModulePhase, paths: Option<AHashMap<String, String>>) -> Self {
         let delegate: Box<dyn AstDelegate> = match phase {
             ModulePhase::Bundle => Box::new(BundleDelegate::new(id)),
             ModulePhase::Runtime => Box::new(RuntimeDelegate::new(id, paths)),

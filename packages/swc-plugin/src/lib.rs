@@ -9,9 +9,9 @@ use swc_global_modules::global_modules;
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct GlobalModuleConfig {
-    id: f64,
+    id: String,
     phase: f64,
-    paths: Option<AHashMap<String, f64>>,
+    paths: Option<AHashMap<String, String>>,
 }
 
 #[plugin_transform]

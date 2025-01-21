@@ -79,19 +79,20 @@ describe('@global-modules/runtime', () => {
     });
 
     it('should return the module context', () => {
-      expect(context.evaluate('__modules.register(0);')).toBeTruthy();
+      expect(context.evaluate(`__modules.register('0');`)).toBeTruthy();
     });
 
     describe('when attempting to retrieve a registered module', () => {
       it('should return the module context', () => {
-        expect(context.evaluate('__modules.getContext(0);')).toBeTruthy();
+        expect(context.evaluate(`__modules.getContext('0');`)).toBeTruthy();
       });
     });
 
     describe('when attempting to retrieve a unregistered module', () => {
       it('should throw an error', () => {
         expect(
-          (): RuntimeResult => context.evaluate('__modules.getContext(1234);'),
+          (): RuntimeResult =>
+            context.evaluate(`__modules.getContext('1234');`),
         ).toThrowError();
       });
     });
@@ -122,13 +123,13 @@ describe('@global-modules/runtime', () => {
 
     it('module.exports = <expr>;', () => {
       context.evaluate(`
-        var __ctx = __modules.register(1);
+        var __ctx = __modules.register('1');
         __ctx.module.exports = 100;
       `);
 
       context.evaluate(`
-        var __ctx = __modules.register(2);
-        var mod = global.__modules.require(1);
+        var __ctx = __modules.register('2');
+        var mod = global.__modules.require('1');
         print(mod);
       `);
 
@@ -139,15 +140,15 @@ describe('@global-modules/runtime', () => {
 
     it('module.exports.named = <expr>;', () => {
       context.evaluate(`
-        var __ctx = __modules.register(1);
+        var __ctx = __modules.register('1');
         __ctx.module.exports.foo = 1;
         __ctx.module.exports.bar = 2;
         __ctx.module.exports.baz = 3;
       `);
 
       context.evaluate(`
-        var __ctx = __modules.register(2);
-        var mod = global.__modules.require(1);
+        var __ctx = __modules.register('2');
+        var mod = global.__modules.require('1');
         print(mod);
       `);
 
@@ -160,7 +161,7 @@ describe('@global-modules/runtime', () => {
 
     it('Object.assign(module.exports, {});', () => {
       context.evaluate(`
-        var __ctx = __modules.register(1);
+        var __ctx = __modules.register('1');
         Object.assign(__ctx.module.exports, {
           foo: 4,
           bar: 5,
@@ -169,8 +170,8 @@ describe('@global-modules/runtime', () => {
       `);
 
       context.evaluate(`
-        var __ctx = __modules.register(2);
-        var mod = global.__modules.require(1);
+        var __ctx = __modules.register('2');
+        var mod = global.__modules.require('1');
         print(mod);
       `);
 
@@ -183,15 +184,15 @@ describe('@global-modules/runtime', () => {
 
     it('Update the existing module', () => {
       context.evaluate(`
-        var __ctx = __modules.register(1);
+        var __ctx = __modules.register('1');
         __ctx.module.exports.foo = 1;
         __ctx.module.exports.bar = 2;
         __ctx.module.exports.baz = 3;
       `);
 
       context.evaluate(`
-        var __ctx = __modules.register(2);
-        var mod = global.__modules.require(1);
+        var __ctx = __modules.register('2');
+        var mod = global.__modules.require('1');
         print(mod);
       `);
 
@@ -203,14 +204,14 @@ describe('@global-modules/runtime', () => {
 
       // Update
       context.evaluate(`
-        var __ctx = __modules.getContext(1);
+        var __ctx = __modules.getContext('1');
         __ctx.reset();
         __ctx.module.exports.value = 100;
       `);
 
       context.evaluate(`
-        var __ctx = __modules.getContext(2);
-        var mod = global.__modules.require(1);
+        var __ctx = __modules.getContext('2');
+        var mod = global.__modules.require('1');
         __ctx.reset();
         print(mod);
       `);
@@ -228,7 +229,7 @@ describe('@global-modules/runtime', () => {
 
     it('ESModule interop', () => {
       context.evaluate(`
-        var __ctx = __modules.register(1);
+        var __ctx = __modules.register('1');
         __ctx.module.exports = {
           default: 100,
         };
@@ -238,8 +239,8 @@ describe('@global-modules/runtime', () => {
       `);
 
       context.evaluate(`
-        var __ctx = __modules.register(2);
-        var mod = global.__modules.require(1);
+        var __ctx = __modules.register('2');
+        var mod = global.__modules.require('1');
         print(mod);
       `);
 
@@ -261,7 +262,7 @@ describe('@global-modules/runtime', () => {
 
     it('Default export', () => {
       context.evaluate(`
-        var __ctx = __modules.register(1);
+        var __ctx = __modules.register('1');
         var __x = 100;
         __ctx.exports(function () {
           return {
@@ -272,8 +273,8 @@ describe('@global-modules/runtime', () => {
       `);
 
       context.evaluate(`
-        var __ctx = __modules.register(2);
-        var mod = global.__modules.require(1);
+        var __ctx = __modules.register('2');
+        var mod = global.__modules.require('1');
         print(mod);
       `);
 
@@ -284,7 +285,7 @@ describe('@global-modules/runtime', () => {
 
     it('Named exports', () => {
       context.evaluate(`
-        var __ctx = __modules.register(1);
+        var __ctx = __modules.register('1');
         __x = 1;
         __x1 = 2;
         __x2 = 3;
@@ -299,8 +300,8 @@ describe('@global-modules/runtime', () => {
       `);
 
       context.evaluate(`
-        var __ctx = __modules.register(2);
-        var mod = global.__modules.require(1);
+        var __ctx = __modules.register('2');
+        var mod = global.__modules.require('1');
         print(mod);
       `);
 
@@ -313,7 +314,7 @@ describe('@global-modules/runtime', () => {
 
     it('Re-export (named)', () => {
       context.evaluate(`
-        var __ctx = __modules.register(1);
+        var __ctx = __modules.register('1');
         __x = 1;
         __x1 = 2;
         __x2 = 3;
@@ -328,8 +329,8 @@ describe('@global-modules/runtime', () => {
       `);
 
       context.evaluate(`
-        var __ctx = __modules.register(2);
-        var mod = global.__modules.require(1);
+        var __ctx = __modules.register('2');
+        var mod = global.__modules.require('1');
         __ctx.exports(function () {
           return {
             a: mod.foo,
@@ -340,8 +341,8 @@ describe('@global-modules/runtime', () => {
       `);
 
       context.evaluate(`
-        var __ctx = __modules.register(3);
-        var mod = global.__modules.require(2);
+        var __ctx = __modules.register('3');
+        var mod = global.__modules.require('2');
         print(mod);
       `);
 
@@ -354,7 +355,7 @@ describe('@global-modules/runtime', () => {
 
     it('Re-export (all)', () => {
       context.evaluate(`
-        var __ctx = __modules.register(1);
+        var __ctx = __modules.register('1');
         __x = 1;
         __x1 = 2;
         __x2 = 3;
@@ -371,8 +372,8 @@ describe('@global-modules/runtime', () => {
       `);
 
       context.evaluate(`
-        var __ctx = __modules.register(2);
-        var mod = global.__modules.require(1);
+        var __ctx = __modules.register('2');
+        var mod = global.__modules.require('1');
         print('require 1', mod);
         __ctx.exports(function () {
           return {
@@ -382,8 +383,8 @@ describe('@global-modules/runtime', () => {
       `);
 
       context.evaluate(`
-        var __ctx = __modules.register(3);
-        var mod = global.__modules.require(2);
+        var __ctx = __modules.register('3');
+        var mod = global.__modules.require('2');
         print('require 2', mod);
       `);
 
@@ -403,7 +404,7 @@ describe('@global-modules/runtime', () => {
 
     it('Update the existing module', () => {
       context.evaluate(`
-        var __ctx = __modules.register(1);
+        var __ctx = __modules.register('1');
         __x = 1;
         __x1 = 2;
         __x2 = 3;
@@ -418,8 +419,8 @@ describe('@global-modules/runtime', () => {
       `);
 
       context.evaluate(`
-        var __ctx = __modules.register(2);
-        var mod = global.__modules.require(1);
+        var __ctx = __modules.register('2');
+        var mod = global.__modules.require('1');
         print(mod);
       `);
 
@@ -431,7 +432,7 @@ describe('@global-modules/runtime', () => {
 
       // Update
       context.evaluate(`
-        var __ctx = __modules.getContext(1);
+        var __ctx = __modules.getContext('1');
         __ctx.reset();
         __x = 100;
         __ctx.exports(function () {
@@ -443,9 +444,9 @@ describe('@global-modules/runtime', () => {
       `);
 
       context.evaluate(`
-        var __ctx = __modules.getContext(2);
+        var __ctx = __modules.getContext('2');
         __ctx.reset();
-        var mod = global.__modules.require(1);
+        var mod = global.__modules.require('1');
         print(mod);
       `);
 

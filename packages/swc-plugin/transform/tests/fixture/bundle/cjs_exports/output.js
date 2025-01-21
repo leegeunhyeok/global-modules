@@ -1,4 +1,4 @@
-var __ctx = global.__modules.register(1000);
+var __ctx = global.__modules.register("1000");
 exports.foo = __ctx.module.exports.foo = 'foo';
 exports.bar = __ctx.module.exports.bar = 'bar';
 exports.baz = __ctx.module.exports.baz = 'baz';

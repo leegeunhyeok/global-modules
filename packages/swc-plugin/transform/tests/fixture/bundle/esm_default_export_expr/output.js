@@ -1,4 +1,4 @@
-var __ctx = global.__modules.register(1000);
+var __ctx = global.__modules.register("1000");
 __ctx.exports(function () {
     return {
       "default": __x

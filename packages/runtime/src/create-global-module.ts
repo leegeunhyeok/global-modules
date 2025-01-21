@@ -1,5 +1,5 @@
 import { createExports, isExports } from './exports';
-import { interopDefaultExport } from './interopDefaultExport';
+import { interopDefaultExport } from './interop-default-export';
 import type {
   Exports,
   GlobalModule,

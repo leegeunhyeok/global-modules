@@ -264,13 +264,13 @@ pub struct NamedReExportRef {
     pub mod_ident: Ident,
     /// Source of the referenced module.
     pub src: Atom,
-    pub id: Option<f64>,
+    pub id: Option<String>,
     /// Exported members.
     pub members: Vec<ExportMember>,
 }
 
 impl NamedReExportRef {
-    pub fn new(src: Atom, id: Option<f64>, members: Vec<ExportMember>) -> Self {
+    pub fn new(src: Atom, id: Option<String>, members: Vec<ExportMember>) -> Self {
         NamedReExportRef {
             mod_ident: private_ident!("__mod"),
             src,
@@ -284,7 +284,8 @@ impl NamedReExportRef {
             ModulePhase::Bundle => import_star(self.mod_ident.clone(), self.src.clone()),
             ModulePhase::Runtime => decl_require_deps_stmt(
                 self.id
-                    .map(|id| Lit::from(id))
+                    .as_ref()
+                    .map(|id| Lit::from(id.as_str()))
                     .unwrap_or_else(|| Lit::from(self.src.as_str())),
                 self.mod_ident.clone().into(),
             )
@@ -304,7 +305,7 @@ pub struct ReExportAllRef {
     pub mod_ident: Ident,
     /// Source of the referenced module.
     pub src: Atom,
-    pub id: Option<f64>,
+    pub id: Option<String>,
     /// Alias name.
     ///
     /// ```js
@@ -318,7 +319,7 @@ pub struct ReExportAllRef {
 }
 
 impl ReExportAllRef {
-    pub fn new(src: Atom, id: Option<f64>, name: Option<Atom>) -> Self {
+    pub fn new(src: Atom, id: Option<String>, name: Option<Atom>) -> Self {
         ReExportAllRef {
             mod_ident: private_ident!("__mod"),
             src,
@@ -332,7 +333,8 @@ impl ReExportAllRef {
             ModulePhase::Bundle => import_star(self.mod_ident.clone(), self.src.clone()),
             ModulePhase::Runtime => decl_require_deps_stmt(
                 self.id
-                    .map(|id| Lit::from(id))
+                    .as_ref()
+                    .map(|id| Lit::from(id.as_str()))
                     .unwrap_or_else(|| Lit::from(self.src.as_str())),
                 self.mod_ident.clone().into(),
             )
@@ -356,7 +358,7 @@ pub mod helpers {
 
     pub fn export_ref_from_named_export(
         export_named: &NamedExport,
-        deps_id: &Option<AHashMap<String, f64>>,
+        deps_id: &Option<AHashMap<String, String>>,
     ) -> ExportRef {
         match &export_named.src {
             // Re-exports
@@ -376,7 +378,7 @@ pub mod helpers {
                     // ```
                     ExportRef::ReExportAll(ReExportAllRef::new(
                         src,
-                        id.copied(),
+                        id.as_ref().map(|id| id.as_str().into()),
                         Some(ns_specifier.name.atom().clone()),
                     ))
                 } else {
@@ -389,7 +391,7 @@ pub mod helpers {
                     // ```
                     ExportRef::NamedReExport(NamedReExportRef::new(
                         src,
-                        id.copied(),
+                        id.as_ref().map(|id| id.as_str().into()),
                         to_export_members(&export_named.specifiers),
                     ))
                 }
@@ -543,14 +545,19 @@ pub mod helpers {
     /// Converts dependencies into `Vec<ModuleItem>`.
     pub fn deps_to_ast(
         deps: &OHashMap<Atom, ModuleRef>,
-        deps_id: &Option<AHashMap<String, f64>>,
+        deps_id: &Option<AHashMap<String, String>>,
     ) -> Vec<ModuleItem> {
         let mut items = vec![];
 
         deps.iter().for_each(|(src, value)| {
             let src_lit = if let Some(deps_id) = deps_id {
                 if let Some(id) = deps_id.get(src.as_str()) {
-                    Lit::from(*id).into()
+                    Lit::Str(Str {
+                        value: id.as_str().into(),
+                        raw: None,
+                        span: DUMMY_SP,
+                    })
+                    .into()
                 } else {
                     None
                 }

@@ -9,7 +9,7 @@ Setup from top of entry point like this:
 ```ts
 import '@global-modules/runtime';
 
-const __ctx = global.__modules.register(1);
+const __ctx = global.__modules.register('1');
 
 // CommonJS
 __ctx.module.exports = 100;
@@ -47,7 +47,7 @@ import foo from './foo';
 import bar from './bar';
 import { baz } from './baz';
 
-const __ctx = global.__modules.register(1);
+const __ctx = global.__modules.register('1');
 
 function something() {
   return foo.value + bar.value + baz;
@@ -66,7 +66,7 @@ export { __x as something };
 
 ```ts
 // 2. Runtime phase
-var __ctx = global.__modules.getContext(1);
+var __ctx = global.__modules.getContext('1');
 __ctx.reset();
 
 var { default: foo } = global.__modules.require(1000); // `./foo` module's id
