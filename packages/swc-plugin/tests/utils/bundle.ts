@@ -125,7 +125,7 @@ export async function bundle(
             let currentId: number;
 
             if (moduleMap.has(args.path)) {
-              currentId = moduleMap.get(args.path)!;
+              currentId = moduleMap.get(args.path) as number;
             } else {
               currentId = id++;
               moduleMap.set(args.path, currentId);
