@@ -4,6 +4,9 @@
 /.pnp.*              binary linguist-generated
 
 # Ignore fixtures
-/demo/src/client/**/*                                linguist-vendored
+/packages/**/build/**/*                              linguist-vendored
 /packages/swc-plugin/transform/tests/fixture/**/*.js linguist-vendored
 /packages/swc-plugin/demo/*                          linguist-vendored
+/demo/**/*                                           linguist-vendored
+/yarn.config.cjs                                     linguist-vendored
+/.prettierrc.mjs                                     linguist-vendored
