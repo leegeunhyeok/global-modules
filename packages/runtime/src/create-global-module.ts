@@ -32,7 +32,7 @@ export function createGlobalModule(): GlobalModule {
     const module = moduleRegistry.get(id);
 
     if (module == null) {
-      throw new Error(`module not found: ${String(id)}`);
+      throw new Error(`module not found: '${id}'`);
     }
 
     return module;

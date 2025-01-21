@@ -2,6 +2,115 @@
 
 exports[`@global-modules/swc-plugin > Bundle phase > [CJS] Basics 1`] = `
 "(() => {
+  // src/exports.ts
+  var __ref = {};
+  function createExports() {
+    return Object.create(__ref);
+  }
+  function isExports(object) {
+    return Object.getPrototypeOf(object) === __ref;
+  }
+
+  // src/interop-default-export.ts
+  function interopDefaultExport(module) {
+    if (typeof module.exports.default === "undefined") {
+      return typeof module.exports === "object" ? Object.assign(module.exports, { default: module.exports }) : { default: module.exports };
+    }
+    return module.exports;
+  }
+
+  // src/utils.ts
+  var hasOwnProp = Object.prototype.hasOwnProperty;
+  var defProp = Object.defineProperty;
+  var copyProps = (destination, source, except) => {
+    for (const key in source) {
+      if (key !== except && hasOwnProp.call(source, key) && !hasOwnProp.call(destination, key)) {
+        defProp(destination, key, {
+          enumerable: true,
+          get: () => source[key]
+        });
+      }
+    }
+    return destination;
+  };
+
+  // src/create-global-module.ts
+  function createGlobalModule() {
+    const moduleRegistry = /* @__PURE__ */ new Map();
+    function __exports(exports, definitions) {
+      copyProps(exports, definitions());
+    }
+    function require2(id) {
+      const module = getModule(id);
+      return module.exports.__esModule || isExports(module.exports) ? module.exports : interopDefaultExport(module);
+    }
+    function getModule(id) {
+      const module = moduleRegistry.get(id);
+      if (module == null) {
+        throw new Error(\`module not found: '\${id}'\`);
+      }
+      return module;
+    }
+    function toNamespaceExports(exports) {
+      const nsExports = createExports();
+      copyProps(nsExports, exports, "default");
+      return nsExports;
+    }
+    function createContext(module) {
+      const exports = Object.assign(
+        (definitions) => {
+          __exports(module.exports, definitions);
+        },
+        { ns: toNamespaceExports }
+      );
+      return {
+        exports,
+        module,
+        reset: () => void (module.exports = createExports())
+      };
+    }
+    function register(id) {
+      const module = {};
+      module.id = id;
+      module.exports = createExports();
+      module.context = createContext(module);
+      moduleRegistry.set(id, module);
+      return module.context;
+    }
+    function getContext(id) {
+      return getModule(id).context;
+    }
+    function getRegistry() {
+      return moduleRegistry;
+    }
+    function clear() {
+      moduleRegistry.clear();
+    }
+    return { register, getContext, getRegistry, require: require2, clear };
+  }
+
+  // src/get-global-context.ts
+  function getGlobalContext() {
+    return typeof globalThis !== "undefined" ? globalThis : typeof global !== "undefined" ? global : typeof window !== "undefined" ? window : this;
+  }
+
+  // src/index.ts
+  var GLOBAL_MODULE_PROPERTY = "__modules";
+  var globalContext = getGlobalContext();
+  if (GLOBAL_MODULE_PROPERTY in globalContext) {
+    throw new Error(
+      \`'\${GLOBAL_MODULE_PROPERTY}' property is already defined in the global context.\`
+    );
+  }
+  if (typeof global === "undefined") {
+    globalContext.global = globalContext;
+  }
+  Object.defineProperty(globalContext, GLOBAL_MODULE_PROPERTY, {
+    value: createGlobalModule()
+  });
+})();
+
+(() => {
   var __getOwnPropNames = Object.getOwnPropertyNames;
   var __commonJS = (cb, mod2) => function __require() {
     return mod2 || (0, cb[__getOwnPropNames(cb)[0]])((mod2 = { exports: {} }).exports, mod2), mod2.exports;
@@ -33,6 +142,115 @@ exports[`@global-modules/swc-plugin > Bundle phase > [CJS] Basics 1`] = `
 
 exports[`@global-modules/swc-plugin > Bundle phase > [ESM] Basics 1`] = `
 "(() => {
+  // src/exports.ts
+  var __ref = {};
+  function createExports() {
+    return Object.create(__ref);
+  }
+  function isExports(object) {
+    return Object.getPrototypeOf(object) === __ref;
+  }
+
+  // src/interop-default-export.ts
+  function interopDefaultExport(module) {
+    if (typeof module.exports.default === "undefined") {
+      return typeof module.exports === "object" ? Object.assign(module.exports, { default: module.exports }) : { default: module.exports };
+    }
+    return module.exports;
+  }
+
+  // src/utils.ts
+  var hasOwnProp = Object.prototype.hasOwnProperty;
+  var defProp = Object.defineProperty;
+  var copyProps = (destination, source, except) => {
+    for (const key in source) {
+      if (key !== except && hasOwnProp.call(source, key) && !hasOwnProp.call(destination, key)) {
+        defProp(destination, key, {
+          enumerable: true,
+          get: () => source[key]
+        });
+      }
+    }
+    return destination;
+  };
+
+  // src/create-global-module.ts
+  function createGlobalModule() {
+    const moduleRegistry = /* @__PURE__ */ new Map();
+    function __exports(exports, definitions) {
+      copyProps(exports, definitions());
+    }
+    function require2(id) {
+      const module = getModule(id);
+      return module.exports.__esModule || isExports(module.exports) ? module.exports : interopDefaultExport(module);
+    }
+    function getModule(id) {
+      const module = moduleRegistry.get(id);
+      if (module == null) {
+        throw new Error(\`module not found: '\${id}'\`);
+      }
+      return module;
+    }
+    function toNamespaceExports(exports) {
+      const nsExports = createExports();
+      copyProps(nsExports, exports, "default");
+      return nsExports;
+    }
+    function createContext(module) {
+      const exports = Object.assign(
+        (definitions) => {
+          __exports(module.exports, definitions);
+        },
+        { ns: toNamespaceExports }
+      );
+      return {
+        exports,
+        module,
+        reset: () => void (module.exports = createExports())
+      };
+    }
+    function register(id) {
+      const module = {};
+      module.id = id;
+      module.exports = createExports();
+      module.context = createContext(module);
+      moduleRegistry.set(id, module);
+      return module.context;
+    }
+    function getContext(id) {
+      return getModule(id).context;
+    }
+    function getRegistry() {
+      return moduleRegistry;
+    }
+    function clear() {
+      moduleRegistry.clear();
+    }
+    return { register, getContext, getRegistry, require: require2, clear };
+  }
+
+  // src/get-global-context.ts
+  function getGlobalContext() {
+    return typeof globalThis !== "undefined" ? globalThis : typeof global !== "undefined" ? global : typeof window !== "undefined" ? window : this;
+  }
+
+  // src/index.ts
+  var GLOBAL_MODULE_PROPERTY = "__modules";
+  var globalContext = getGlobalContext();
+  if (GLOBAL_MODULE_PROPERTY in globalContext) {
+    throw new Error(
+      \`'\${GLOBAL_MODULE_PROPERTY}' property is already defined in the global context.\`
+    );
+  }
+  if (typeof global === "undefined") {
+    globalContext.global = globalContext;
+  }
+  Object.defineProperty(globalContext, GLOBAL_MODULE_PROPERTY, {
+    value: createGlobalModule()
+  });
+})();
+
+(() => {
   var __defProp = Object.defineProperty;
   var __export = (target, all) => {
     for (var name in all)
@@ -73,6 +291,115 @@ exports[`@global-modules/swc-plugin > Bundle phase > [ESM] Basics 1`] = `
 
 exports[`@global-modules/swc-plugin > Bundle phase > [ESM] Export with declaration statements 1`] = `
 "(() => {
+  // src/exports.ts
+  var __ref = {};
+  function createExports() {
+    return Object.create(__ref);
+  }
+  function isExports(object) {
+    return Object.getPrototypeOf(object) === __ref;
+  }
+
+  // src/interop-default-export.ts
+  function interopDefaultExport(module) {
+    if (typeof module.exports.default === "undefined") {
+      return typeof module.exports === "object" ? Object.assign(module.exports, { default: module.exports }) : { default: module.exports };
+    }
+    return module.exports;
+  }
+
+  // src/utils.ts
+  var hasOwnProp = Object.prototype.hasOwnProperty;
+  var defProp = Object.defineProperty;
+  var copyProps = (destination, source, except) => {
+    for (const key in source) {
+      if (key !== except && hasOwnProp.call(source, key) && !hasOwnProp.call(destination, key)) {
+        defProp(destination, key, {
+          enumerable: true,
+          get: () => source[key]
+        });
+      }
+    }
+    return destination;
+  };
+
+  // src/create-global-module.ts
+  function createGlobalModule() {
+    const moduleRegistry = /* @__PURE__ */ new Map();
+    function __exports(exports, definitions) {
+      copyProps(exports, definitions());
+    }
+    function require2(id) {
+      const module = getModule(id);
+      return module.exports.__esModule || isExports(module.exports) ? module.exports : interopDefaultExport(module);
+    }
+    function getModule(id) {
+      const module = moduleRegistry.get(id);
+      if (module == null) {
+        throw new Error(\`module not found: '\${id}'\`);
+      }
+      return module;
+    }
+    function toNamespaceExports(exports) {
+      const nsExports = createExports();
+      copyProps(nsExports, exports, "default");
+      return nsExports;
+    }
+    function createContext(module) {
+      const exports = Object.assign(
+        (definitions) => {
+          __exports(module.exports, definitions);
+        },
+        { ns: toNamespaceExports }
+      );
+      return {
+        exports,
+        module,
+        reset: () => void (module.exports = createExports())
+      };
+    }
+    function register(id) {
+      const module = {};
+      module.id = id;
+      module.exports = createExports();
+      module.context = createContext(module);
+      moduleRegistry.set(id, module);
+      return module.context;
+    }
+    function getContext(id) {
+      return getModule(id).context;
+    }
+    function getRegistry() {
+      return moduleRegistry;
+    }
+    function clear() {
+      moduleRegistry.clear();
+    }
+    return { register, getContext, getRegistry, require: require2, clear };
+  }
+
+  // src/get-global-context.ts
+  function getGlobalContext() {
+    return typeof globalThis !== "undefined" ? globalThis : typeof global !== "undefined" ? global : typeof window !== "undefined" ? window : this;
+  }
+
+  // src/index.ts
+  var GLOBAL_MODULE_PROPERTY = "__modules";
+  var globalContext = getGlobalContext();
+  if (GLOBAL_MODULE_PROPERTY in globalContext) {
+    throw new Error(
+      \`'\${GLOBAL_MODULE_PROPERTY}' property is already defined in the global context.\`
+    );
+  }
+  if (typeof global === "undefined") {
+    globalContext.global = globalContext;
+  }
+  Object.defineProperty(globalContext, GLOBAL_MODULE_PROPERTY, {
+    value: createGlobalModule()
+  });
+})();
+
+(() => {
   // foo-linker:foo
   var __ctx = global.__modules.register("0");
   var obj = {
@@ -96,6 +423,116 @@ exports[`@global-modules/swc-plugin > Bundle phase > [ESM] Export with declarati
 
 exports[`@global-modules/swc-plugin > Runtime phase > [CJS] Basics 1`] = `
 "(() => {
+  // src/exports.ts
+  var __ref = {};
+  function createExports() {
+    return Object.create(__ref);
+  }
+  function isExports(object) {
+    return Object.getPrototypeOf(object) === __ref;
+  }
+
+  // src/interop-default-export.ts
+  function interopDefaultExport(module) {
+    if (typeof module.exports.default === "undefined") {
+      return typeof module.exports === "object" ? Object.assign(module.exports, { default: module.exports }) : { default: module.exports };
+    }
+    return module.exports;
+  }
+
+  // src/utils.ts
+  var hasOwnProp = Object.prototype.hasOwnProperty;
+  var defProp = Object.defineProperty;
+  var copyProps = (destination, source, except) => {
+    for (const key in source) {
+      if (key !== except && hasOwnProp.call(source, key) && !hasOwnProp.call(destination, key)) {
+        defProp(destination, key, {
+          enumerable: true,
+          get: () => source[key]
+        });
+      }
+    }
+    return destination;
+  };
+
+  // src/create-global-module.ts
+  function createGlobalModule() {
+    const moduleRegistry = /* @__PURE__ */ new Map();
+    function __exports(exports, definitions) {
+      copyProps(exports, definitions());
+    }
+    function require2(id) {
+      const module = getModule(id);
+      return module.exports.__esModule || isExports(module.exports) ? module.exports : interopDefaultExport(module);
+    }
+    function getModule(id) {
+      const module = moduleRegistry.get(id);
+      if (module == null) {
+        throw new Error(\`module not found: '\${id}'\`);
+      }
+      return module;
+    }
+    function toNamespaceExports(exports) {
+      const nsExports = createExports();
+      copyProps(nsExports, exports, "default");
+      return nsExports;
+    }
+    function createContext(module) {
+      const exports = Object.assign(
+        (definitions) => {
+          __exports(module.exports, definitions);
+        },
+        { ns: toNamespaceExports }
+      );
+      return {
+        exports,
+        module,
+        reset: () => void (module.exports = createExports())
+      };
+    }
+    function register(id) {
+      const module = {};
+      module.id = id;
+      module.exports = createExports();
+      module.context = createContext(module);
+      moduleRegistry.set(id, module);
+      return module.context;
+    }
+    function getContext(id) {
+      return getModule(id).context;
+    }
+    function getRegistry() {
+      return moduleRegistry;
+    }
+    function clear() {
+      moduleRegistry.clear();
+    }
+    return { register, getContext, getRegistry, require: require2, clear };
+  }
+
+  // src/get-global-context.ts
+  function getGlobalContext() {
+    return typeof globalThis !== "undefined" ? globalThis : typeof global !== "undefined" ? global : typeof window !== "undefined" ? window : this;
+  }
+
+  // src/index.ts
+  var GLOBAL_MODULE_PROPERTY = "__modules";
+  var globalContext = getGlobalContext();
+  if (GLOBAL_MODULE_PROPERTY in globalContext) {
+    throw new Error(
+      \`'\${GLOBAL_MODULE_PROPERTY}' property is already defined in the global context.\`
+    );
+  }
+  if (typeof global === "undefined") {
+    globalContext.global = globalContext;
+  }
+  Object.defineProperty(globalContext, GLOBAL_MODULE_PROPERTY, {
+    value: createGlobalModule()
+  });
+})();
+
+global.__modules.register('0');
+(() => {
   var __getOwnPropNames = Object.getOwnPropertyNames;
   var __commonJS = (cb, mod2) => function __require() {
     return mod2 || (0, cb[__getOwnPropNames(cb)[0]])((mod2 = { exports: {} }).exports, mod2), mod2.exports;
@@ -121,13 +558,123 @@ exports[`@global-modules/swc-plugin > Runtime phase > [CJS] Basics 1`] = `
 
   // <stdin>
   var mod = require_foo();
-  bridge(global.__modules.getContext(0).module.exports);
+  bridge(global.__modules.getContext("0").module.exports);
 })();
 "
 `;
 
 exports[`@global-modules/swc-plugin > Runtime phase > [ESM] Basics 1`] = `
 "(() => {
+  // src/exports.ts
+  var __ref = {};
+  function createExports() {
+    return Object.create(__ref);
+  }
+  function isExports(object) {
+    return Object.getPrototypeOf(object) === __ref;
+  }
+
+  // src/interop-default-export.ts
+  function interopDefaultExport(module) {
+    if (typeof module.exports.default === "undefined") {
+      return typeof module.exports === "object" ? Object.assign(module.exports, { default: module.exports }) : { default: module.exports };
+    }
+    return module.exports;
+  }
+
+  // src/utils.ts
+  var hasOwnProp = Object.prototype.hasOwnProperty;
+  var defProp = Object.defineProperty;
+  var copyProps = (destination, source, except) => {
+    for (const key in source) {
+      if (key !== except && hasOwnProp.call(source, key) && !hasOwnProp.call(destination, key)) {
+        defProp(destination, key, {
+          enumerable: true,
+          get: () => source[key]
+        });
+      }
+    }
+    return destination;
+  };
+
+  // src/create-global-module.ts
+  function createGlobalModule() {
+    const moduleRegistry = /* @__PURE__ */ new Map();
+    function __exports(exports, definitions) {
+      copyProps(exports, definitions());
+    }
+    function require2(id) {
+      const module = getModule(id);
+      return module.exports.__esModule || isExports(module.exports) ? module.exports : interopDefaultExport(module);
+    }
+    function getModule(id) {
+      const module = moduleRegistry.get(id);
+      if (module == null) {
+        throw new Error(\`module not found: '\${id}'\`);
+      }
+      return module;
+    }
+    function toNamespaceExports(exports) {
+      const nsExports = createExports();
+      copyProps(nsExports, exports, "default");
+      return nsExports;
+    }
+    function createContext(module) {
+      const exports = Object.assign(
+        (definitions) => {
+          __exports(module.exports, definitions);
+        },
+        { ns: toNamespaceExports }
+      );
+      return {
+        exports,
+        module,
+        reset: () => void (module.exports = createExports())
+      };
+    }
+    function register(id) {
+      const module = {};
+      module.id = id;
+      module.exports = createExports();
+      module.context = createContext(module);
+      moduleRegistry.set(id, module);
+      return module.context;
+    }
+    function getContext(id) {
+      return getModule(id).context;
+    }
+    function getRegistry() {
+      return moduleRegistry;
+    }
+    function clear() {
+      moduleRegistry.clear();
+    }
+    return { register, getContext, getRegistry, require: require2, clear };
+  }
+
+  // src/get-global-context.ts
+  function getGlobalContext() {
+    return typeof globalThis !== "undefined" ? globalThis : typeof global !== "undefined" ? global : typeof window !== "undefined" ? window : this;
+  }
+
+  // src/index.ts
+  var GLOBAL_MODULE_PROPERTY = "__modules";
+  var globalContext = getGlobalContext();
+  if (GLOBAL_MODULE_PROPERTY in globalContext) {
+    throw new Error(
+      \`'\${GLOBAL_MODULE_PROPERTY}' property is already defined in the global context.\`
+    );
+  }
+  if (typeof global === "undefined") {
+    globalContext.global = globalContext;
+  }
+  Object.defineProperty(globalContext, GLOBAL_MODULE_PROPERTY, {
+    value: createGlobalModule()
+  });
+})();
+
+global.__modules.register('0');
+(() => {
   var __create = Object.create;
   var __defProp = Object.defineProperty;
   var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
@@ -180,13 +727,123 @@ exports[`@global-modules/swc-plugin > Runtime phase > [ESM] Basics 1`] = `
 
   // <stdin>
   var mod = __toESM(require_foo());
-  bridge(global.__modules.getContext(0).module.exports);
+  bridge(global.__modules.getContext("0").module.exports);
 })();
 "
 `;
 
 exports[`@global-modules/swc-plugin > Runtime phase > [ESM] Export with declaration statements 1`] = `
 "(() => {
+  // src/exports.ts
+  var __ref = {};
+  function createExports() {
+    return Object.create(__ref);
+  }
+  function isExports(object) {
+    return Object.getPrototypeOf(object) === __ref;
+  }
+
+  // src/interop-default-export.ts
+  function interopDefaultExport(module) {
+    if (typeof module.exports.default === "undefined") {
+      return typeof module.exports === "object" ? Object.assign(module.exports, { default: module.exports }) : { default: module.exports };
+    }
+    return module.exports;
+  }
+
+  // src/utils.ts
+  var hasOwnProp = Object.prototype.hasOwnProperty;
+  var defProp = Object.defineProperty;
+  var copyProps = (destination, source, except) => {
+    for (const key in source) {
+      if (key !== except && hasOwnProp.call(source, key) && !hasOwnProp.call(destination, key)) {
+        defProp(destination, key, {
+          enumerable: true,
+          get: () => source[key]
+        });
+      }
+    }
+    return destination;
+  };
+
+  // src/create-global-module.ts
+  function createGlobalModule() {
+    const moduleRegistry = /* @__PURE__ */ new Map();
+    function __exports(exports, definitions) {
+      copyProps(exports, definitions());
+    }
+    function require2(id) {
+      const module = getModule(id);
+      return module.exports.__esModule || isExports(module.exports) ? module.exports : interopDefaultExport(module);
+    }
+    function getModule(id) {
+      const module = moduleRegistry.get(id);
+      if (module == null) {
+        throw new Error(\`module not found: '\${id}'\`);
+      }
+      return module;
+    }
+    function toNamespaceExports(exports) {
+      const nsExports = createExports();
+      copyProps(nsExports, exports, "default");
+      return nsExports;
+    }
+    function createContext(module) {
+      const exports = Object.assign(
+        (definitions) => {
+          __exports(module.exports, definitions);
+        },
+        { ns: toNamespaceExports }
+      );
+      return {
+        exports,
+        module,
+        reset: () => void (module.exports = createExports())
+      };
+    }
+    function register(id) {
+      const module = {};
+      module.id = id;
+      module.exports = createExports();
+      module.context = createContext(module);
+      moduleRegistry.set(id, module);
+      return module.context;
+    }
+    function getContext(id) {
+      return getModule(id).context;
+    }
+    function getRegistry() {
+      return moduleRegistry;
+    }
+    function clear() {
+      moduleRegistry.clear();
+    }
+    return { register, getContext, getRegistry, require: require2, clear };
+  }
+
+  // src/get-global-context.ts
+  function getGlobalContext() {
+    return typeof globalThis !== "undefined" ? globalThis : typeof global !== "undefined" ? global : typeof window !== "undefined" ? window : this;
+  }
+
+  // src/index.ts
+  var GLOBAL_MODULE_PROPERTY = "__modules";
+  var globalContext = getGlobalContext();
+  if (GLOBAL_MODULE_PROPERTY in globalContext) {
+    throw new Error(
+      \`'\${GLOBAL_MODULE_PROPERTY}' property is already defined in the global context.\`
+    );
+  }
+  if (typeof global === "undefined") {
+    globalContext.global = globalContext;
+  }
+  Object.defineProperty(globalContext, GLOBAL_MODULE_PROPERTY, {
+    value: createGlobalModule()
+  });
+})();
+
+global.__modules.register('0');
+(() => {
   var __create = Object.create;
   var __defProp = Object.defineProperty;
   var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
@@ -235,7 +892,7 @@ exports[`@global-modules/swc-plugin > Runtime phase > [ESM] Export with declarat
 
   // <stdin>
   var mod = __toESM(require_foo());
-  bridge(global.__modules.getContext(0).module.exports);
+  bridge(global.__modules.getContext("0").module.exports);
 })();
 "
 `;
