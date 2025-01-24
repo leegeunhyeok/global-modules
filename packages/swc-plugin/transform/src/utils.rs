@@ -1,4 +1,6 @@
 pub mod ast {
+    use core::panic;
+
     use swc_core::{
         atoms::Atom,
         common::{collections::AHashMap, Spanned, SyntaxContext, DUMMY_SP},
@@ -178,7 +180,7 @@ pub mod ast {
     pub fn get_new_assign_expr(
         ctx_ident: Ident,
         expr: Expr,
-        named_sym: Option<&str>,
+        export_name: Option<Expr>,
     ) -> Option<Expr> {
         // `ctx_ident.module;`
         let ctx_module = ctx_ident
@@ -192,15 +194,15 @@ pub mod ast {
             });
 
         assign_member(
-            if let Some(named_sym) = named_sym {
-                // `named_sym`: foo
-                // => `ctx_ident.module.foo`
-                ctx_module.make_member(IdentName {
-                    sym: named_sym.into(),
-                    ..Default::default()
-                })
-            } else {
-                ctx_module
+            match export_name {
+                Some(name_expr) => match name_expr {
+                    Expr::Lit(Lit::Str(str_lit)) => ctx_module.make_member(IdentName {
+                        sym: str_lit.value.clone().into(),
+                        ..Default::default()
+                    }),
+                    _ => ctx_module.computed_member(name_expr.clone()),
+                },
+                None => ctx_module,
             },
             expr,
         )
@@ -232,16 +234,13 @@ pub mod ast {
 
         match &assign_expr.left {
             AssignTarget::Simple(SimpleAssignTarget::Member(member_expr)) => {
-                // TODO: Support computed property
-                if is_cjs_exports_member(member_expr, unresolved_ctxt)
-                    && member_expr.prop.is_ident()
-                {
+                if is_cjs_exports_member(member_expr, unresolved_ctxt) {
                     // `exports.foo = ...;`
                     // `exports['foo'] = ...;`
                     get_new_assign_expr(
                         ctx_ident,
                         *assign_expr.right.clone(),
-                        get_sym_from_member_prop(&member_expr.prop).into(),
+                        get_expr_from_member_prop(&member_expr.prop).into(),
                     )
                 } else if is_cjs_module_member(member_expr, unresolved_ctxt) {
                     // `module.exports = ...;`
@@ -253,7 +252,7 @@ pub mod ast {
                         get_new_assign_expr(
                             ctx_ident,
                             *assign_expr.right.clone(),
-                            get_sym_from_member_prop(&member_expr.prop).into(),
+                            get_expr_from_member_prop(&member_expr.prop).into(),
                         )
                     } else {
                         None
@@ -448,25 +447,23 @@ pub mod ast {
         }
     }
 
-    pub fn get_sym_from_member_prop(prop: &MemberProp) -> &str {
+    pub fn get_expr_from_member_prop(prop: &MemberProp) -> Expr {
         match prop {
-            MemberProp::Ident(ident) => ident.sym.as_str(),
+            MemberProp::Ident(ident) => Expr::Lit(Lit::Str(Str {
+                value: ident.sym.as_str().into(),
+                raw: None,
+                span: DUMMY_SP,
+            })),
             MemberProp::Computed(ComputedPropName { expr, .. }) => match &**expr {
-                Expr::Lit(Lit::Str(str_lit)) => str_lit.value.as_str(),
-                _ => HANDLER.with(|handler| {
-                    handler
-                        .struct_span_err(prop.span(), "invalid expression for computed property")
-                        .emit();
-
-                    ""
-                }),
+                str_lit_expr @ Expr::Lit(Lit::Str(_)) => str_lit_expr.clone(),
+                _ => *expr.clone(),
             },
             _ => HANDLER.with(|handler| {
                 handler
                     .struct_span_err(prop.span(), "unsupported property type")
                     .emit();
 
-                ""
+                panic!("fatal error");
             }),
         }
     }

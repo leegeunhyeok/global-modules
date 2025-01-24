@@ -6,6 +6,7 @@ module.exports = __ctx.module.exports = 'default';
 module.exports.foo = __ctx.module.exports.foo = 'foo';
 module.exports.bar = __ctx.module.exports.bar = 'bar';
 module.exports['baz'] = __ctx.module.exports.baz = 'baz';
+module.exports[global.export ? 'export_name' : '__hidden'] = __ctx.module.exports[global.export ? 'export_name' : '__hidden'] = 0;
 Object.assign(module.exports = __ctx.module.exports, {});
 function a(module1) {
     module1.exports.a = 'a';

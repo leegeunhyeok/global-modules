@@ -130,6 +130,11 @@ exports[`@global-modules/swc-plugin > Bundle phase > [CJS] Basics 1`] = `
           baz: value
         };
       }
+      module.exports[/* @__PURE__ */ function() {
+        return "qux";
+      }()] = __ctx.module.exports[/* @__PURE__ */ function() {
+        return "qux";
+      }()] = "qux";
       function invalidCommonJS(module1) {
         var require2 = function() {
         };
@@ -563,6 +568,9 @@ global.__modules.register('0');
           baz: value
         };
       }
+      __ctx.module.exports[/* @__PURE__ */ function() {
+        return "qux";
+      }()] = "qux";
       function invalidCommonJS(module2) {
         var require2 = function() {
         };
