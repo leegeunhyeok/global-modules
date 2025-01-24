@@ -130,6 +130,16 @@ exports[`@global-modules/swc-plugin > Bundle phase > [CJS] Basics 1`] = `
           baz: value
         };
       }
+      function invalidCommonJS(module1) {
+        var require2 = function() {
+        };
+        module1.exports.invalid = "invalid";
+        module1.exports = "default";
+        require2("./some-module");
+      }
+      invalidCommonJS({
+        exports: {}
+      });
     }
   });
 
@@ -553,6 +563,16 @@ global.__modules.register('0');
           baz: value
         };
       }
+      function invalidCommonJS(module2) {
+        var require2 = function() {
+        };
+        module2.exports.invalid = "invalid";
+        module2.exports = "default";
+        require2("./some-module");
+      }
+      invalidCommonJS({
+        exports: {}
+      });
     }
   });
 

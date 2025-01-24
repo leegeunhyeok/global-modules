@@ -80,6 +80,18 @@ describe('@global-modules/swc-plugin', () => {
           if (true) {
             module.exports = { foo, bar, baz: value };
           }
+
+          // These are invalid commonjs module expressions.
+          function invalidCommonJS(module) {
+            var require = () => {};
+
+            module.exports.invalid = 'invalid';
+            module.exports = 'default';
+
+            require('./some-module');
+          }
+
+          invalidCommonJS({ exports: {} });
           `,
         },
         { phase: Phase.Bundle },
@@ -168,6 +180,18 @@ describe('@global-modules/swc-plugin', () => {
           if (true) {
             module.exports = { foo, bar, baz: value };
           }
+
+          // These are invalid commonjs module expressions.
+          function invalidCommonJS(module) {
+            var require = () => {};
+
+            module.exports.invalid = 'invalid';
+            module.exports = 'default';
+
+            require('./some-module');
+          }
+
+          invalidCommonJS({ exports: {} });
           `,
         },
         { phase: Phase.Runtime },
@@ -178,6 +202,7 @@ describe('@global-modules/swc-plugin', () => {
 
       expect(bundleCode).toMatchSnapshot();
       expect(bridge).toBeCalledWith({ foo: 'foo', bar: 'bar', baz: 'baz' });
+      expect(bridge).not.toBeCalledWith({ invalid: 'invalid' });
     });
   });
 

@@ -3,7 +3,7 @@ use std::mem;
 use helpers::*;
 use swc_core::{
     atoms::Atom,
-    common::{collections::AHashMap, Spanned},
+    common::{collections::AHashMap, Spanned, SyntaxContext},
     ecma::{
         ast::*,
         utils::{private_ident, ExprFactory},
@@ -15,17 +15,17 @@ use super::traits::AstDelegate;
 use crate::{
     models::*,
     utils::{
+        ast::presets::{ctx_reset_call, global_module_get_ctx_stmt, require_call},
         ast::{
             assign_expr, get_expr_from_default_decl, get_ident_from_default_decl, get_src_lit,
-            into_decl,
-            presets::{ctx_reset_call, global_module_get_ctx_stmt, require_call},
-            to_binding_module_from_assign_expr, to_binding_module_from_member_expr,
+            into_decl, to_binding_module_from_assign_expr, to_binding_module_from_member_expr,
         },
         collections::OHashMap,
     },
 };
 
 pub struct RuntimeDelegate {
+    unresolved_ctxt: SyntaxContext,
     id: String,
     paths: Option<AHashMap<String, String>>,
     ctx_ident: Ident,
@@ -37,8 +37,13 @@ pub struct RuntimeDelegate {
 }
 
 impl RuntimeDelegate {
-    pub fn new(id: String, paths: Option<AHashMap<String, String>>) -> Self {
+    pub fn new(
+        id: String,
+        paths: Option<AHashMap<String, String>>,
+        unresolved_ctxt: SyntaxContext,
+    ) -> Self {
         Self {
+            unresolved_ctxt,
             id,
             paths,
             ctx_ident: private_ident!("__ctx"),
@@ -192,10 +197,11 @@ impl AstDelegate for RuntimeDelegate {
                 callee: Callee::Expr(callee_expr),
                 type_args: None,
                 ..
-            } if args.len() == 1 && callee_expr.is_ident_ref_to("require") => {
-                let src = args.get(0).unwrap();
-
-                match &*src.expr {
+            } if args.len() == 1
+                && callee_expr.is_ident_ref_to("require")
+                && callee_expr.as_ident().unwrap().ctxt == self.unresolved_ctxt =>
+            {
+                match &*args[0].expr {
                     // The first argument of the `require` function must be a string type only.
                     Expr::Lit(lit) => {
                         return Some(require_call(get_src_lit(lit, &self.paths)));
@@ -244,15 +250,19 @@ impl AstDelegate for RuntimeDelegate {
         to_binding_module_from_assign_expr(
             self.ctx_ident.clone(),
             assign_expr,
-            crate::phase::ModulePhase::Runtime,
+            self.unresolved_ctxt,
         )
     }
 
     fn member_expr(&mut self, member_expr: &mut MemberExpr) -> Option<Expr> {
-        to_binding_module_from_member_expr(
+        if let Some(member_expr) = to_binding_module_from_member_expr(
             self.ctx_ident.clone(),
             member_expr,
-            crate::phase::ModulePhase::Runtime,
-        )
+            self.unresolved_ctxt,
+        ) {
+            Some(member_expr.into())
+        } else {
+            None
+        }
     }
 }

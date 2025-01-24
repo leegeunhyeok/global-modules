@@ -7,5 +7,9 @@
   "typescript.enablePromptUseWorkspaceTsdk": true,
   "prettier.prettierPath": ".yarn/sdks/prettier/index.cjs",
   "rust-analyzer.linkedProjects": ["packages/swc-plugin/Cargo.toml"],
-  "cSpell.words": ["fastify", "metafile"]
+  "cSpell.words": [
+    "ctxt",
+    "fastify",
+    "metafile"
+  ]
 }

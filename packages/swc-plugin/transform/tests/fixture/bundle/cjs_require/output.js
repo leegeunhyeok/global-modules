@@ -15,3 +15,10 @@ class Foo {
         require('inner-2');
     }
 }
+function a(require1) {
+    require1('a');
+}
+function b() {
+    const require1 = function() {};
+    require1('b');
+}
