@@ -1,7 +1,7 @@
 use serde::Deserialize;
 use swc_core::{
-    common::collections::AHashMap,
-    ecma::{ast::Program, visit::VisitMutWith},
+    common::{collections::AHashMap, SyntaxContext},
+    ecma::ast::Program,
     plugin::{plugin_transform, proxies::TransformPluginProgramMetadata},
 };
 use swc_global_modules::global_modules;
@@ -16,7 +16,7 @@ struct GlobalModuleConfig {
 
 #[plugin_transform]
 pub fn global_modules_plugin(
-    mut program: Program,
+    program: Program,
     metadata: TransformPluginProgramMetadata,
 ) -> Program {
     let config = serde_json::from_str::<GlobalModuleConfig>(
@@ -26,7 +26,10 @@ pub fn global_modules_plugin(
     )
     .expect("invalid config for @global-modules/swc-plugin");
 
-    program.visit_mut_with(&mut global_modules(config.id, config.phase, config.paths));
-
-    program
+    program.apply(&mut global_modules(
+        config.id,
+        config.phase,
+        config.paths,
+        SyntaxContext::empty().apply_mark(metadata.unresolved_mark),
+    ))
 }

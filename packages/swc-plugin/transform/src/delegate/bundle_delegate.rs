@@ -2,7 +2,7 @@ use std::mem;
 
 use helpers::{export_ref_from_named_export, exports_to_ast, get_from_export_decl};
 use swc_core::{
-    common::DUMMY_SP,
+    common::{SyntaxContext, DUMMY_SP},
     ecma::{
         ast::*,
         utils::{private_ident, ExprFactory},
@@ -12,14 +12,15 @@ use swc_core::{
 use super::traits::AstDelegate;
 use crate::{
     models::*,
+    utils::ast::presets::global_module_register_stmt,
     utils::ast::{
-        assign_expr, get_expr_from_default_decl, get_ident_from_default_decl, into_decl,
-        presets::global_module_register_stmt, to_binding_module_from_assign_expr,
-        to_binding_module_from_member_expr,
+        assign_expr, assign_member, get_expr_from_default_decl, get_ident_from_default_decl,
+        into_decl, to_binding_module_from_assign_expr, to_binding_module_from_member_expr,
     },
 };
 
 pub struct BundleDelegate {
+    unresolved_ctxt: SyntaxContext,
     id: String,
     ctx_ident: Ident,
     exports: Vec<ExportRef>,
@@ -29,8 +30,9 @@ pub struct BundleDelegate {
 }
 
 impl BundleDelegate {
-    pub fn new(id: String) -> Self {
+    pub fn new(id: String, unresolved_ctxt: SyntaxContext) -> Self {
         Self {
+            unresolved_ctxt,
             id,
             ctx_ident: private_ident!("__ctx"),
             exports: Vec::default(),
@@ -179,18 +181,26 @@ impl AstDelegate for BundleDelegate {
     }
 
     fn assign_expr(&mut self, assign_expr: &mut AssignExpr) -> Option<Expr> {
-        to_binding_module_from_assign_expr(
+        if let Some(new_assign_expr) = to_binding_module_from_assign_expr(
             self.ctx_ident.clone(),
             assign_expr,
-            crate::phase::ModulePhase::Bundle,
-        )
+            self.unresolved_ctxt,
+        ) {
+            Some(new_assign_expr.make_assign_to(AssignOp::Assign, assign_expr.left.clone()))
+        } else {
+            None
+        }
     }
 
     fn member_expr(&mut self, member_expr: &mut MemberExpr) -> Option<Expr> {
-        to_binding_module_from_member_expr(
+        if let Some(new_member_expr) = to_binding_module_from_member_expr(
             self.ctx_ident.clone(),
             member_expr,
-            crate::phase::ModulePhase::Bundle,
-        )
+            self.unresolved_ctxt,
+        ) {
+            Some(assign_member(member_expr.clone(), new_member_expr.into()))
+        } else {
+            None
+        }
     }
 }

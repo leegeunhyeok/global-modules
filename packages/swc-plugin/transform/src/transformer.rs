@@ -5,7 +5,7 @@ use crate::{
     phase::ModulePhase,
 };
 use swc_core::{
-    common::collections::AHashMap,
+    common::{collections::AHashMap, SyntaxContext},
     ecma::{
         ast::*,
         visit::{noop_visit_mut_type, VisitMut, VisitMutWith},
@@ -27,10 +27,15 @@ impl GlobalModuleTransformer {
 }
 
 impl GlobalModuleTransformer {
-    pub fn new(id: String, phase: ModulePhase, paths: Option<AHashMap<String, String>>) -> Self {
+    pub fn new(
+        id: String,
+        phase: ModulePhase,
+        paths: Option<AHashMap<String, String>>,
+        unresolved_ctxt: SyntaxContext,
+    ) -> Self {
         let delegate: Box<dyn AstDelegate> = match phase {
-            ModulePhase::Bundle => Box::new(BundleDelegate::new(id)),
-            ModulePhase::Runtime => Box::new(RuntimeDelegate::new(id, paths)),
+            ModulePhase::Bundle => Box::new(BundleDelegate::new(id, unresolved_ctxt)),
+            ModulePhase::Runtime => Box::new(RuntimeDelegate::new(id, paths, unresolved_ctxt)),
         };
 
         Self { delegate }
