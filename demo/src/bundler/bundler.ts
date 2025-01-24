@@ -150,17 +150,20 @@ export class Bundler {
           },
         );
 
-        const imports = module.dependencies.reduce((prev, dependency) => {
-          return { ...prev, [dependency.source]: dependency.id };
-        }, {});
-
+        const moduleId = module.id.toString();
         const transformedCode = await transform(
           code,
           path.basename(module.path),
           {
-            id: module.id,
+            id: moduleId,
             phase: Phase.Runtime,
-            paths: imports,
+            paths: module.dependencies.reduce(
+              (prev, dependency) => ({
+                ...prev,
+                [dependency.source]: dependency.id.toString(),
+              }),
+              {},
+            ),
           },
         ).then(transformJsxRuntime);
 

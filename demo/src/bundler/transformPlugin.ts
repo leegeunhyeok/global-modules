@@ -18,7 +18,7 @@ export function createTransformPlugin(options: TransformPluginOptions): Plugin {
           encoding: 'utf-8',
         });
 
-        const moduleId = options.resolveId(args.path);
+        const moduleId = options.resolveId(args.path).toString();
         const code = await transform(source, path.basename(args.path), {
           id: moduleId,
           // At the initial build, the bundling process should be

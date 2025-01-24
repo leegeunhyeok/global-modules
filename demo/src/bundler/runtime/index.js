@@ -63,7 +63,7 @@ class HMRClient {
   }
 
   handleModuleUpdate(id, body) {
-    const targetModule = global.__modules.getContext(id);
+    const targetModule = global.__modules.getContext(id.toString());
     targetModule.hot.disposeCallbacks.forEach((callback) => callback());
     _eval(body);
     targetModule.hot.acceptCallbacks.forEach((callback) => callback({ body }));

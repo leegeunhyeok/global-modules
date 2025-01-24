@@ -1,13 +1,14 @@
-export function registerHotModule(code: string, id: number) {
+export function registerHotModule(code: string, id: string) {
+  const idString = JSON.stringify(id);
   return [
     code,
     `
     if (global.__modules) {
-      const context = global.__modules.getContext(${id});
-      context.hot = window.__modules.hot(${id});
-      context.hot.dispose(() => console.log('[HMR] Disposed', ${id}));
+      const context = global.__modules.getContext(${idString});
+      context.hot = window.__modules.hot(${idString});
+      context.hot.dispose(() => console.log('[HMR] Disposed', ${idString}));
       context.hot.accept(() => {
-        console.log('[HMR] Accepted ::', ${id});
+        console.log('[HMR] Accepted ::', ${idString});
         window.$$reactRefresh$$.performReactRefresh();
       });
     }
