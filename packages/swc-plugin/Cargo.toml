@@ -30,7 +30,7 @@ swc_global_modules = { path = "./transform" }
 tracing = { workspace = true, features = ["release_max_level_off"] }
 
 [profile.release]
-lto = false
+lto = true
 opt-level = 's'
 strip = 'symbols'
 
