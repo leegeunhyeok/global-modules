@@ -6,6 +6,7 @@ module.exports = 'default';
 module.exports.foo = 'foo';
 module.exports.bar = 'bar';
 module.exports['baz'] = 'baz';
+module.exports[global.export ? 'export_name' : '__hidden'] = 0;
 
 Object.assign(module.exports, {});
 

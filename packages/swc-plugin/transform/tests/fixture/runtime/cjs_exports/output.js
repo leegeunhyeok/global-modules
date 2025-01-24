@@ -7,6 +7,7 @@ __ctx.module.exports = 'default';
 __ctx.module.exports.foo = 'foo';
 __ctx.module.exports.bar = 'bar';
 __ctx.module.exports.baz = 'baz';
+__ctx.module.exports[global.export ? 'export_name' : '__hidden'] = 0;
 Object.assign(__ctx.module.exports, {});
 function a(module) {
     module.exports.a = 'a';
