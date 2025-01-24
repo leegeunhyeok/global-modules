@@ -1830,7 +1830,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@global-modules/runtime@workspace:^, @global-modules/runtime@workspace:packages/runtime":
+"@global-modules/runtime@npm:0.0.0-dev.20250124204148, @global-modules/runtime@workspace:^, @global-modules/runtime@workspace:packages/runtime":
   version: 0.0.0-use.local
   resolution: "@global-modules/runtime@workspace:packages/runtime"
   dependencies:
@@ -1851,7 +1851,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@global-modules/swc-plugin@workspace:packages/swc-plugin"
   dependencies:
-    "@global-modules/runtime": "workspace:^"
+    "@global-modules/runtime": "npm:0.0.0-dev.20250124204148"
     "@swc/core": "npm:1.10.9"
     "@types/node": "npm:^22"
     esbuild: "npm:^0.24.2"
