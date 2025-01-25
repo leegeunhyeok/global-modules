@@ -41,7 +41,7 @@ exports[`@global-modules/swc-plugin > Bundle phase > [CJS] Basics 1`] = `
       copyProps(exports, definitions());
     }
     function require2(id) {
-      const module = getModule(id);
+      const module = getModule(id).context.module;
       return module.exports.__esModule || isExports(module.exports) ? module.exports : interopDefaultExport(module);
     }
     function getModule(id) {
@@ -56,24 +56,28 @@ exports[`@global-modules/swc-plugin > Bundle phase > [CJS] Basics 1`] = `
       copyProps(nsExports, exports, "default");
       return nsExports;
     }
-    function createContext(module) {
-      const exports = Object.assign(
-        (definitions) => {
-          __exports(module.exports, definitions);
-        },
-        { ns: toNamespaceExports }
-      );
+    function createContext() {
+      const module = { exports: createExports() };
       return {
-        exports,
+        // Exports object
         module,
+        // Exports function
+        //
+        // \`context.exports(...);\`
+        // \`context.exports.ns(...);\`
+        exports: Object.assign(
+          (definitions) => {
+            __exports(module.exports, definitions);
+          },
+          { ns: toNamespaceExports }
+        ),
         reset: () => void (module.exports = createExports())
       };
     }
     function register(id) {
       const module = {};
       module.id = id;
-      module.exports = createExports();
-      module.context = createContext(module);
+      module.context = createContext();
       moduleRegistry.set(id, module);
       return module.context;
     }
@@ -196,7 +200,7 @@ exports[`@global-modules/swc-plugin > Bundle phase > [ESM] Basics 1`] = `
       copyProps(exports, definitions());
     }
     function require2(id) {
-      const module = getModule(id);
+      const module = getModule(id).context.module;
       return module.exports.__esModule || isExports(module.exports) ? module.exports : interopDefaultExport(module);
     }
     function getModule(id) {
@@ -211,24 +215,28 @@ exports[`@global-modules/swc-plugin > Bundle phase > [ESM] Basics 1`] = `
       copyProps(nsExports, exports, "default");
       return nsExports;
     }
-    function createContext(module) {
-      const exports = Object.assign(
-        (definitions) => {
-          __exports(module.exports, definitions);
-        },
-        { ns: toNamespaceExports }
-      );
+    function createContext() {
+      const module = { exports: createExports() };
       return {
-        exports,
+        // Exports object
         module,
+        // Exports function
+        //
+        // \`context.exports(...);\`
+        // \`context.exports.ns(...);\`
+        exports: Object.assign(
+          (definitions) => {
+            __exports(module.exports, definitions);
+          },
+          { ns: toNamespaceExports }
+        ),
         reset: () => void (module.exports = createExports())
       };
     }
     function register(id) {
       const module = {};
       module.id = id;
-      module.exports = createExports();
-      module.context = createContext(module);
+      module.context = createContext();
       moduleRegistry.set(id, module);
       return module.context;
     }
@@ -345,7 +353,7 @@ exports[`@global-modules/swc-plugin > Bundle phase > [ESM] Export with declarati
       copyProps(exports, definitions());
     }
     function require2(id) {
-      const module = getModule(id);
+      const module = getModule(id).context.module;
       return module.exports.__esModule || isExports(module.exports) ? module.exports : interopDefaultExport(module);
     }
     function getModule(id) {
@@ -360,24 +368,28 @@ exports[`@global-modules/swc-plugin > Bundle phase > [ESM] Export with declarati
       copyProps(nsExports, exports, "default");
       return nsExports;
     }
-    function createContext(module) {
-      const exports = Object.assign(
-        (definitions) => {
-          __exports(module.exports, definitions);
-        },
-        { ns: toNamespaceExports }
-      );
+    function createContext() {
+      const module = { exports: createExports() };
       return {
-        exports,
+        // Exports object
         module,
+        // Exports function
+        //
+        // \`context.exports(...);\`
+        // \`context.exports.ns(...);\`
+        exports: Object.assign(
+          (definitions) => {
+            __exports(module.exports, definitions);
+          },
+          { ns: toNamespaceExports }
+        ),
         reset: () => void (module.exports = createExports())
       };
     }
     function register(id) {
       const module = {};
       module.id = id;
-      module.exports = createExports();
-      module.context = createContext(module);
+      module.context = createContext();
       moduleRegistry.set(id, module);
       return module.context;
     }
@@ -477,7 +489,7 @@ exports[`@global-modules/swc-plugin > Runtime phase > [CJS] Basics 1`] = `
       copyProps(exports, definitions());
     }
     function require2(id) {
-      const module = getModule(id);
+      const module = getModule(id).context.module;
       return module.exports.__esModule || isExports(module.exports) ? module.exports : interopDefaultExport(module);
     }
     function getModule(id) {
@@ -492,24 +504,28 @@ exports[`@global-modules/swc-plugin > Runtime phase > [CJS] Basics 1`] = `
       copyProps(nsExports, exports, "default");
       return nsExports;
     }
-    function createContext(module) {
-      const exports = Object.assign(
-        (definitions) => {
-          __exports(module.exports, definitions);
-        },
-        { ns: toNamespaceExports }
-      );
+    function createContext() {
+      const module = { exports: createExports() };
       return {
-        exports,
+        // Exports object
         module,
+        // Exports function
+        //
+        // \`context.exports(...);\`
+        // \`context.exports.ns(...);\`
+        exports: Object.assign(
+          (definitions) => {
+            __exports(module.exports, definitions);
+          },
+          { ns: toNamespaceExports }
+        ),
         reset: () => void (module.exports = createExports())
       };
     }
     function register(id) {
       const module = {};
       module.id = id;
-      module.exports = createExports();
-      module.context = createContext(module);
+      module.context = createContext();
       moduleRegistry.set(id, module);
       return module.context;
     }
@@ -632,7 +648,7 @@ exports[`@global-modules/swc-plugin > Runtime phase > [ESM] Basics 1`] = `
       copyProps(exports, definitions());
     }
     function require2(id) {
-      const module = getModule(id);
+      const module = getModule(id).context.module;
       return module.exports.__esModule || isExports(module.exports) ? module.exports : interopDefaultExport(module);
     }
     function getModule(id) {
@@ -647,24 +663,28 @@ exports[`@global-modules/swc-plugin > Runtime phase > [ESM] Basics 1`] = `
       copyProps(nsExports, exports, "default");
       return nsExports;
     }
-    function createContext(module) {
-      const exports = Object.assign(
-        (definitions) => {
-          __exports(module.exports, definitions);
-        },
-        { ns: toNamespaceExports }
-      );
+    function createContext() {
+      const module = { exports: createExports() };
       return {
-        exports,
+        // Exports object
         module,
+        // Exports function
+        //
+        // \`context.exports(...);\`
+        // \`context.exports.ns(...);\`
+        exports: Object.assign(
+          (definitions) => {
+            __exports(module.exports, definitions);
+          },
+          { ns: toNamespaceExports }
+        ),
         reset: () => void (module.exports = createExports())
       };
     }
     function register(id) {
       const module = {};
       module.id = id;
-      module.exports = createExports();
-      module.context = createContext(module);
+      module.context = createContext();
       moduleRegistry.set(id, module);
       return module.context;
     }
@@ -801,7 +821,7 @@ exports[`@global-modules/swc-plugin > Runtime phase > [ESM] Export with declarat
       copyProps(exports, definitions());
     }
     function require2(id) {
-      const module = getModule(id);
+      const module = getModule(id).context.module;
       return module.exports.__esModule || isExports(module.exports) ? module.exports : interopDefaultExport(module);
     }
     function getModule(id) {
@@ -816,24 +836,28 @@ exports[`@global-modules/swc-plugin > Runtime phase > [ESM] Export with declarat
       copyProps(nsExports, exports, "default");
       return nsExports;
     }
-    function createContext(module) {
-      const exports = Object.assign(
-        (definitions) => {
-          __exports(module.exports, definitions);
-        },
-        { ns: toNamespaceExports }
-      );
+    function createContext() {
+      const module = { exports: createExports() };
       return {
-        exports,
+        // Exports object
         module,
+        // Exports function
+        //
+        // \`context.exports(...);\`
+        // \`context.exports.ns(...);\`
+        exports: Object.assign(
+          (definitions) => {
+            __exports(module.exports, definitions);
+          },
+          { ns: toNamespaceExports }
+        ),
         reset: () => void (module.exports = createExports())
       };
     }
     function register(id) {
       const module = {};
       module.id = id;
-      module.exports = createExports();
-      module.context = createContext(module);
+      module.context = createContext();
       moduleRegistry.set(id, module);
       return module.context;
     }
