@@ -1,6 +1,6 @@
 # runtime
 
-Configure the runtime environment to register the module in the global module repository.
+Configure the runtime environment to register/import the module in the global module registry.
 
 ## Usage
 
@@ -9,23 +9,7 @@ Setup from top of entry point like this:
 ```ts
 import '@global-modules/runtime';
 
-const __ctx = global.__modules.register('1');
-
-// CommonJS
-__ctx.module.exports = 100;
-__ctx.module.exports.foo = 'foo';
-__ctx.module.exports.bar = 'bar';
-__ctx.module.exports.baz = 'baz';
-
-// ESModule
-__ctx.exports(function () {
-  return {
-    default: 100,
-    foo: 'foo',
-    bar: 'bar',
-    baz: 'baz',
-  };
-});
+// ...
 ```
 
 ## Concept
