@@ -2,6 +2,7 @@
   "name": "@global-modules/swc-plugin",
   "description": "SWC plugin for global modules",
   "version": "0.0.0",
+  "license": "MIT",
   "types": "./dist/index.d.ts",
   "main": "./dist/index.js",
   "module": "./esm/index.mjs",

@@ -2,6 +2,7 @@
   "name": "@global-modules/runtime",
   "description": "Runtime for global modules",
   "version": "0.0.0",
+  "license": "MIT",
   "types": "./dist/index.d.ts",
   "main": "./dist/index.js",
   "exports": {

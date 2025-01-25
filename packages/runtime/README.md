@@ -1,6 +1,10 @@
 # runtime
 
-Configure the runtime environment to register the module in the global module repository.
+Configure the runtime environment to register and import modules in the global module registry.
+
+## Specification
+
+See [SPECIFICATION.md](./SPECIFICATION.md)
 
 ## Usage
 
@@ -9,23 +13,7 @@ Setup from top of entry point like this:
 ```ts
 import '@global-modules/runtime';
 
-const __ctx = global.__modules.register('1');
-
-// CommonJS
-__ctx.module.exports = 100;
-__ctx.module.exports.foo = 'foo';
-__ctx.module.exports.bar = 'bar';
-__ctx.module.exports.baz = 'baz';
-
-// ESModule
-__ctx.exports(function () {
-  return {
-    default: 100,
-    foo: 'foo',
-    bar: 'bar',
-    baz: 'baz',
-  };
-});
+// ...
 ```
 
 ## Concept
@@ -40,6 +28,8 @@ export function something() {
   return foo.value + bar.value + baz;
 }
 ```
+
+Register the module's exports to the global module registry using `context.exports()`.
 
 ```ts
 // 1. Bundle phase
@@ -64,14 +54,16 @@ var __x;
 export { __x as something };
 ```
 
+Reference other module's exports using `global.__modules.require()`.
+
 ```ts
 // 2. Runtime phase
 var __ctx = global.__modules.getContext('1');
 __ctx.reset();
 
-var { default: foo } = global.__modules.require(1000); // `./foo` module's id
-var { default: bar } = global.__modules.require(1001); // `./bar` module's id
-var { baz } = global.__modules.require(1002); // `./baz` module's id
+var { default: foo } = global.__modules.require('1000'); // `./foo` module's id
+var { default: bar } = global.__modules.require('1001'); // `./bar` module's id
+var { baz } = global.__modules.require('1002'); // `./baz` module's id
 
 function something() {
   return foo.value + bar.value + baz;
@@ -85,4 +77,4 @@ __ctx.exports(function () {
 var __x;
 ```
 
-For transform to global module, see more: [@global-modules/swc-plugin](https://github.com/leegeunhyeok/global-modules/tree/main/packages/swc-plugin)
+For transform plain module to the global module runtime specification, see more: [@global-modules/swc-plugin](https://github.com/leegeunhyeok/global-modules/tree/main/packages/swc-plugin)
