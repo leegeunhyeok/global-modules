@@ -15,13 +15,13 @@ await swc.transform(code, {
         [
           globalModulePlugin,
           {
-            id: 1,
+            id: 'module-id',
             // `Phase.Bundle` or `Phase.Runtime`.
             phase: Phase.Bundle,
             // ID values used to replace the original sources.
             paths: {
-              react: 1000,
-              './Container': 1234,
+              react: 'id-of-react',
+              './Container': 'id-of-container',
             },
           },
         ],
@@ -48,7 +48,7 @@ export function Component() {
 ```ts
 import React, { useState, useCallback } from 'react';
 import { Component } from './Container';
-var __ctx = global.__modules.register(1);
+var __ctx = global.__modules.register('1');
 function Component() {
   // ...
 }
@@ -69,10 +69,10 @@ export { __x as Component };
 <summary>Phase.Runtime</summary>
 
 ```ts
-var __ctx = global.__modules.getContext(1);
+var __ctx = global.__modules.getContext('1');
 __ctx.reset();
-var { default: React, useState, useCallback } = global.__modules.require(1000);
-var { Component } = global.__modules.require(1234);
+var { default: React, useState, useCallback } = global.__modules.require('1000');
+var { Component } = global.__modules.require('1234');
 function Component() {
   // ...
 }
