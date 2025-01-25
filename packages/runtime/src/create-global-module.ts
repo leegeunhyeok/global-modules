@@ -21,7 +21,7 @@ export function createGlobalModule(): GlobalModule {
   }
 
   function require(id: ModuleId): Exports {
-    const module = getModule(id);
+    const module = getModule(id).context.module;
 
     return module.exports.__esModule || isExports(module.exports)
       ? module.exports
@@ -47,17 +47,22 @@ export function createGlobalModule(): GlobalModule {
     return nsExports;
   }
 
-  function createContext(module: Module): ModuleContext {
-    const exports = Object.assign(
-      ((definitions) => {
-        __exports(module.exports, definitions);
-      }) as ModuleExports,
-      { ns: toNamespaceExports },
-    );
+  function createContext(): ModuleContext {
+    const module = { exports: createExports() };
 
     return {
-      exports,
+      // Exports object
       module,
+      // Exports function
+      //
+      // `context.exports(...);`
+      // `context.exports.ns(...);`
+      exports: Object.assign(
+        ((definitions) => {
+          __exports(module.exports, definitions);
+        }) as ModuleExports,
+        { ns: toNamespaceExports },
+      ),
       reset: () => void (module.exports = createExports()),
     };
   }
@@ -66,8 +71,7 @@ export function createGlobalModule(): GlobalModule {
     const module = {} as Module;
 
     module.id = id;
-    module.exports = createExports();
-    module.context = createContext(module);
+    module.context = createContext();
     moduleRegistry.set(id, module);
 
     return module.context;

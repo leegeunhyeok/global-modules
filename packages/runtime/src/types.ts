@@ -5,7 +5,6 @@ export type ModuleId = string;
 
 export interface Module {
   id: ModuleId;
-  exports: Exports;
   context: ModuleContext;
 }
 

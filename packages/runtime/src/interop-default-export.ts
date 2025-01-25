@@ -1,6 +1,8 @@
-import type { Module } from './types';
+import type { Exports, Module } from './types';
 
-export function interopDefaultExport(module: Module) {
+export function interopDefaultExport<T extends { exports: Exports }>(
+  module: T,
+) {
   if (typeof module.exports.default === 'undefined') {
     return typeof module.exports === 'object'
       ? Object.assign(module.exports, { default: module.exports })
