@@ -1,6 +1,6 @@
 # runtime
 
-Configure the runtime environment to register/import the module in the global module registry.
+Configure the runtime environment to register and import modules in the global module registry.
 
 ## Specification
 
@@ -29,7 +29,7 @@ export function something() {
 }
 ```
 
-Register module's exports to the global module registry by `context.exports()`.
+Register the module's exports to the global module registry using `context.exports()`.
 
 ```ts
 // 1. Bundle phase
@@ -54,7 +54,7 @@ var __x;
 export { __x as something };
 ```
 
-Reference the other module's exports by `global.__modules.require()`.
+Reference other module's exports using `global.__modules.require()`.
 
 ```ts
 // 2. Runtime phase
