@@ -404,45 +404,6 @@ pub mod helpers {
         }
     }
 
-    /// Converts `ExportDecl` into `ExportDeclItem`.
-    pub fn get_from_export_decl(export_decl: &ExportDecl) -> ExportDeclItem {
-        // `function foo {}`
-        //
-        // - `orig_ident`: `foo`
-        let orig_ident = get_ident_from_decl(&export_decl.decl);
-
-        // - `binding_name`: `__x`
-        // - `exported_name`: `foo`
-        let binding_export = BindingExportMember::new(orig_ident.sym.clone());
-        let binding_name = ModuleExportName::Ident(binding_export.bind_ident.clone());
-        let exported_name = ModuleExportName::Ident(orig_ident.clone());
-
-        // `binding_assign_stmt`: `__x = function foo {}`
-        let binding_assign_stmt =
-            assign_expr(binding_export.bind_ident.clone(), orig_ident.into()).into_stmt();
-        let export_ref = ExportRef::Named(NamedExportRef::new(vec![ExportMember::Binding(
-            binding_export,
-        )]));
-
-        ExportDeclItem {
-            export_ref,
-            export_stmt: ModuleItem::ModuleDecl(ModuleDecl::ExportNamed(NamedExport {
-                specifiers: vec![ExportSpecifier::Named(ExportNamedSpecifier {
-                    orig: binding_name,
-                    exported: exported_name.into(),
-                    is_type_only: false,
-                    span: DUMMY_SP,
-                })],
-                src: None,
-                with: None,
-                type_only: false,
-                span: DUMMY_SP,
-            }))
-            .into(),
-            binding_stmt: binding_assign_stmt.into(),
-        }
-    }
-
     /// Converts `ImportSpecifier` into `ImportMember`.
     pub fn to_import_members(specifiers: &Vec<ImportSpecifier>) -> Vec<ImportMember> {
         let mut members = Vec::with_capacity(specifiers.len());
@@ -574,15 +535,15 @@ pub mod helpers {
         items
     }
 
-    /// Converts exports into `ExportsAst`.
+    /// Converts exports into `(export_bindings, export_call, export_value_decl)`.
     pub fn exports_to_ast(
         ctx_ident: &Ident,
         exports: Vec<ExportRef>,
         phase: ModulePhase,
-    ) -> ExportsAst {
-        let mut leading_body: Vec<ModuleItem> = vec![];
+    ) -> (Vec<ModuleItem>, Option<Stmt>, Option<Stmt>) {
+        let mut export_bindings: Vec<ModuleItem> = vec![];
         let mut export_props: Vec<PropOrSpread> = vec![];
-        let mut export_decls: Vec<VarDeclarator> = vec![];
+        let mut export_value_bindings: Vec<VarDeclarator> = vec![];
 
         exports.into_iter().for_each(|export_ref| match export_ref {
             ExportRef::Named(NamedExportRef { members }) => {
@@ -592,12 +553,12 @@ pub mod helpers {
                     }
                     ExportMember::Binding(binding_export) => {
                         export_props.push(binding_export.clone().into());
-                        export_decls.push(binding_export.into());
+                        export_value_bindings.push(binding_export.into());
                     }
                 })
             }
             ExportRef::NamedReExport(named_re_export) => {
-                leading_body.push(named_re_export.get_binding_ast(phase));
+                export_bindings.push(named_re_export.get_binding_ast(phase));
                 export_props.extend(named_re_export.members.into_iter().map(
                     |member| match member {
                         ExportMember::Actual(actual_export) => {
@@ -613,7 +574,7 @@ pub mod helpers {
                 let ns_call =
                     to_ns_export(ctx_ident.clone(), re_export_all.mod_ident.clone().into());
 
-                leading_body.push(re_export_all.get_binding_ast(phase));
+                export_bindings.push(re_export_all.get_binding_ast(phase));
 
                 match re_export_all.name {
                     Some(exp_name) => export_props.push(kv_prop(exp_name, ns_call)),
@@ -622,31 +583,30 @@ pub mod helpers {
             }
         });
 
-        let mut trailing_body = vec![];
-
-        if export_props.len() > 0 {
-            trailing_body.push(
+        let export_call = if export_props.len() > 0 {
+            Some(
                 exports_call(ctx_ident.clone(), obj_lit_expr(export_props))
                     .into_stmt()
                     .into(),
-            );
-        }
+            )
+        } else {
+            None
+        };
 
-        if export_decls.len() > 0 {
-            trailing_body.push(
+        let export_value_decl = if export_value_bindings.len() > 0 {
+            Some(
                 VarDecl {
                     kind: VarDeclKind::Var,
-                    decls: export_decls,
+                    decls: export_value_bindings,
                     ..Default::default()
                 }
                 .into(),
             )
-        }
+        } else {
+            None
+        };
 
-        ExportsAst {
-            leading_body,
-            trailing_body,
-        }
+        (export_bindings, export_call, export_value_decl)
     }
 }
 
@@ -659,4 +619,128 @@ pub struct ExportDeclItem {
 pub struct ExportsAst {
     pub leading_body: Vec<ModuleItem>,
     pub trailing_body: Vec<ModuleItem>,
+}
+
+// NEW API
+// Dependency of module
+#[derive(Debug)]
+pub struct Dep {
+    pub src: String,
+    pub members: Vec<DepMember>,
+}
+
+#[derive(Debug)]
+pub struct DepMember {
+    pub ident: Ident,
+    pub is_ns: bool,
+    pub name: Option<String>,
+}
+
+impl DepMember {
+    pub fn default(ident: Ident, name: Option<String>) -> Self {
+        DepMember {
+            ident,
+            name,
+            is_ns: false,
+        }
+    }
+
+    pub fn ns(ident: Ident, name: Option<String>) -> Self {
+        DepMember {
+            ident,
+            name,
+            is_ns: true,
+        }
+    }
+}
+
+// Export member of module
+#[derive(Debug)]
+pub struct Exp {
+    pub src: Option<String>,
+    pub members: Vec<ExpMember>,
+}
+
+impl Exp {
+    pub fn new(members: Vec<ExpMember>) -> Self {
+        Self { src: None, members }
+    }
+
+    /// For bind re-exports in the module, we need to reference the original modules and register it as exports
+    ///
+    /// ```js
+    /// // Transit cases:
+    /// export * from './foo';
+    /// export * as bar from './bar';
+    /// export { baz, baz2 as baz3 } from './baz';
+    ///
+    /// // Transform to
+    /// import * as __mod from './foo'; // Capture
+    /// import * as __mod1 from './bar';
+    /// import * as __mod2 from './baz';
+    ///
+    /// context.exports({
+    ///   ...__mod, // and register
+    ///   bar: __mod1,
+    ///   baz: __mod2.baz,
+    ///   baz3: __mod2.baz2,
+    /// });
+    /// ```
+    pub fn re_export(src: String, members: Vec<ExpMember>) -> Self {
+        Self {
+            src: Some(src),
+            members,
+        }
+    }
+
+    pub fn re_export_all(src: String) -> Self {
+        Self {
+            src: Some(src),
+            members: vec![],
+        }
+    }
+
+    /// Returns `true` if the re-export.
+    pub fn is_re_export(&self) -> bool {
+        self.src.is_some()
+    }
+
+    /// ```js
+    /// export * as foo from './foo';
+    /// ```
+    pub fn is_ns(&self) -> bool {
+        self.is_re_export() && self.members.len() == 1
+    }
+
+    /// ```js
+    /// export * from './foo';
+    /// ```
+    pub fn is_export_all(&self) -> bool {
+        self.is_re_export() && self.members.len() == 0
+    }
+}
+
+#[derive(Debug)]
+pub struct ExpMember {
+    pub ident: Ident,
+    pub name: String,
+    pub is_ns: bool,
+}
+
+impl ExpMember {
+    pub fn new(ident: Ident, name: String) -> Self {
+        Self { ident, name, is_ns: false }
+    }
+}
+
+#[derive(Debug)]
+pub struct ExpBinding {
+    pub binding_ident: Ident,
+    pub expr: Expr,
+}
+
+impl ExpBinding {
+    pub fn to_assign_expr(self) -> Expr {
+        assign_expr(self.binding_ident, self.expr).into()
+    }
 }

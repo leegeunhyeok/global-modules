@@ -1,29 +1,31 @@
+use core::panic;
 use std::mem;
 
 use crate::{
-    delegate::{traits::AstDelegate, BundleDelegate, RuntimeDelegate},
+    module_collector::ModuleCollector,
     phase::ModulePhase,
+    utils::ast::{
+        mod_ident,
+        presets::{define_call, exports_call, require_call},
+        to_ns_export,
+    },
 };
 use swc_core::{
-    common::{collections::AHashMap, SyntaxContext},
+    common::{collections::AHashMap, SyntaxContext, DUMMY_SP},
     ecma::{
         ast::*,
+        transforms::base::quote,
+        utils::{private_ident, quote_ident, ExprFactory},
         visit::{noop_visit_mut_type, VisitMut, VisitMutWith},
     },
 };
+use tracing::debug;
 
 pub struct GlobalModuleTransformer {
-    delegate: Box<dyn AstDelegate>,
-}
-
-impl GlobalModuleTransformer {
-    pub fn get_script_body(&mut self, orig_body: Vec<Stmt>) -> Vec<Stmt> {
-        self.delegate.make_script_body(orig_body)
-    }
-
-    pub fn get_module_body(&mut self, orig_body: Vec<ModuleItem>) -> Vec<ModuleItem> {
-        self.delegate.make_module_body(orig_body)
-    }
+    collector: ModuleCollector,
+    id: String,
+    phase: ModulePhase,
+    unresolved_ctxt: SyntaxContext,
 }
 
 impl GlobalModuleTransformer {
@@ -33,12 +35,12 @@ impl GlobalModuleTransformer {
         paths: Option<AHashMap<String, String>>,
         unresolved_ctxt: SyntaxContext,
     ) -> Self {
-        let delegate: Box<dyn AstDelegate> = match phase {
-            ModulePhase::Bundle => Box::new(BundleDelegate::new(id, unresolved_ctxt)),
-            ModulePhase::Runtime => Box::new(RuntimeDelegate::new(id, paths, unresolved_ctxt)),
-        };
-
-        Self { delegate }
+        Self {
+            collector: ModuleCollector::new(unresolved_ctxt, paths),
+            id,
+            phase,
+            unresolved_ctxt,
+        }
     }
 }
 
@@ -46,140 +48,230 @@ impl VisitMut for GlobalModuleTransformer {
     noop_visit_mut_type!();
 
     fn visit_mut_script(&mut self, script: &mut Script) {
-        script.visit_mut_children_with(self);
+        script.visit_mut_children_with(&mut self.collector);
 
         // Replace to new script body.
-        script.body = self.get_script_body(mem::take(&mut script.body));
+        // script.body = self.get_script_body(mem::take(&mut script.body));
+
+        panic!("TODO");
     }
 
     fn visit_mut_module(&mut self, module: &mut Module) {
-        module.visit_mut_children_with(self);
+        module.visit_mut_children_with(&mut self.collector);
 
-        // Replace to new module body.
-        module.body = self.get_module_body(mem::take(&mut module.body));
-    }
+        debug!("deps: {:?}", self.collector.deps);
+        debug!("exps: {:?}", self.collector.exps);
 
-    fn visit_mut_module_items(&mut self, items: &mut Vec<ModuleItem>) {
-        for item in items.iter_mut() {
-            match item {
-                // Statements (It can include CommonJS's require call and module exports / ESModule's dynamic imports)
-                ModuleItem::Stmt(_) => item.visit_mut_children_with(self),
-                // Imports & Exports (ESModule)
-                ModuleItem::ModuleDecl(module_decl) => {
-                    match module_decl {
-                        // Import statements.
-                        //
-                        // ```js
-                        // import foo from './foo';
-                        // import { foo } from './foo';
-                        // import { foo as bar } from './foo';
-                        // import * as foo from './foo';
-                        // ```
-                        ModuleDecl::Import(import_decl) => self.delegate.import(import_decl),
-                        // Named export statements with declarations.
-                        //
-                        // ```js
-                        // export const foo = ...;
-                        // export function foo() { ... }
-                        // export class Foo { ... }
-                        // ```
-                        ModuleDecl::ExportDecl(export_decl) => {
-                            export_decl.visit_mut_children_with(self);
+        let body = mem::take(&mut module.body);
+        let deps = mem::take(&mut self.collector.deps);
+        let exps = mem::take(&mut self.collector.exps);
 
-                            *item = self.delegate.export_decl(export_decl);
+        let mut mod_imports: Vec<ModuleItem> = Vec::new();
+        let mut require_deps: Vec<ModuleItem> = deps
+            .into_iter()
+            .map(|dep| {
+                let props = dep
+                    .members
+                    .into_iter()
+                    .map(|member| {
+                        if member.name.is_some() {
+                            ObjectPatProp::KeyValue(KeyValuePatProp {
+                                key: PropName::Ident(IdentName {
+                                    sym: member.name.unwrap().into(),
+                                    span: DUMMY_SP,
+                                }),
+                                value: Box::new(Pat::Ident(member.ident.into())),
+                            })
+                        } else {
+                            ObjectPatProp::Assign(AssignPatProp {
+                                key: BindingIdent {
+                                    id: member.ident,
+                                    type_ann: None,
+                                },
+                                value: None,
+                                span: DUMMY_SP,
+                            })
                         }
-                        // Default export statements with declarations.
-                        //
-                        // ```js
-                        // export default function foo() { ... }
-                        // export default class Foo { ... }
-                        // ```
-                        ModuleDecl::ExportDefaultDecl(export_default_decl) => {
-                            export_default_decl.visit_mut_children_with(self);
+                    })
+                    .collect::<Vec<ObjectPatProp>>();
 
-                            if let Some(new_item) =
-                                self.delegate.export_default_decl(export_default_decl)
-                            {
-                                *item = new_item;
-                            }
-                        }
-                        // Default export statements.
-                        //
-                        // ```js
-                        // export default <expr>;
-                        // ```
-                        ModuleDecl::ExportDefaultExpr(export_default_expr) => {
-                            export_default_expr.visit_mut_children_with(self);
+                let var_decl = VarDecl {
+                    kind: VarDeclKind::Const,
+                    decls: vec![VarDeclarator {
+                        name: Pat::Object(ObjectPat {
+                            props,
+                            optional: false,
+                            type_ann: None,
+                            span: DUMMY_SP,
+                        }),
+                        definite: false,
+                        init: Some(Box::new(require_call(dep.src.into()))),
+                        span: DUMMY_SP,
+                    }],
+                    ..Default::default()
+                };
 
-                            if let Some(new_item) =
-                                self.delegate.export_default_expr(export_default_expr)
-                            {
-                                *item = new_item;
-                            }
-                        }
-                        // Named export statements.
-                        //
-                        // ```js
-                        // export { foo };
-                        // export { foo as bar };
-                        //
-                        // // Named re-exports
-                        // export { foo } from './foo';
-                        // export { foo as bar } from './foo';
-                        // export { default } from './foo';
-                        // export { default as foo } from './foo';
-                        // export * as bar from './foo';
-                        // ```
-                        ModuleDecl::ExportNamed(
-                            export_named @ NamedExport {
-                                type_only: false,
-                                with: None,
-                                ..
+                ModuleItem::Stmt(Stmt::Decl(Decl::Var(Box::new(var_decl))))
+            })
+            .collect::<Vec<ModuleItem>>();
+
+        let mut exp_props: Vec<PropOrSpread> = Vec::new();
+        let mut exp_decls: Vec<VarDeclarator> = Vec::new();
+        let mut exp_specs: Vec<ExportSpecifier> = Vec::new();
+        exps.into_iter().for_each(|exp| {
+            if exp.src.is_some() {
+                let src = exp.src.unwrap();
+                let mod_ident = mod_ident();
+                let var_decl = VarDecl {
+                    kind: VarDeclKind::Const,
+                    decls: vec![VarDeclarator {
+                        name: Pat::Ident(BindingIdent {
+                            id: mod_ident.clone(),
+                            type_ann: None,
+                        }),
+                        definite: false,
+                        init: Some(Box::new(require_call(src.clone().into()))),
+                        span: DUMMY_SP,
+                    }],
+                    ..Default::default()
+                };
+
+                require_deps.push(ModuleItem::Stmt(Stmt::Decl(Decl::Var(Box::new(var_decl)))));
+                mod_imports.push(ModuleItem::ModuleDecl(ModuleDecl::Import(ImportDecl {
+                    src: Box::new(src.into()),
+                    specifiers: vec![ImportSpecifier::Namespace(ImportStarAsSpecifier {
+                        local: mod_ident.clone(),
+                        span: DUMMY_SP,
+                    })],
+                    phase: ImportPhase::Evaluation,
+                    type_only: false,
+                    with: None,
+                    span: DUMMY_SP,
+                })));
+
+                if exp.members.len() == 0 {
+                    // export all
+                    exp_props.push(PropOrSpread::Spread(SpreadElement {
+                        expr: Box::new(
+                            to_ns_export(quote_ident!("ctx").into(), mod_ident.into()).into(),
+                        ),
+                        ..Default::default()
+                    }));
+                } else {
+                    debug!("exp: {:?}", exp.members);
+
+                    exp.members.into_iter().for_each(|member| {
+                        exp_props.push(PropOrSpread::Prop(Box::new(Prop::KeyValue(
+                            KeyValueProp {
+                                key: PropName::Ident(IdentName {
+                                    sym: member.name.clone().into(),
+                                    span: DUMMY_SP,
+                                }),
+                                value: Box::new(if member.is_ns {
+                                    mod_ident.clone().into()
+                                } else {
+                                    mod_ident
+                                        .clone()
+                                        .make_member(IdentName {
+                                            sym: member.ident.sym,
+                                            ..Default::default()
+                                        })
+                                        .into()
+                                }),
                             },
-                        ) => self.delegate.export_named(export_named),
-                        // Re-exports all statements.
-                        //
-                        // ```js
-                        // export * from './foo';
-                        // ```
-                        ModuleDecl::ExportAll(
-                            export_all @ ExportAll {
-                                type_only: false,
-                                with: None,
-                                ..
-                            },
-                        ) => self.delegate.export_all(export_all),
-                        _ => {}
-                    }
+                        ))));
+                    });
                 }
-            }
-        }
-    }
+            } else {
+                exp.members.into_iter().for_each(|member| {
+                    exp_decls.push(VarDeclarator {
+                        name: Pat::Ident(member.ident.clone().into()),
+                        definite: false,
+                        init: None,
+                        span: DUMMY_SP,
+                    });
 
-    fn visit_mut_expr(&mut self, expr: &mut Expr) {
-        match expr {
-            Expr::Call(call_expr) => {
-                if let Some(new_expr) = self.delegate.call_expr(call_expr) {
-                    *expr = new_expr;
-                } else {
-                    call_expr.visit_mut_children_with(self);
-                }
+                    exp_props.push(PropOrSpread::Prop(Box::new(Prop::KeyValue(KeyValueProp {
+                        key: PropName::Ident(IdentName {
+                            sym: member.name.clone().into(),
+                            span: DUMMY_SP,
+                        }),
+                        value: Box::new(member.ident.clone().into()),
+                    }))));
+
+                    exp_specs.push(ExportSpecifier::Named(ExportNamedSpecifier {
+                        orig: ModuleExportName::Ident(member.ident),
+                        exported: Some(ModuleExportName::Ident(Ident::from(member.name))),
+                        is_type_only: false,
+                        span: DUMMY_SP,
+                    }));
+                });
             }
-            Expr::Assign(assign_expr) => {
-                if let Some(new_expr) = self.delegate.assign_expr(assign_expr) {
-                    *expr = new_expr;
-                } else {
-                    assign_expr.visit_mut_children_with(self);
-                }
+        });
+
+        // exps
+        let exports_call = exports_call(
+            quote_ident!("ctx").into(),
+            ObjectLit {
+                props: exp_props,
+                ..Default::default()
             }
-            Expr::Member(member_expr) => {
-                if let Some(new_expr) = self.delegate.member_expr(member_expr) {
-                    *expr = new_expr;
-                } else {
-                    member_expr.visit_mut_children_with(self);
-                }
-            }
-            _ => expr.visit_mut_children_with(self),
+            .into(),
+        );
+
+        let mut new_body = [
+            mod_imports,
+            require_deps,
+            body,
+            vec![exports_call.into_stmt().into()],
+        ]
+        .concat();
+
+        if exp_specs.len() > 0 {
+            new_body.push(ModuleItem::ModuleDecl(ModuleDecl::ExportNamed(
+                NamedExport {
+                    specifiers: exp_specs,
+                    type_only: false,
+                    src: None,
+                    with: None,
+                    span: DUMMY_SP,
+                },
+            )))
         }
+
+        let mut imports = Vec::new();
+        let mut exports = Vec::new();
+        let mut stmts = Vec::new();
+        new_body.into_iter().for_each(|item| match item {
+            ModuleItem::ModuleDecl(ref module_decl) => match module_decl {
+                ModuleDecl::Import(_) => imports.push(item),
+                _ => exports.push(item),
+            },
+            ModuleItem::Stmt(stmt) => stmts.push(stmt),
+        });
+
+        if exp_decls.len() > 0 {
+            // TODO: append decls without exports variable (this is actually not an export)
+            // var __x, __x1, ...;
+            exports.push(
+                Decl::Var(Box::new(VarDecl {
+                    decls: exp_decls,
+                    kind: VarDeclKind::Var,
+                    declare: false,
+                    span: DUMMY_SP,
+                    ctxt: SyntaxContext::default(),
+                }))
+                .into(),
+            );
+        }
+
+        module.body = [
+            imports,
+            vec![define_call(&self.id, quote_ident!("ctx").into(), stmts)
+                .into_stmt()
+                .into()],
+            exports,
+        ]
+        .concat();
     }
 }

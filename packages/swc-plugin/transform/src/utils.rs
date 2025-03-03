@@ -1,12 +1,25 @@
 pub mod ast {
+    use crate::models::*;
     use core::panic;
-
+    use std::mem;
     use swc_core::{
         atoms::Atom,
         common::{collections::AHashMap, Spanned, SyntaxContext, DUMMY_SP},
-        ecma::{ast::*, utils::ExprFactory},
+        ecma::{
+            ast::*,
+            utils::{private_ident, ExprFactory},
+        },
         plugin::errors::HANDLER,
     };
+    use tracing::debug;
+
+    pub fn binding_ident() -> Ident {
+        private_ident!("__x")
+    }
+
+    pub fn mod_ident() -> Ident {
+        private_ident!("__mod")
+    }
 
     /// Returns a key-value property ast.
     ///
@@ -308,18 +321,18 @@ pub mod ast {
     /// class Bar {}
     /// const baz = expr;
     /// ```
-    pub fn get_ident_from_decl(decl: &Decl) -> Ident {
+    pub fn get_ident_from_decl(decl: &Decl) -> Option<Ident> {
         match decl {
             Decl::Class(ClassDecl {
                 ident,
                 declare: false,
                 ..
-            }) => ident.clone(),
+            }) => Some(ident.clone()),
             Decl::Fn(FnDecl {
                 ident,
                 declare: false,
                 ..
-            }) => ident.clone(),
+            }) => Some(ident.clone()),
             Decl::Var(val_decl) => {
                 if val_decl.decls.len() != 1 {
                     HANDLER.with(|handler| {
@@ -340,7 +353,7 @@ pub mod ast {
                         name: Pat::Ident(BindingIdent { id, type_ann: None }),
                         definite: false,
                         ..
-                    } => id.clone(),
+                    } => Some(id.clone()),
                     _ => {
                         HANDLER.with(|handler| {
                             handler
@@ -351,14 +364,7 @@ pub mod ast {
                     }
                 }
             }
-            _ => {
-                HANDLER.with(|handler| {
-                    handler
-                        .struct_span_err(decl.span(), "unsupported declaration")
-                        .emit();
-                });
-                panic!(); // FIXME
-            }
+            _ => None,
         }
     }
 
@@ -468,6 +474,192 @@ pub mod ast {
         }
     }
 
+    // NEW API
+    pub fn import_as_dep(import_decl: &ImportDecl) -> Option<Dep> {
+        let src = import_decl.src.value.to_string();
+        let members = import_decl
+            .specifiers
+            .iter()
+            .filter_map(|spec| match spec {
+                ImportSpecifier::Named(ImportNamedSpecifier {
+                    imported,
+                    local,
+                    is_type_only: false,
+                    ..
+                }) => Some(DepMember::default(
+                    local.clone(),
+                    imported.as_ref().map(|name| match name {
+                        ModuleExportName::Ident(ident) => ident.sym.as_str().to_string(),
+                        ModuleExportName::Str(str) => str.value.to_string(),
+                    }),
+                )),
+                ImportSpecifier::Default(ImportDefaultSpecifier { local, .. }) => {
+                    Some(DepMember::default(local.clone(), Some("default".into())))
+                }
+                ImportSpecifier::Namespace(ImportStarAsSpecifier { local, .. }) => {
+                    Some(DepMember::ns(local.clone(), None))
+                }
+                _ => None,
+            })
+            .collect::<Vec<DepMember>>();
+
+        if members.is_empty() {
+            None
+        } else {
+            Dep { src, members }.into()
+        }
+    }
+
+    pub fn export_decl_as_exp(export_decl: &ExportDecl) -> Option<(Exp, ExpBinding)> {
+        if let Some(decl_ident) = get_ident_from_decl(&export_decl.decl) {
+            let binding_ident = binding_ident();
+            let name = decl_ident.sym.as_str().to_string();
+            let exp = Exp::new(vec![ExpMember::new(binding_ident.clone(), name)]);
+
+            Some((
+                exp,
+                ExpBinding {
+                    binding_ident,
+                    expr: Expr::from(decl_ident),
+                },
+            ))
+        } else {
+            None
+        }
+    }
+
+    pub fn export_default_decl_as_exp(
+        export_default_decl: &ExportDefaultDecl,
+    ) -> Option<(Exp, ExpBinding)> {
+        if let Some(expr) = match &export_default_decl.decl {
+            DefaultDecl::Class(class_expr) => Some(Expr::Class(class_expr.clone())),
+            DefaultDecl::Fn(fn_expr) => Some(Expr::Fn(fn_expr.clone())),
+            DefaultDecl::TsInterfaceDecl(_) => None,
+        } {
+            let binding_ident = binding_ident();
+            let exp = Exp::new(vec![ExpMember::new(
+                binding_ident.clone(),
+                "default".into(),
+            )]);
+
+            Some((
+                exp,
+                ExpBinding {
+                    binding_ident,
+                    expr,
+                },
+            ))
+        } else {
+            None
+        }
+    }
+
+    pub fn export_default_expr_as_exp(
+        export_default_expr: &mut ExportDefaultExpr,
+    ) -> (Exp, ExpBinding) {
+        let binding_ident = binding_ident();
+        let exp = Exp::new(vec![ExpMember::new(
+            binding_ident.clone(),
+            "default".into(),
+        )]);
+
+        (
+            exp,
+            ExpBinding {
+                binding_ident,
+                expr: (*export_default_expr.expr).clone(),
+            },
+        )
+    }
+
+    pub fn export_named_as_exp(export_named: &NamedExport) -> Option<(Exp, Vec<ExpBinding>)> {
+        let mut exp_bindings: Vec<ExpBinding> = Vec::new();
+        let members = export_named
+            .specifiers
+            .iter()
+            .filter_map(|spec| match spec {
+                ExportSpecifier::Default(default) => {
+                    let binding_ident = binding_ident();
+
+                    exp_bindings.push(ExpBinding {
+                        binding_ident: binding_ident.clone(),
+                        expr: Expr::from(default.exported.clone()),
+                    });
+
+                    Some(ExpMember::new(binding_ident, "default".into()))
+                }
+                ExportSpecifier::Named(ExportNamedSpecifier {
+                    orig,
+                    exported,
+                    is_type_only: false,
+                    ..
+                }) => {
+                    let binding_ident = binding_ident();
+                    let exported_ident = match orig {
+                        ModuleExportName::Ident(ident) => ident.clone(),
+                        ModuleExportName::Str(str) => {
+                            Ident::new(str.value.clone(), DUMMY_SP, SyntaxContext::default())
+                        }
+                    };
+                    let name = exported.as_ref().map_or_else(
+                        || exported_ident.sym.as_str().to_string(),
+                        |name| match name {
+                            ModuleExportName::Ident(ident) => ident.sym.as_str().to_string(),
+                            ModuleExportName::Str(str) => str.value.to_string(),
+                        },
+                    );
+
+                    if export_named.src.is_none() {
+                        exp_bindings.push(ExpBinding {
+                            binding_ident: binding_ident.clone(),
+                            expr: Expr::from(exported_ident),
+                        });
+                        Some(ExpMember::new(binding_ident, name))
+                    } else {
+                        Some(ExpMember::new(exported_ident, name))
+                    }
+                }
+                ExportSpecifier::Namespace(ExportNamespaceSpecifier { name, .. }) => {
+                    let binding_ident = binding_ident();
+                    let exported_ident = match name {
+                        ModuleExportName::Ident(ident) => ident.clone(),
+                        ModuleExportName::Str(str) => {
+                            Ident::new(str.value.clone(), DUMMY_SP, SyntaxContext::default())
+                        }
+                    };
+                    let name: String = exported_ident.sym.as_str().to_string();
+
+                    Some(ExpMember {
+                        ident: binding_ident,
+                        name,
+                        is_ns: true,
+                    })
+                }
+                _ => None,
+            })
+            .collect::<Vec<ExpMember>>();
+
+        if members.is_empty() {
+            None
+        } else {
+            Some((
+                if export_named.src.is_none() {
+                    Exp::new(members)
+                } else {
+                    Exp::re_export(
+                        export_named.src.as_ref().unwrap().clone().value.to_string(),
+                        members,
+                    )
+                },
+                exp_bindings,
+            ))
+        }
+    }
+
+    pub fn export_all_as_exp(export_all: &ExportAll) -> Exp {
+        Exp::re_export_all(export_all.src.as_ref().clone().value.to_string())
+    }
+
     pub mod presets {
         use swc_core::{
             common::DUMMY_SP,
@@ -477,7 +669,7 @@ pub mod ast {
             },
         };
 
-        use super::str_lit_expr;
+        use super::{obj_lit_expr, str_lit_expr};
 
         /// Returns the global module context declaration statement (register).
         ///
@@ -552,6 +744,37 @@ pub mod ast {
             require_call(src)
                 .into_var_decl(VarDeclKind::Var, pat)
                 .into()
+        }
+
+        /// TODO
+        ///
+        /// ```js
+        /// // Code
+        /// global.__modules.define(function (context) {
+        ///   // <stmts>
+        /// }, id, {});
+        /// ```
+        pub fn define_call(id: &String, ctx_ident: Ident, stmts: Vec<Stmt>) -> Expr {
+            member_expr!(Default::default(), DUMMY_SP, global.__modules.define).as_call(
+                DUMMY_SP,
+                vec![
+                    Expr::Fn(FnExpr {
+                        ident: None,
+                        function: Box::new(Function {
+                            params: vec![ctx_ident.into()],
+                            body: Some(BlockStmt {
+                                stmts,
+                                ..Default::default()
+                            }),
+                            ..Default::default()
+                        }),
+                        ..Default::default()
+                    })
+                    .into(),
+                    str_lit_expr(id).as_arg(),
+                    obj_lit_expr(vec![]).as_arg(),
+                ],
+            )
         }
     }
 }

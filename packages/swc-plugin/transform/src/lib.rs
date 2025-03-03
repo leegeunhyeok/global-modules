@@ -21,8 +21,8 @@ pub fn global_modules(
     ))
 }
 
-mod delegate;
 mod models;
+mod module_collector;
 mod phase;
 mod transformer;
 mod utils;
