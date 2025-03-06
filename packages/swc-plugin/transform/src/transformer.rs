@@ -2,6 +2,7 @@ use core::panic;
 use std::mem;
 
 use crate::{
+    models::{Exp, ReExportExp},
     module_collector::ModuleCollector,
     phase::ModulePhase,
     utils::ast::{
@@ -118,94 +119,20 @@ impl VisitMut for GlobalModuleTransformer {
         let mut exp_props: Vec<PropOrSpread> = Vec::new();
         let mut exp_decls: Vec<VarDeclarator> = Vec::new();
         let mut exp_specs: Vec<ExportSpecifier> = Vec::new();
-        exps.into_iter().for_each(|exp| {
-            if exp.src.is_some() {
-                let src = exp.src.unwrap();
+        exps.into_iter().for_each(|exp| match exp {
+            Exp::Default(exp) => {
+                let (declarators, props, specs) = exp.into_exp_ast();
+
+                exp_decls.extend(declarators);
+                exp_props.extend(props);
+                exp_specs.extend(specs);
+            }
+            Exp::ReExport(re_export) => {
                 let mod_ident = mod_ident();
-                let var_decl = VarDecl {
-                    kind: VarDeclKind::Const,
-                    decls: vec![VarDeclarator {
-                        name: Pat::Ident(BindingIdent {
-                            id: mod_ident.clone(),
-                            type_ann: None,
-                        }),
-                        definite: false,
-                        init: Some(Box::new(require_call(src.clone().into()))),
-                        span: DUMMY_SP,
-                    }],
-                    ..Default::default()
-                };
 
-                require_deps.push(ModuleItem::Stmt(Stmt::Decl(Decl::Var(Box::new(var_decl)))));
-                mod_imports.push(ModuleItem::ModuleDecl(ModuleDecl::Import(ImportDecl {
-                    src: Box::new(src.into()),
-                    specifiers: vec![ImportSpecifier::Namespace(ImportStarAsSpecifier {
-                        local: mod_ident.clone(),
-                        span: DUMMY_SP,
-                    })],
-                    phase: ImportPhase::Evaluation,
-                    type_only: false,
-                    with: None,
-                    span: DUMMY_SP,
-                })));
-
-                if exp.members.len() == 0 {
-                    // export all
-                    exp_props.push(PropOrSpread::Spread(SpreadElement {
-                        expr: Box::new(
-                            to_ns_export(quote_ident!("ctx").into(), mod_ident.into()).into(),
-                        ),
-                        ..Default::default()
-                    }));
-                } else {
-                    debug!("exp: {:?}", exp.members);
-
-                    exp.members.into_iter().for_each(|member| {
-                        exp_props.push(PropOrSpread::Prop(Box::new(Prop::KeyValue(
-                            KeyValueProp {
-                                key: PropName::Ident(IdentName {
-                                    sym: member.name.clone().into(),
-                                    span: DUMMY_SP,
-                                }),
-                                value: Box::new(if member.is_ns {
-                                    mod_ident.clone().into()
-                                } else {
-                                    mod_ident
-                                        .clone()
-                                        .make_member(IdentName {
-                                            sym: member.ident.sym,
-                                            ..Default::default()
-                                        })
-                                        .into()
-                                }),
-                            },
-                        ))));
-                    });
-                }
-            } else {
-                exp.members.into_iter().for_each(|member| {
-                    exp_decls.push(VarDeclarator {
-                        name: Pat::Ident(member.ident.clone().into()),
-                        definite: false,
-                        init: None,
-                        span: DUMMY_SP,
-                    });
-
-                    exp_props.push(PropOrSpread::Prop(Box::new(Prop::KeyValue(KeyValueProp {
-                        key: PropName::Ident(IdentName {
-                            sym: member.name.clone().into(),
-                            span: DUMMY_SP,
-                        }),
-                        value: Box::new(member.ident.clone().into()),
-                    }))));
-
-                    exp_specs.push(ExportSpecifier::Named(ExportNamedSpecifier {
-                        orig: ModuleExportName::Ident(member.ident),
-                        exported: Some(ModuleExportName::Ident(Ident::from(member.name))),
-                        is_type_only: false,
-                        span: DUMMY_SP,
-                    }));
-                });
+                mod_imports.push(re_export.to_import_stmt(mod_ident.clone()));
+                require_deps.push(re_export.to_require_stmt(mod_ident.clone()).into());
+                exp_props.extend(re_export.to_exp_props(quote_ident!("ctx").into(), mod_ident));
             }
         });
 

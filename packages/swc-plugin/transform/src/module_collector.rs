@@ -187,22 +187,24 @@ impl VisitMut for ModuleCollector {
                             },
                         ) => {
                             if let Some((exp, exp_bindings)) = export_named_as_exp(export_named) {
-                                let is_re_export = exp.is_re_export();
-                                self.exps.push(exp);
-
-                                if is_re_export {
-                                    // Do nothing when it's re-export statement
-                                } else {
-                                    *item = Expr::from(SeqExpr {
-                                        exprs: exp_bindings
-                                            .into_iter()
-                                            .map(|exp_binding| exp_binding.to_assign_expr().into())
-                                            .collect::<Vec<Box<Expr>>>(),
-                                        ..Default::default()
-                                    })
-                                    .into_stmt()
-                                    .into();
+                                match exp {
+                                    Exp::Default(_) => {
+                                        *item = Expr::from(SeqExpr {
+                                            exprs: exp_bindings
+                                                .into_iter()
+                                                .map(|exp_binding| {
+                                                    exp_binding.to_assign_expr().into()
+                                                })
+                                                .collect::<Vec<Box<Expr>>>(),
+                                            ..Default::default()
+                                        })
+                                        .into_stmt()
+                                        .into()
+                                    }
+                                    _ => {}
                                 }
+
+                                self.exps.push(exp);
                             }
                         }
                         // Re-exports all statements.

@@ -514,7 +514,10 @@ pub mod ast {
         if let Some(decl_ident) = get_ident_from_decl(&export_decl.decl) {
             let binding_ident = binding_ident();
             let name = decl_ident.sym.as_str().to_string();
-            let exp = Exp::new(vec![ExpMember::new(binding_ident.clone(), name)]);
+            let exp = Exp::Default(DefaultExp::new(vec![ExpMember::new(
+                binding_ident.clone(),
+                name,
+            )]));
 
             Some((
                 exp,
@@ -537,10 +540,10 @@ pub mod ast {
             DefaultDecl::TsInterfaceDecl(_) => None,
         } {
             let binding_ident = binding_ident();
-            let exp = Exp::new(vec![ExpMember::new(
+            let exp = Exp::Default(DefaultExp::new(vec![ExpMember::new(
                 binding_ident.clone(),
                 "default".into(),
-            )]);
+            )]));
 
             Some((
                 exp,
@@ -558,10 +561,10 @@ pub mod ast {
         export_default_expr: &mut ExportDefaultExpr,
     ) -> (Exp, ExpBinding) {
         let binding_ident = binding_ident();
-        let exp = Exp::new(vec![ExpMember::new(
+        let exp = Exp::Default(DefaultExp::new(vec![ExpMember::new(
             binding_ident.clone(),
             "default".into(),
-        )]);
+        )]));
 
         (
             exp,
@@ -644,12 +647,12 @@ pub mod ast {
         } else {
             Some((
                 if export_named.src.is_none() {
-                    Exp::new(members)
+                    Exp::Default(DefaultExp::new(members))
                 } else {
-                    Exp::re_export(
+                    Exp::ReExport(ReExportExp::Named(
                         export_named.src.as_ref().unwrap().clone().value.to_string(),
                         members,
-                    )
+                    ))
                 },
                 exp_bindings,
             ))
@@ -657,7 +660,9 @@ pub mod ast {
     }
 
     pub fn export_all_as_exp(export_all: &ExportAll) -> Exp {
-        Exp::re_export_all(export_all.src.as_ref().clone().value.to_string())
+        Exp::ReExport(ReExportExp::All(
+            export_all.src.as_ref().clone().value.to_string(),
+        ))
     }
 
     pub mod presets {

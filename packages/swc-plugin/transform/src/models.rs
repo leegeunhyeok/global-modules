@@ -1,7 +1,7 @@
-use presets::decl_require_deps_stmt;
+use presets::{decl_require_deps_stmt, require_call};
 use swc_core::{
     atoms::Atom,
-    common::Spanned,
+    common::{Spanned, DUMMY_SP},
     ecma::{
         ast::*,
         utils::{private_ident, ExprFactory},
@@ -654,69 +654,126 @@ impl DepMember {
     }
 }
 
-// Export member of module
 #[derive(Debug)]
-pub struct Exp {
-    pub src: Option<String>,
+pub enum Exp {
+    Default(DefaultExp),
+    ReExport(ReExportExp),
+}
+
+#[derive(Debug)]
+pub struct DefaultExp {
     pub members: Vec<ExpMember>,
 }
 
-impl Exp {
+impl DefaultExp {
     pub fn new(members: Vec<ExpMember>) -> Self {
-        Self { src: None, members }
+        Self { members }
     }
 
-    /// For bind re-exports in the module, we need to reference the original modules and register it as exports
-    ///
-    /// ```js
-    /// // Transit cases:
-    /// export * from './foo';
-    /// export * as bar from './bar';
-    /// export { baz, baz2 as baz3 } from './baz';
-    ///
-    /// // Transform to
-    /// import * as __mod from './foo'; // Capture
-    /// import * as __mod1 from './bar';
-    /// import * as __mod2 from './baz';
-    ///
-    /// context.exports({
-    ///   ...__mod, // and register
-    ///   bar: __mod1,
-    ///   baz: __mod2.baz,
-    ///   baz3: __mod2.baz2,
-    /// });
-    /// ```
-    pub fn re_export(src: String, members: Vec<ExpMember>) -> Self {
-        Self {
-            src: Some(src),
-            members,
+    pub fn into_exp_ast(self) -> (Vec<VarDeclarator>, Vec<PropOrSpread>, Vec<ExportSpecifier>) {
+        let len = self.members.len();
+        let mut declarators = Vec::with_capacity(len);
+        let mut props = Vec::with_capacity(len);
+        let mut specs = Vec::with_capacity(len);
+
+        self.members.into_iter().for_each(|member| {
+            declarators.push(VarDeclarator {
+                name: Pat::Ident(member.ident.clone().into()),
+                definite: false,
+                init: None,
+                span: DUMMY_SP,
+            });
+
+            props.push(PropOrSpread::Prop(Box::new(Prop::KeyValue(KeyValueProp {
+                key: PropName::Ident(IdentName {
+                    sym: member.name.clone().into(),
+                    span: DUMMY_SP,
+                }),
+                value: Box::new(member.ident.clone().into()),
+            }))));
+
+            specs.push(ExportSpecifier::Named(ExportNamedSpecifier {
+                orig: ModuleExportName::Ident(member.ident),
+                exported: Some(ModuleExportName::Ident(Ident::from(member.name))),
+                is_type_only: false,
+                span: DUMMY_SP,
+            }));
+        });
+
+        (declarators, props, specs)
+    }
+}
+
+#[derive(Debug)]
+pub enum ReExportExp {
+    All(String),
+    Named(String, Vec<ExpMember>),
+}
+
+impl ReExportExp {
+    fn get_src(&self) -> String {
+        let src = match self {
+            ReExportExp::All(src) => src,
+            ReExportExp::Named(src, _) => src,
+        };
+
+        src.clone()
+    }
+
+    pub fn to_import_stmt(&self, mod_ident: Ident) -> ModuleItem {
+        ImportDecl {
+            src: Box::new(self.get_src().into()),
+            specifiers: vec![ImportSpecifier::Namespace(ImportStarAsSpecifier {
+                local: mod_ident,
+                span: DUMMY_SP,
+            })],
+            phase: ImportPhase::Evaluation,
+            type_only: false,
+            with: None,
+            span: DUMMY_SP,
         }
+        .into()
     }
 
-    pub fn re_export_all(src: String) -> Self {
-        Self {
-            src: Some(src),
-            members: vec![],
+    pub fn to_require_stmt(&self, mod_ident: Ident) -> Stmt {
+        require_call(self.get_src().clone().into())
+            .into_var_decl(
+                VarDeclKind::Const,
+                Pat::Ident(BindingIdent {
+                    id: mod_ident,
+                    type_ann: None,
+                }),
+            )
+            .into()
+    }
+
+    pub fn to_exp_props(&self, ctx_ident: Ident, mod_ident: Ident) -> Vec<PropOrSpread> {
+        match self {
+            ReExportExp::All(_) => vec![PropOrSpread::Spread(SpreadElement {
+                expr: Box::new(to_ns_export(ctx_ident.into(), mod_ident.into()).into()),
+                ..Default::default()
+            })],
+            ReExportExp::Named(_, members) => members
+                .into_iter()
+                .map(|member| {
+                    PropOrSpread::Prop(Box::new(Prop::KeyValue(KeyValueProp {
+                        key: PropName::Ident(IdentName {
+                            sym: member.name.clone().into(),
+                            span: DUMMY_SP,
+                        }),
+                        value: Box::new(
+                            mod_ident
+                                .clone()
+                                .make_member(IdentName {
+                                    sym: member.ident.sym.clone(),
+                                    ..Default::default()
+                                })
+                                .into(),
+                        ),
+                    })))
+                })
+                .collect(),
         }
-    }
-
-    /// Returns `true` if the re-export.
-    pub fn is_re_export(&self) -> bool {
-        self.src.is_some()
-    }
-
-    /// ```js
-    /// export * as foo from './foo';
-    /// ```
-    pub fn is_ns(&self) -> bool {
-        self.is_re_export() && self.members.len() == 1
-    }
-
-    /// ```js
-    /// export * from './foo';
-    /// ```
-    pub fn is_export_all(&self) -> bool {
-        self.is_re_export() && self.members.len() == 0
     }
 }
 
@@ -729,7 +786,11 @@ pub struct ExpMember {
 
 impl ExpMember {
     pub fn new(ident: Ident, name: String) -> Self {
-        Self { ident, name, is_ns: false }
+        Self {
+            ident,
+            name,
+            is_ns: false,
+        }
     }
 }
 
