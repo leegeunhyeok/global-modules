@@ -67,8 +67,7 @@ impl VisitMut for GlobalModuleTransformer {
         let deps = mem::take(&mut self.collector.deps);
         let exps = mem::take(&mut self.collector.exps);
 
-        let mut mod_imports: Vec<ModuleItem> = Vec::new();
-        let mut require_deps: Vec<ModuleItem> = deps
+        let mut require_deps: Vec<Stmt> = deps
             .into_iter()
             .map(|dep| {
                 let props = dep
@@ -112,13 +111,18 @@ impl VisitMut for GlobalModuleTransformer {
                     ..Default::default()
                 };
 
-                ModuleItem::Stmt(Stmt::Decl(Decl::Var(Box::new(var_decl))))
+                var_decl.into()
             })
-            .collect::<Vec<ModuleItem>>();
+            .collect::<Vec<Stmt>>();
+
+        let mut imports: Vec<ModuleItem> = Vec::new();
+        let mut exports = Vec::new();
+        let mut stmts = Vec::new();
 
         let mut exp_props: Vec<PropOrSpread> = Vec::new();
         let mut exp_decls: Vec<VarDeclarator> = Vec::new();
         let mut exp_specs: Vec<ExportSpecifier> = Vec::new();
+
         exps.into_iter().for_each(|exp| match exp {
             Exp::Default(exp) => {
                 let (declarators, props, specs) = exp.into_exp_ast();
@@ -130,32 +134,36 @@ impl VisitMut for GlobalModuleTransformer {
             Exp::ReExport(re_export) => {
                 let mod_ident = mod_ident();
 
-                mod_imports.push(re_export.to_import_stmt(mod_ident.clone()));
-                require_deps.push(re_export.to_require_stmt(mod_ident.clone()).into());
+                imports.push(re_export.to_import_stmt(mod_ident.clone()));
+                require_deps.push(re_export.to_require_stmt(mod_ident.clone()));
                 exp_props.extend(re_export.to_exp_props(quote_ident!("ctx").into(), mod_ident));
             }
         });
 
-        // exps
-        let exports_call = exports_call(
-            quote_ident!("ctx").into(),
-            ObjectLit {
-                props: exp_props,
-                ..Default::default()
-            }
-            .into(),
+        stmts.extend(require_deps);
+
+        body.into_iter().for_each(|item| match item {
+            ModuleItem::ModuleDecl(ref module_decl) => match module_decl {
+                ModuleDecl::Import(_) => imports.push(item),
+                _ => exports.push(item),
+            },
+            ModuleItem::Stmt(stmt) => stmts.push(stmt),
+        });
+
+        stmts.push(
+            exports_call(
+                quote_ident!("ctx").into(),
+                ObjectLit {
+                    props: exp_props,
+                    ..Default::default()
+                }
+                .into(),
+            )
+            .into_stmt(),
         );
 
-        let mut new_body = [
-            mod_imports,
-            require_deps,
-            body,
-            vec![exports_call.into_stmt().into()],
-        ]
-        .concat();
-
         if exp_specs.len() > 0 {
-            new_body.push(ModuleItem::ModuleDecl(ModuleDecl::ExportNamed(
+            exports.push(ModuleItem::ModuleDecl(ModuleDecl::ExportNamed(
                 NamedExport {
                     specifiers: exp_specs,
                     type_only: false,
@@ -166,21 +174,18 @@ impl VisitMut for GlobalModuleTransformer {
             )))
         }
 
-        let mut imports = Vec::new();
-        let mut exports = Vec::new();
-        let mut stmts = Vec::new();
-        new_body.into_iter().for_each(|item| match item {
-            ModuleItem::ModuleDecl(ref module_decl) => match module_decl {
-                ModuleDecl::Import(_) => imports.push(item),
-                _ => exports.push(item),
-            },
-            ModuleItem::Stmt(stmt) => stmts.push(stmt),
-        });
+        let mut body = [
+            imports,
+            vec![define_call(&self.id, quote_ident!("ctx").into(), stmts)
+                .into_stmt()
+                .into()],
+            exports,
+        ]
+        .concat();
 
         if exp_decls.len() > 0 {
-            // TODO: append decls without exports variable (this is actually not an export)
             // var __x, __x1, ...;
-            exports.push(
+            body.push(
                 Decl::Var(Box::new(VarDecl {
                     decls: exp_decls,
                     kind: VarDeclKind::Var,
@@ -192,13 +197,6 @@ impl VisitMut for GlobalModuleTransformer {
             );
         }
 
-        module.body = [
-            imports,
-            vec![define_call(&self.id, quote_ident!("ctx").into(), stmts)
-                .into_stmt()
-                .into()],
-            exports,
-        ]
-        .concat();
+        module.body = body;
     }
 }
