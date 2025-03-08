@@ -500,7 +500,7 @@ pub mod ast {
                     local,
                     is_type_only: false,
                     ..
-                }) => Some(DepMember::default(
+                }) => Some(DepMember::new(
                     local.clone(),
                     imported.as_ref().map(|name| match name {
                         ModuleExportName::Ident(ident) => ident.sym.as_str().to_string(),
@@ -508,10 +508,10 @@ pub mod ast {
                     }),
                 )),
                 ImportSpecifier::Default(ImportDefaultSpecifier { local, .. }) => {
-                    Some(DepMember::default(local.clone(), Some("default".into())))
+                    Some(DepMember::new(local.clone(), Some("default".into())))
                 }
                 ImportSpecifier::Namespace(ImportStarAsSpecifier { local, .. }) => {
-                    Some(DepMember::ns(local.clone(), None))
+                    Some(DepMember::new(local.clone(), None))
                 }
                 _ => None,
             })
@@ -633,6 +633,27 @@ pub mod ast {
 
     pub fn export_named_as_exp(export_named: &NamedExport) -> Option<(Exp, Vec<ExpBinding>)> {
         let mut exp_bindings: Vec<ExpBinding> = Vec::new();
+
+        if let Some(specifier) = export_named.specifiers.get(0) {
+            if specifier.is_namespace() {
+                let ns = specifier.as_namespace().unwrap();
+                let ident = match &ns.name {
+                    ModuleExportName::Ident(ident) => ident.clone(),
+                    ModuleExportName::Str(str) => {
+                        Ident::new(str.value.clone(), DUMMY_SP, SyntaxContext::default())
+                    }
+                };
+
+                return Some((
+                    Exp::ReExportAll(ReExportAllExp::alias(
+                        export_named.src.as_ref().unwrap().clone().value.to_string(),
+                        ident,
+                    )),
+                    exp_bindings,
+                ));
+            }
+        }
+
         let members = export_named
             .specifiers
             .iter()
@@ -678,22 +699,7 @@ pub mod ast {
                         Some(ExpMember::new(exported_ident, name))
                     }
                 }
-                ExportSpecifier::Namespace(ExportNamespaceSpecifier { name, .. }) => {
-                    let exp_binding_ident = exp_binding_ident();
-                    let exported_ident = match name {
-                        ModuleExportName::Ident(ident) => ident.clone(),
-                        ModuleExportName::Str(str) => {
-                            Ident::new(str.value.clone(), DUMMY_SP, SyntaxContext::default())
-                        }
-                    };
-                    let name: String = exported_ident.sym.as_str().to_string();
-
-                    Some(ExpMember {
-                        ident: exp_binding_ident,
-                        name,
-                        is_ns: true,
-                    })
-                }
+                ExportSpecifier::Namespace(_) => unreachable!(),
                 _ => None,
             })
             .collect::<Vec<ExpMember>>();
@@ -705,10 +711,10 @@ pub mod ast {
                 if export_named.src.is_none() {
                     Exp::Default(DefaultExp::new(members))
                 } else {
-                    Exp::ReExport(ReExportExp::Named(
-                        export_named.src.as_ref().unwrap().clone().value.to_string(),
+                    Exp::ReExportNamed(ReExportNamedExp {
+                        src: export_named.src.as_ref().unwrap().clone().value.to_string(),
                         members,
-                    ))
+                    })
                 },
                 exp_bindings,
             ))
@@ -716,7 +722,7 @@ pub mod ast {
     }
 
     pub fn export_all_as_exp(export_all: &ExportAll) -> Exp {
-        Exp::ReExport(ReExportExp::All(
+        Exp::ReExportAll(ReExportAllExp::default(
             export_all.src.as_ref().clone().value.to_string(),
         ))
     }

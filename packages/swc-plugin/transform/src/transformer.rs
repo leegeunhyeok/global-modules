@@ -2,7 +2,7 @@ use core::panic;
 use std::mem;
 
 use crate::{
-    models::{Exp, ReExportExp},
+    models::Exp,
     module_collector::ModuleCollector,
     phase::ModulePhase,
     utils::ast::{
@@ -127,17 +127,24 @@ impl VisitMut for GlobalModuleTransformer {
                 exp_props.extend(props);
                 exp_specs.extend(specs);
             }
-            Exp::ReExport(re_export) => {
+            Exp::ReExportNamed(re_export_named) => {
                 let mod_ident = mod_ident();
-                let src = match &re_export {
-                    ReExportExp::All(src) => src.clone(),
-                    ReExportExp::Named(src, _) => src.clone(),
-                };
+                let src = re_export_named.src.clone();
 
-                imports.push(re_export.to_import_stmt(mod_ident.clone()));
+                imports.push(re_export_named.to_import_stmt(mod_ident.clone()));
                 dep_getters.push((src, arrow_with_paren_expr(mod_ident.clone().into())));
-                stmts.push(re_export.to_require_stmt(&self.ctx_ident, mod_ident.clone()));
-                exp_props.extend(re_export.to_exp_props(&self.ctx_ident, mod_ident));
+                stmts.push(re_export_named.to_require_stmt(&self.ctx_ident, mod_ident.clone()));
+                exp_props.extend(re_export_named.to_exp_props(mod_ident));
+            }
+            Exp::ReExportAll(re_export_all) => {
+                let mod_ident = mod_ident();
+                let src = re_export_all.0.clone();
+                let ident = re_export_all.1.clone();
+
+                imports.push(re_export_all.to_import_stmt(mod_ident.clone()));
+                dep_getters.push((src, arrow_with_paren_expr(mod_ident.clone().into())));
+                stmts.push(re_export_all.to_require_stmt(&self.ctx_ident, mod_ident.clone()));
+                exp_props.push(re_export_all.to_exp_props(&self.ctx_ident, mod_ident));
             }
         });
 

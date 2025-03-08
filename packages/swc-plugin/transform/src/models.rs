@@ -10,6 +10,7 @@ use swc_core::{
     },
     plugin::errors::HANDLER,
 };
+use tracing::debug;
 
 use crate::{phase::ModulePhase, utils::ast::*};
 
@@ -639,31 +640,16 @@ pub struct Dep {
 #[derive(Debug)]
 pub struct DepMember {
     pub ident: Ident,
-    pub is_ns: bool,
     pub name: Option<String>,
 }
 
 impl DepMember {
-    pub fn default(ident: Ident, name: Option<String>) -> Self {
-        DepMember {
-            ident,
-            name,
-            is_ns: false,
-        }
-    }
-
-    pub fn ns(ident: Ident, name: Option<String>) -> Self {
-        DepMember {
-            ident,
-            name,
-            is_ns: true,
-        }
+    pub fn new(ident: Ident, name: Option<String>) -> Self {
+        DepMember { ident, name }
     }
 
     pub fn into_obj_pat_prop(self) -> ObjectPatProp {
-        let name = self.name;
-
-        match name {
+        match self.name {
             Some(name) => ObjectPatProp::KeyValue(KeyValuePatProp {
                 key: PropName::Ident(IdentName {
                     sym: name.into(),
@@ -686,7 +672,8 @@ impl DepMember {
 #[derive(Debug)]
 pub enum Exp {
     Default(DefaultExp),
-    ReExport(ReExportExp),
+    ReExportAll(ReExportAllExp),
+    ReExportNamed(ReExportNamedExp),
 }
 
 #[derive(Debug)]
@@ -734,19 +721,73 @@ impl DefaultExp {
 }
 
 #[derive(Debug)]
-pub enum ReExportExp {
-    All(String),
-    Named(String, Vec<ExpMember>),
+pub struct ReExportAllExp(pub String, pub Option<Ident>);
+
+impl ReExportAllExp {
+    pub fn default(src: String) -> Self {
+        Self(src, None)
+    }
+
+    pub fn alias(src: String, ident: Ident) -> Self {
+        Self(src, Some(ident))
+    }
+
+    fn get_src(&self) -> String {
+        self.0.clone()
+    }
+
+    pub fn to_import_stmt(&self, mod_ident: Ident) -> ModuleItem {
+        ImportDecl {
+            src: Box::new(self.get_src().into()),
+            specifiers: vec![ImportSpecifier::Namespace(ImportStarAsSpecifier {
+                local: mod_ident,
+                span: DUMMY_SP,
+            })],
+            phase: ImportPhase::Evaluation,
+            type_only: false,
+            with: None,
+            span: DUMMY_SP,
+        }
+        .into()
+    }
+
+    pub fn to_require_stmt(&self, ctx_ident: &Ident, mod_ident: Ident) -> Stmt {
+        require_call(ctx_ident, self.get_src().clone().into())
+            .into_var_decl(
+                VarDeclKind::Const,
+                Pat::Ident(BindingIdent {
+                    id: mod_ident,
+                    type_ann: None,
+                }),
+            )
+            .into()
+    }
+    pub fn to_exp_props(&self, ctx_ident: &Ident, mod_ident: Ident) -> PropOrSpread {
+        match &self.1 {
+            Some(ident) => PropOrSpread::Prop(Box::new(Prop::KeyValue(KeyValueProp {
+                key: PropName::Ident(IdentName {
+                    sym: ident.sym.clone(),
+                    span: DUMMY_SP,
+                }),
+                value: Box::new(mod_ident.into()),
+            }))),
+            None => PropOrSpread::Spread(SpreadElement {
+                expr: Box::new(to_ns_export(ctx_ident.clone().into(), mod_ident.into()).into()),
+                ..Default::default()
+            }),
+        }
+    }
 }
 
-impl ReExportExp {
-    fn get_src(&self) -> String {
-        let src = match self {
-            ReExportExp::All(src) => src,
-            ReExportExp::Named(src, _) => src,
-        };
+#[derive(Debug)]
+pub struct ReExportNamedExp {
+    pub src: String,
+    pub members: Vec<ExpMember>,
+}
 
-        src.clone()
+impl ReExportNamedExp {
+    fn get_src(&self) -> String {
+        self.src.clone()
     }
 
     pub fn to_import_stmt(&self, mod_ident: Ident) -> ModuleItem {
@@ -776,33 +817,27 @@ impl ReExportExp {
             .into()
     }
 
-    pub fn to_exp_props(&self, ctx_ident: &Ident, mod_ident: Ident) -> Vec<PropOrSpread> {
-        match self {
-            ReExportExp::All(_) => vec![PropOrSpread::Spread(SpreadElement {
-                expr: Box::new(to_ns_export(ctx_ident.clone().into(), mod_ident.into()).into()),
-                ..Default::default()
-            })],
-            ReExportExp::Named(_, members) => members
-                .into_iter()
-                .map(|member| {
-                    PropOrSpread::Prop(Box::new(Prop::KeyValue(KeyValueProp {
-                        key: PropName::Ident(IdentName {
-                            sym: member.name.clone().into(),
-                            span: DUMMY_SP,
-                        }),
-                        value: Box::new(
-                            mod_ident
-                                .clone()
-                                .make_member(IdentName {
-                                    sym: member.ident.sym.clone(),
-                                    ..Default::default()
-                                })
-                                .into(),
-                        ),
-                    })))
-                })
-                .collect(),
-        }
+    pub fn to_exp_props(&self, mod_ident: Ident) -> Vec<PropOrSpread> {
+        self.members
+            .iter()
+            .map(|member| {
+                PropOrSpread::Prop(Box::new(Prop::KeyValue(KeyValueProp {
+                    key: PropName::Ident(IdentName {
+                        sym: member.name.clone().into(),
+                        span: DUMMY_SP,
+                    }),
+                    value: Box::new(
+                        mod_ident
+                            .clone()
+                            .make_member(IdentName {
+                                sym: member.ident.sym.clone(),
+                                ..Default::default()
+                            })
+                            .into(),
+                    ),
+                })))
+            })
+            .collect()
     }
 }
 
@@ -810,16 +845,11 @@ impl ReExportExp {
 pub struct ExpMember {
     pub ident: Ident,
     pub name: String,
-    pub is_ns: bool,
 }
 
 impl ExpMember {
     pub fn new(ident: Ident, name: String) -> Self {
-        Self {
-            ident,
-            name,
-            is_ns: false,
-        }
+        Self { ident, name }
     }
 }
 
