@@ -1,7 +1,7 @@
 use std::{collections::HashMap, mem};
 
 use swc_core::{
-    common::{collections::AHashMap, Spanned, SyntaxContext, DUMMY_SP},
+    common::{collections::AHashMap, util::take::Take, Spanned, SyntaxContext, DUMMY_SP},
     ecma::{
         ast::*,
         utils::{private_ident, ExprFactory},
@@ -12,7 +12,7 @@ use swc_core::{
 use tracing::debug;
 
 use crate::{
-    models::{Dep, Exp},
+    models::{Dep, Exp, ExpBinding},
     utils::ast::{
         assign_expr, export_all_as_exp, export_decl_as_exp, export_default_decl_as_exp,
         export_default_expr_as_exp, export_named_as_exp, get_src_lit, import_as_dep,
@@ -23,6 +23,7 @@ use crate::{
 pub struct ModuleCollector<'a> {
     pub deps: Vec<Dep>,
     pub exps: Vec<Exp>,
+    pub exp_bindings: Vec<ExpBinding>,
     unresolved_ctxt: SyntaxContext,
     ctx_ident: &'a Ident,
     paths: &'a Option<AHashMap<String, String>>,
@@ -37,6 +38,7 @@ impl<'a> ModuleCollector<'a> {
         Self {
             deps: vec![],
             exps: vec![],
+            exp_bindings: vec![],
             ctx_ident,
             unresolved_ctxt,
             paths,
@@ -49,6 +51,10 @@ impl<'a> ModuleCollector<'a> {
 
     pub fn take_exps(&mut self) -> Vec<Exp> {
         mem::take(&mut self.exps)
+    }
+
+    pub fn take_bindings(&mut self) -> Vec<ExpBinding> {
+        mem::take(&mut self.exp_bindings)
     }
 
     fn as_require_expr(&mut self, call_expr: &mut CallExpr) -> Option<Expr> {
@@ -150,9 +156,12 @@ impl<'a> VisitMut for ModuleCollector<'a> {
                         // ```
                         ModuleDecl::ExportDecl(export_decl) => {
                             export_decl.visit_mut_children_with(self);
-                            if let Some((exp, exp_binding)) = export_decl_as_exp(export_decl) {
-                                *item = exp_binding.to_assign_expr().into_stmt().into();
+                            if let Some((exp, decl_stmt, exp_binding)) =
+                                export_decl_as_exp(export_decl)
+                            {
+                                *item = decl_stmt.into();
                                 self.exps.push(exp);
+                                self.exp_bindings.push(exp_binding);
                             }
                         }
                         // Default export statements with declarations.
@@ -163,11 +172,12 @@ impl<'a> VisitMut for ModuleCollector<'a> {
                         // ```
                         ModuleDecl::ExportDefaultDecl(export_default_decl) => {
                             export_default_decl.visit_mut_children_with(self);
-                            if let Some((exp, exp_binding)) =
+                            if let Some((exp, decl, exp_binding)) =
                                 export_default_decl_as_exp(export_default_decl)
                             {
-                                *item = exp_binding.to_assign_expr().into_stmt().into();
+                                *item = decl.into();
                                 self.exps.push(exp);
+                                self.exp_bindings.push(exp_binding)
                             }
                         }
                         // Default export statements.
@@ -177,10 +187,11 @@ impl<'a> VisitMut for ModuleCollector<'a> {
                         // ```
                         ModuleDecl::ExportDefaultExpr(export_default_expr) => {
                             export_default_expr.visit_mut_children_with(self);
-                            let (exp, exp_binding) =
+                            let (exp, stmt, exp_binding) =
                                 export_default_expr_as_exp(export_default_expr);
-                            *item = exp_binding.to_assign_expr().into_stmt().into();
+                            *item = stmt.into();
                             self.exps.push(exp);
+                            self.exp_bindings.push(exp_binding);
                         }
                         // Named export statements.
                         //
@@ -205,17 +216,8 @@ impl<'a> VisitMut for ModuleCollector<'a> {
                             if let Some((exp, exp_bindings)) = export_named_as_exp(export_named) {
                                 match exp {
                                     Exp::Default(_) => {
-                                        *item = Expr::from(SeqExpr {
-                                            exprs: exp_bindings
-                                                .into_iter()
-                                                .map(|exp_binding| {
-                                                    exp_binding.to_assign_expr().into()
-                                                })
-                                                .collect::<Vec<Box<Expr>>>(),
-                                            ..Default::default()
-                                        })
-                                        .into_stmt()
-                                        .into()
+                                        self.exp_bindings.extend(exp_bindings);
+                                        item.take();
                                     }
                                     _ => {}
                                 }

@@ -11,9 +11,13 @@ pub mod ast {
         },
         plugin::errors::HANDLER,
     };
-    use tracing::debug;
+    use tracing::{debug, field::debug};
 
-    pub fn binding_ident() -> Ident {
+    pub fn anonymous_default_binding_ident() -> Ident {
+        private_ident!("__default")
+    }
+
+    pub fn exp_binding_ident() -> Ident {
         private_ident!("__x")
     }
 
@@ -520,20 +524,21 @@ pub mod ast {
         }
     }
 
-    pub fn export_decl_as_exp(export_decl: &ExportDecl) -> Option<(Exp, ExpBinding)> {
+    pub fn export_decl_as_exp(export_decl: &ExportDecl) -> Option<(Exp, Stmt, ExpBinding)> {
         if let Some(decl_ident) = get_ident_from_decl(&export_decl.decl) {
-            let binding_ident = binding_ident();
+            let exp_binding_ident = exp_binding_ident();
             let name = decl_ident.sym.as_str().to_string();
             let exp = Exp::Default(DefaultExp::new(vec![ExpMember::new(
-                binding_ident.clone(),
+                exp_binding_ident.clone(),
                 name,
             )]));
 
             Some((
                 exp,
+                Stmt::Decl(export_decl.decl.clone()),
                 ExpBinding {
-                    binding_ident,
-                    expr: Expr::from(decl_ident),
+                    binding_ident: exp_binding_ident,
+                    expr: decl_ident.into(),
                 },
             ))
         } else {
@@ -543,23 +548,51 @@ pub mod ast {
 
     pub fn export_default_decl_as_exp(
         export_default_decl: &ExportDefaultDecl,
-    ) -> Option<(Exp, ExpBinding)> {
-        if let Some(expr) = match &export_default_decl.decl {
-            DefaultDecl::Class(class_expr) => Some(Expr::Class(class_expr.clone())),
-            DefaultDecl::Fn(fn_expr) => Some(Expr::Fn(fn_expr.clone())),
+    ) -> Option<(Exp, Decl, ExpBinding)> {
+        if let Some(decl) = match &export_default_decl.decl {
+            DefaultDecl::Class(class_expr) => {
+                let class_ident = class_expr
+                    .ident
+                    .clone()
+                    .unwrap_or_else(|| anonymous_default_binding_ident());
+
+                Some(Decl::Class(ClassDecl {
+                    ident: class_ident.clone(),
+                    class: class_expr.class.clone(),
+                    declare: false,
+                }))
+            }
+            DefaultDecl::Fn(fn_expr) => {
+                let fn_ident = fn_expr
+                    .ident
+                    .clone()
+                    .unwrap_or_else(|| anonymous_default_binding_ident());
+
+                Some(Decl::Fn(FnDecl {
+                    ident: fn_ident,
+                    function: fn_expr.function.clone(),
+                    declare: false,
+                }))
+            }
             DefaultDecl::TsInterfaceDecl(_) => None,
         } {
-            let binding_ident = binding_ident();
+            let binding_ident = match &decl {
+                Decl::Class(class_decl) => class_decl.ident.clone(),
+                Decl::Fn(fn_decl) => fn_decl.ident.clone(),
+                _ => unreachable!(),
+            };
+            let exp_binding_ident = exp_binding_ident();
             let exp = Exp::Default(DefaultExp::new(vec![ExpMember::new(
-                binding_ident.clone(),
+                exp_binding_ident.clone(),
                 "default".into(),
             )]));
 
             Some((
                 exp,
+                decl,
                 ExpBinding {
-                    binding_ident,
-                    expr,
+                    binding_ident: exp_binding_ident,
+                    expr: binding_ident.into(),
                 },
             ))
         } else {
@@ -569,18 +602,31 @@ pub mod ast {
 
     pub fn export_default_expr_as_exp(
         export_default_expr: &mut ExportDefaultExpr,
-    ) -> (Exp, ExpBinding) {
-        let binding_ident = binding_ident();
+    ) -> (Exp, Stmt, ExpBinding) {
+        let binding_ident = anonymous_default_binding_ident();
+        let exp_binding_ident = exp_binding_ident();
         let exp = Exp::Default(DefaultExp::new(vec![ExpMember::new(
-            binding_ident.clone(),
+            exp_binding_ident.clone(),
             "default".into(),
         )]));
 
+        let default_var_decl = VarDecl {
+            decls: vec![VarDeclarator {
+                name: binding_ident.clone().into(),
+                init: Some(Box::new(*export_default_expr.expr.clone())),
+                definite: false,
+                span: DUMMY_SP,
+            }],
+            kind: VarDeclKind::Const,
+            ..Default::default()
+        };
+
         (
             exp,
+            default_var_decl.into(),
             ExpBinding {
-                binding_ident,
-                expr: (*export_default_expr.expr).clone(),
+                binding_ident: exp_binding_ident,
+                expr: binding_ident.into(),
             },
         )
     }
@@ -592,14 +638,14 @@ pub mod ast {
             .iter()
             .filter_map(|spec| match spec {
                 ExportSpecifier::Default(default) => {
-                    let binding_ident = binding_ident();
+                    let exp_binding_ident = exp_binding_ident();
 
                     exp_bindings.push(ExpBinding {
-                        binding_ident: binding_ident.clone(),
+                        binding_ident: exp_binding_ident.clone(),
                         expr: Expr::from(default.exported.clone()),
                     });
 
-                    Some(ExpMember::new(binding_ident, "default".into()))
+                    Some(ExpMember::new(exp_binding_ident, "default".into()))
                 }
                 ExportSpecifier::Named(ExportNamedSpecifier {
                     orig,
@@ -607,7 +653,7 @@ pub mod ast {
                     is_type_only: false,
                     ..
                 }) => {
-                    let binding_ident = binding_ident();
+                    let exp_binding_ident = exp_binding_ident();
                     let exported_ident = match orig {
                         ModuleExportName::Ident(ident) => ident.clone(),
                         ModuleExportName::Str(str) => {
@@ -624,16 +670,16 @@ pub mod ast {
 
                     if export_named.src.is_none() {
                         exp_bindings.push(ExpBinding {
-                            binding_ident: binding_ident.clone(),
+                            binding_ident: exp_binding_ident.clone(),
                             expr: Expr::from(exported_ident),
                         });
-                        Some(ExpMember::new(binding_ident, name))
+                        Some(ExpMember::new(exp_binding_ident, name))
                     } else {
                         Some(ExpMember::new(exported_ident, name))
                     }
                 }
                 ExportSpecifier::Namespace(ExportNamespaceSpecifier { name, .. }) => {
-                    let binding_ident = binding_ident();
+                    let exp_binding_ident = exp_binding_ident();
                     let exported_ident = match name {
                         ModuleExportName::Ident(ident) => ident.clone(),
                         ModuleExportName::Str(str) => {
@@ -643,7 +689,7 @@ pub mod ast {
                     let name: String = exported_ident.sym.as_str().to_string();
 
                     Some(ExpMember {
-                        ident: binding_ident,
+                        ident: exp_binding_ident,
                         name,
                         is_ns: true,
                     })

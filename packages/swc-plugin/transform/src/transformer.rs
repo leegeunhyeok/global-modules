@@ -76,6 +76,7 @@ impl VisitMut for GlobalModuleTransformer {
         let body = mem::take(&mut module.body);
         let deps = collector.take_deps();
         let exps = collector.take_exps();
+        let bindings = collector.take_bindings();
 
         let deps_count = deps.len();
         let mut dep_getters = Vec::with_capacity(deps_count);
@@ -145,8 +146,20 @@ impl VisitMut for GlobalModuleTransformer {
                 ModuleDecl::Import(_) => imports.push(item),
                 _ => exports.push(item),
             },
-            ModuleItem::Stmt(stmt) => stmts.push(stmt),
+            ModuleItem::Stmt(stmt) if !stmt.is_empty() => stmts.push(stmt),
+            _ => {}
         });
+
+        stmts.push(
+            Expr::Seq(SeqExpr {
+                exprs: bindings
+                    .into_iter()
+                    .map(|binding| Box::new(binding.to_assign_expr()))
+                    .collect::<Vec<Box<Expr>>>(),
+                ..Default::default()
+            })
+            .into_stmt(),
+        );
 
         stmts.push(exports_call(&self.ctx_ident, exp_props).into_stmt());
 
