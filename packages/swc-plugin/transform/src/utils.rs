@@ -187,6 +187,16 @@ pub mod ast {
         )
     }
 
+    pub fn arrow_with_paren_expr(expr: Expr) -> Expr {
+        Expr::Arrow(ArrowExpr {
+            body: Box::new(BlockStmtOrExpr::Expr(Box::new(Expr::Paren(ParenExpr {
+                span: DUMMY_SP,
+                expr: Box::new(expr),
+            })))),
+            ..Default::default()
+        })
+    }
+
     /// Returns a new expression that binds the CommonJS module export statement.
     ///
     ///
@@ -674,7 +684,7 @@ pub mod ast {
             },
         };
 
-        use super::{obj_lit_expr, str_lit_expr};
+        use super::{arrow_with_paren_expr, obj_lit_expr, str_lit_expr, ExpMember};
 
         /// Returns the global module context declaration statement (register).
         ///
@@ -764,7 +774,12 @@ pub mod ast {
         ///   // <stmts>
         /// }, id, {});
         /// ```
-        pub fn define_call(id: &String, ctx_ident: &Ident, stmts: Vec<Stmt>) -> Expr {
+        pub fn define_call(
+            id: &String,
+            ctx_ident: &Ident,
+            deps_ident: &Ident,
+            stmts: Vec<Stmt>,
+        ) -> Expr {
             member_expr!(Default::default(), DUMMY_SP, global.__modules.define).as_call(
                 DUMMY_SP,
                 vec![
@@ -782,7 +797,7 @@ pub mod ast {
                     })
                     .into(),
                     str_lit_expr(id).as_arg(),
-                    obj_lit_expr(vec![]).as_arg(),
+                    deps_ident.clone().as_arg(),
                 ],
             )
         }
@@ -822,19 +837,37 @@ pub mod ast {
                 })
                 .collect::<Vec<PropOrSpread>>();
 
-            Expr::Arrow(ArrowExpr {
-                body: Box::new(BlockStmtOrExpr::Expr(Box::new(Expr::Paren(ParenExpr {
+            arrow_with_paren_expr(
+                ObjectLit {
+                    props: dep_obj_props,
+                    ..Default::default()
+                }
+                .into(),
+            )
+        }
+
+        pub fn to_deps_decl(dep_ident: &Ident, dep_getters: Vec<(String, Expr)>) -> Decl {
+            Decl::Var(Box::new(VarDecl {
+                decls: vec![VarDeclarator {
+                    name: Pat::Ident(dep_ident.clone().into()),
+                    definite: false,
+                    init: Some(Box::new(Expr::Object(ObjectLit {
+                        props: dep_getters
+                            .iter()
+                            .map(|(src, expr)| {
+                                PropOrSpread::Prop(Box::new(Prop::KeyValue(KeyValueProp {
+                                    key: PropName::Str(src.clone().into()),
+                                    value: Box::new(expr.clone()),
+                                })))
+                            })
+                            .collect(),
+                        ..Default::default()
+                    }))),
                     span: DUMMY_SP,
-                    expr: Box::new(
-                        ObjectLit {
-                            props: dep_obj_props,
-                            ..Default::default()
-                        }
-                        .into(),
-                    ),
-                })))),
+                }],
+                kind: VarDeclKind::Const,
                 ..Default::default()
-            })
+            }))
         }
     }
 }

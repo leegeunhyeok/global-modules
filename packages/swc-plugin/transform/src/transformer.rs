@@ -6,8 +6,11 @@ use crate::{
     module_collector::ModuleCollector,
     phase::ModulePhase,
     utils::ast::{
-        mod_ident,
-        presets::{define_call, exports_call, require_call, to_dep_getter_expr, to_named_exps},
+        arrow_with_paren_expr, mod_ident,
+        presets::{
+            define_call, exports_call, require_call, to_dep_getter_expr, to_deps_decl,
+            to_named_exps,
+        },
         to_ns_export,
     },
 };
@@ -25,6 +28,7 @@ use tracing::debug;
 pub struct GlobalModuleTransformer {
     id: String,
     ctx_ident: Ident,
+    deps_ident: Ident,
     phase: ModulePhase,
     unresolved_ctxt: SyntaxContext,
     paths: Option<AHashMap<String, String>>,
@@ -43,6 +47,7 @@ impl GlobalModuleTransformer {
             unresolved_ctxt,
             paths,
             ctx_ident: private_ident!("__context"),
+            deps_ident: private_ident!("__deps"),
         }
     }
 }
@@ -73,8 +78,8 @@ impl VisitMut for GlobalModuleTransformer {
         let exps = collector.take_exps();
 
         let deps_count = deps.len();
-        let mut require_calls = Vec::with_capacity(deps_count);
         let mut dep_getters = Vec::with_capacity(deps_count);
+        let mut require_calls = Vec::with_capacity(deps_count);
 
         let mut imports: Vec<ModuleItem> = Vec::new();
         let mut exports = Vec::new();
@@ -91,8 +96,8 @@ impl VisitMut for GlobalModuleTransformer {
                 .map(|member| member.into_obj_pat_prop())
                 .collect::<Vec<ObjectPatProp>>();
 
-            dep_getters.push(to_dep_getter_expr(&require_props));
-            stmts.push(
+            dep_getters.push((dep.src.clone(), to_dep_getter_expr(&require_props)));
+            require_calls.push(
                 VarDecl {
                     kind: VarDeclKind::Const,
                     decls: vec![VarDeclarator {
@@ -112,6 +117,7 @@ impl VisitMut for GlobalModuleTransformer {
             );
         });
 
+        stmts.extend(require_calls);
         exps.into_iter().for_each(|exp| match exp {
             Exp::Default(exp) => {
                 let (declarators, props, specs) = exp.into_exp_ast();
@@ -122,9 +128,14 @@ impl VisitMut for GlobalModuleTransformer {
             }
             Exp::ReExport(re_export) => {
                 let mod_ident = mod_ident();
+                let src = match &re_export {
+                    ReExportExp::All(src) => src.clone(),
+                    ReExportExp::Named(src, _) => src.clone(),
+                };
 
                 imports.push(re_export.to_import_stmt(mod_ident.clone()));
-                require_calls.push(re_export.to_require_stmt(&self.ctx_ident, mod_ident.clone()));
+                dep_getters.push((src, arrow_with_paren_expr(mod_ident.clone().into())));
+                stmts.push(re_export.to_require_stmt(&self.ctx_ident, mod_ident.clone()));
                 exp_props.extend(re_export.to_exp_props(&self.ctx_ident, mod_ident));
             }
         });
@@ -143,14 +154,16 @@ impl VisitMut for GlobalModuleTransformer {
             exports.push(to_named_exps(exp_specs));
         }
 
-        let mut body = [
-            imports,
-            vec![define_call(&self.id, &self.ctx_ident, stmts)
+        let mut body = Vec::with_capacity(imports.len() + exports.len() + 3);
+
+        body.extend(imports);
+        body.push(to_deps_decl(&self.deps_ident, dep_getters).into());
+        body.push(
+            define_call(&self.id, &self.ctx_ident, &self.deps_ident, stmts)
                 .into_stmt()
-                .into()],
-            exports,
-        ]
-        .concat();
+                .into(),
+        );
+        body.extend(exports);
 
         if exp_decls.len() > 0 {
             // var __x, __x1, ...;
