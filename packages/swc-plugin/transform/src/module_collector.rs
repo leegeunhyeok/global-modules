@@ -4,7 +4,7 @@ use swc_core::{
     common::{collections::AHashMap, Spanned, SyntaxContext, DUMMY_SP},
     ecma::{
         ast::*,
-        utils::ExprFactory,
+        utils::{private_ident, ExprFactory},
         visit::{noop_visit_mut_type, VisitMut, VisitMutWith},
     },
     plugin::errors::HANDLER,
@@ -20,21 +20,35 @@ use crate::{
     },
 };
 
-pub struct ModuleCollector {
+pub struct ModuleCollector<'a> {
     pub deps: Vec<Dep>,
     pub exps: Vec<Exp>,
     unresolved_ctxt: SyntaxContext,
-    paths: Option<AHashMap<String, String>>,
+    ctx_ident: &'a Ident,
+    paths: &'a Option<AHashMap<String, String>>,
 }
 
-impl ModuleCollector {
-    pub fn new(unresolved_ctxt: SyntaxContext, paths: Option<AHashMap<String, String>>) -> Self {
+impl<'a> ModuleCollector<'a> {
+    pub fn new(
+        unresolved_ctxt: SyntaxContext,
+        ctx_ident: &'a Ident,
+        paths: &'a Option<AHashMap<String, String>>,
+    ) -> Self {
         Self {
             deps: vec![],
             exps: vec![],
+            ctx_ident,
             unresolved_ctxt,
             paths,
         }
+    }
+
+    pub fn take_deps(&mut self) -> Vec<Dep> {
+        mem::take(&mut self.deps)
+    }
+
+    pub fn take_exps(&mut self) -> Vec<Exp> {
+        mem::take(&mut self.exps)
     }
 
     fn as_require_expr(&mut self, call_expr: &mut CallExpr) -> Option<Expr> {
@@ -55,7 +69,9 @@ impl ModuleCollector {
             {
                 match &*args[0].expr {
                     // The first argument of the `require` function must be a string type only.
-                    Expr::Lit(lit) => Some(require_call(get_src_lit(lit, &self.paths))),
+                    Expr::Lit(lit) => {
+                        Some(require_call(self.ctx_ident, get_src_lit(lit, &self.paths)))
+                    }
                     _ => HANDLER.with(|handler| {
                         handler
                             .struct_span_err(callee_expr.span(), "invalid require call")
@@ -81,7 +97,7 @@ impl ModuleCollector {
                 match &*src.expr {
                     // The first argument of the `import` function must be a string type only.
                     Expr::Lit(lit) => {
-                        return Some(require_call(get_src_lit(lit, &self.paths)));
+                        return Some(require_call(self.ctx_ident, get_src_lit(lit, &self.paths)));
                     }
                     _ => HANDLER.with(|handler| {
                         handler
@@ -97,7 +113,7 @@ impl ModuleCollector {
     }
 }
 
-impl VisitMut for ModuleCollector {
+impl<'a> VisitMut for ModuleCollector<'a> {
     noop_visit_mut_type!();
 
     fn visit_mut_module_items(&mut self, items: &mut Vec<ModuleItem>) {

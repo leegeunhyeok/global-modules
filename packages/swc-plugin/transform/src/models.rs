@@ -1,3 +1,5 @@
+use std::default;
+
 use presets::{decl_require_deps_stmt, require_call};
 use swc_core::{
     atoms::Atom,
@@ -279,10 +281,11 @@ impl NamedReExportRef {
         }
     }
 
-    pub fn get_binding_ast(&self, phase: ModulePhase) -> ModuleItem {
+    pub fn get_binding_ast(&self, ctx_ident: &Ident, phase: ModulePhase) -> ModuleItem {
         match phase {
             ModulePhase::Bundle => import_star(self.mod_ident.clone(), self.src.clone()),
             ModulePhase::Runtime => decl_require_deps_stmt(
+                ctx_ident,
                 self.id
                     .as_ref()
                     .map(|id| Lit::from(id.as_str()))
@@ -328,10 +331,11 @@ impl ReExportAllRef {
         }
     }
 
-    pub fn get_binding_ast(&self, phase: ModulePhase) -> ModuleItem {
+    pub fn get_binding_ast(&self, ctx_ident: &Ident, phase: ModulePhase) -> ModuleItem {
         match phase {
             ModulePhase::Bundle => import_star(self.mod_ident.clone(), self.src.clone()),
             ModulePhase::Runtime => decl_require_deps_stmt(
+                ctx_ident,
                 self.id
                     .as_ref()
                     .map(|id| Lit::from(id.as_str()))
@@ -448,7 +452,11 @@ pub mod helpers {
     /// var { core } = global.__modules.require('@app/core');
     /// var ns = global.__modules.require('@app/internal');
     /// ```
-    pub fn to_require_dep_stmts(src: Lit, module_ref: &ModuleRef) -> Vec<ModuleItem> {
+    pub fn to_require_dep_stmts(
+        ctx_ident: &Ident,
+        src: Lit,
+        module_ref: &ModuleRef,
+    ) -> Vec<ModuleItem> {
         let mut requires = Vec::new();
         let mut dep_props = Vec::new();
 
@@ -479,14 +487,15 @@ pub mod helpers {
                         span: DUMMY_SP,
                     }));
                 }
-                ImportMember::Namespace(ImportNamespaceMember { ident, .. }) => {
-                    requires.push(decl_require_deps_stmt(src.clone(), ident.clone().into()).into())
-                }
+                ImportMember::Namespace(ImportNamespaceMember { ident, .. }) => requires.push(
+                    decl_require_deps_stmt(ctx_ident, src.clone(), ident.clone().into()).into(),
+                ),
             });
 
         if dep_props.len() > 0 {
             requires.push(
                 decl_require_deps_stmt(
+                    ctx_ident,
                     src.clone(),
                     ObjectPat {
                         props: dep_props,
@@ -505,6 +514,7 @@ pub mod helpers {
 
     /// Converts dependencies into `Vec<ModuleItem>`.
     pub fn deps_to_ast(
+        ctx_ident: &Ident,
         deps: &OHashMap<Atom, ModuleRef>,
         deps_id: &Option<AHashMap<String, String>>,
     ) -> Vec<ModuleItem> {
@@ -527,6 +537,7 @@ pub mod helpers {
             };
 
             items.extend(to_require_dep_stmts(
+                ctx_ident,
                 src_lit.unwrap_or(Lit::from(src.as_str())),
                 value,
             ));
@@ -558,7 +569,7 @@ pub mod helpers {
                 })
             }
             ExportRef::NamedReExport(named_re_export) => {
-                export_bindings.push(named_re_export.get_binding_ast(phase));
+                export_bindings.push(named_re_export.get_binding_ast(ctx_ident, phase));
                 export_props.extend(named_re_export.members.into_iter().map(
                     |member| match member {
                         ExportMember::Actual(actual_export) => {
@@ -574,7 +585,7 @@ pub mod helpers {
                 let ns_call =
                     to_ns_export(ctx_ident.clone(), re_export_all.mod_ident.clone().into());
 
-                export_bindings.push(re_export_all.get_binding_ast(phase));
+                export_bindings.push(re_export_all.get_binding_ast(ctx_ident, phase));
 
                 match re_export_all.name {
                     Some(exp_name) => export_props.push(kv_prop(exp_name, ns_call)),
@@ -584,11 +595,7 @@ pub mod helpers {
         });
 
         let export_call = if export_props.len() > 0 {
-            Some(
-                exports_call(ctx_ident.clone(), obj_lit_expr(export_props))
-                    .into_stmt()
-                    .into(),
-            )
+            Some(exports_call(ctx_ident, export_props).into_stmt().into())
         } else {
             None
         };
@@ -650,6 +657,28 @@ impl DepMember {
             ident,
             name,
             is_ns: true,
+        }
+    }
+
+    pub fn into_obj_pat_prop(self) -> ObjectPatProp {
+        let name = self.name;
+
+        match name {
+            Some(name) => ObjectPatProp::KeyValue(KeyValuePatProp {
+                key: PropName::Ident(IdentName {
+                    sym: name.into(),
+                    span: DUMMY_SP,
+                }),
+                value: Box::new(Pat::Ident(self.ident.into())),
+            }),
+            None => ObjectPatProp::Assign(AssignPatProp {
+                key: BindingIdent {
+                    id: self.ident,
+                    type_ann: None,
+                },
+                value: None,
+                span: DUMMY_SP,
+            }),
         }
     }
 }
@@ -735,8 +764,8 @@ impl ReExportExp {
         .into()
     }
 
-    pub fn to_require_stmt(&self, mod_ident: Ident) -> Stmt {
-        require_call(self.get_src().clone().into())
+    pub fn to_require_stmt(&self, ctx_ident: &Ident, mod_ident: Ident) -> Stmt {
+        require_call(ctx_ident, self.get_src().clone().into())
             .into_var_decl(
                 VarDeclKind::Const,
                 Pat::Ident(BindingIdent {
@@ -747,10 +776,10 @@ impl ReExportExp {
             .into()
     }
 
-    pub fn to_exp_props(&self, ctx_ident: Ident, mod_ident: Ident) -> Vec<PropOrSpread> {
+    pub fn to_exp_props(&self, ctx_ident: &Ident, mod_ident: Ident) -> Vec<PropOrSpread> {
         match self {
             ReExportExp::All(_) => vec![PropOrSpread::Spread(SpreadElement {
-                expr: Box::new(to_ns_export(ctx_ident.into(), mod_ident.into()).into()),
+                expr: Box::new(to_ns_export(ctx_ident.clone().into(), mod_ident.into()).into()),
                 ..Default::default()
             })],
             ReExportExp::Named(_, members) => members

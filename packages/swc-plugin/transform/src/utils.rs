@@ -716,10 +716,11 @@ pub mod ast {
         ///
         /// ```js
         /// // Code
-        /// global.__modules.require(src);
+        /// ctx_ident.require(src);
         /// ```
-        pub fn require_call(src: Lit) -> Expr {
-            member_expr!(Default::default(), DUMMY_SP, global.__modules)
+        pub fn require_call(ctx_ident: &Ident, src: Lit) -> Expr {
+            ctx_ident
+                .clone()
                 .make_member(quote_ident!("require"))
                 .as_call(DUMMY_SP, vec![src.as_arg()])
         }
@@ -732,10 +733,14 @@ pub mod ast {
         ///   return expr;
         /// });
         /// ```
-        pub fn exports_call(ctx_ident: Ident, expr: Expr) -> Expr {
+        pub fn exports_call(ctx_ident: &Ident, exp_props: Vec<PropOrSpread>) -> Expr {
             ctx_ident
+                .clone()
                 .make_member(quote_ident!("exports"))
-                .as_call(DUMMY_SP, vec![expr.into_lazy_fn(vec![]).as_arg()])
+                .as_call(
+                    DUMMY_SP,
+                    vec![obj_lit_expr(exp_props).into_lazy_fn(vec![]).as_arg()],
+                )
         }
 
         /// Returns the global module's require call and dependency declaration statement.
@@ -743,10 +748,10 @@ pub mod ast {
         /// ```js
         /// // Code
         /// // Pat: { foo, bar, default: baz }
-        /// var { foo, bar, default: baz } = global.__modules.require('./foo');
+        /// var { foo, bar, default: baz } = __ctx.require('./foo');
         /// ```
-        pub fn decl_require_deps_stmt(src: Lit, pat: Pat) -> Stmt {
-            require_call(src)
+        pub fn decl_require_deps_stmt(ctx_ident: &Ident, src: Lit, pat: Pat) -> Stmt {
+            require_call(ctx_ident, src)
                 .into_var_decl(VarDeclKind::Var, pat)
                 .into()
         }
@@ -759,14 +764,14 @@ pub mod ast {
         ///   // <stmts>
         /// }, id, {});
         /// ```
-        pub fn define_call(id: &String, ctx_ident: Ident, stmts: Vec<Stmt>) -> Expr {
+        pub fn define_call(id: &String, ctx_ident: &Ident, stmts: Vec<Stmt>) -> Expr {
             member_expr!(Default::default(), DUMMY_SP, global.__modules.define).as_call(
                 DUMMY_SP,
                 vec![
                     Expr::Fn(FnExpr {
                         ident: None,
                         function: Box::new(Function {
-                            params: vec![ctx_ident.into()],
+                            params: vec![ctx_ident.clone().into()],
                             body: Some(BlockStmt {
                                 stmts,
                                 ..Default::default()
@@ -780,6 +785,56 @@ pub mod ast {
                     obj_lit_expr(vec![]).as_arg(),
                 ],
             )
+        }
+
+        pub fn to_named_exps(exp_specs: Vec<ExportSpecifier>) -> ModuleItem {
+            ModuleItem::ModuleDecl(ModuleDecl::ExportNamed(NamedExport {
+                specifiers: exp_specs,
+                type_only: false,
+                src: None,
+                with: None,
+                span: DUMMY_SP,
+            }))
+        }
+
+        pub fn to_dep_getter_expr(dep_member_props: &Vec<ObjectPatProp>) -> Expr {
+            let dep_obj_props = dep_member_props
+                .iter()
+                .filter_map(|prop| match prop {
+                    ObjectPatProp::KeyValue(KeyValuePatProp { key, value })
+                        if matches!(&**value, Pat::Ident(_)) =>
+                    {
+                        match &**value {
+                            Pat::Ident(ident) => Some(
+                                Prop::KeyValue(KeyValueProp {
+                                    key: key.clone(),
+                                    value: Box::new(Expr::Ident(ident.clone().into())),
+                                })
+                                .into(),
+                            ),
+                            _ => None,
+                        }
+                    }
+                    ObjectPatProp::Assign(AssignPatProp {
+                        key, value: None, ..
+                    }) => Some(Prop::Shorthand(key.clone().into()).into()),
+                    _ => None,
+                })
+                .collect::<Vec<PropOrSpread>>();
+
+            Expr::Arrow(ArrowExpr {
+                body: Box::new(BlockStmtOrExpr::Expr(Box::new(Expr::Paren(ParenExpr {
+                    span: DUMMY_SP,
+                    expr: Box::new(
+                        ObjectLit {
+                            props: dep_obj_props,
+                            ..Default::default()
+                        }
+                        .into(),
+                    ),
+                })))),
+                ..Default::default()
+            })
         }
     }
 }
