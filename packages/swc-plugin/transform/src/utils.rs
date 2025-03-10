@@ -168,6 +168,20 @@ pub mod ast {
             .as_call(DUMMY_SP, vec![expr.into()])
     }
 
+    pub fn is_require_call(unresolved_ctxt: SyntaxContext, call_expr: &CallExpr) -> bool {
+        if call_expr.args.len() != 1 {
+            return false;
+        }
+
+        match &call_expr.callee {
+            Callee::Expr(callee_expr) => {
+                callee_expr.is_ident_ref_to("require")
+                    && callee_expr.as_ident().unwrap().ctxt == unresolved_ctxt
+            }
+            _ => false,
+        }
+    }
+
     /// Checks whether it is a member expression of a CommonJS module.
     ///
     /// ```js

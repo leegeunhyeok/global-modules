@@ -16,7 +16,7 @@ use crate::{
     utils::ast::{
         export_all_as_exp, export_decl_as_exp, export_default_decl_as_exp,
         export_default_expr_as_exp, export_named_as_exp, get_src_lit, import_as_dep,
-        is_cjs_exports_member, is_cjs_module_member,
+        is_cjs_exports_member, is_cjs_module_member, is_require_call,
         presets::{assign_cjs_module_expr, module_exports_member, require_call},
         to_cjs_export_name,
     },
@@ -57,67 +57,6 @@ impl<'a> ModuleCollector<'a> {
 
     pub fn take_bindings(&mut self) -> Vec<ExpBinding> {
         mem::take(&mut self.exp_bindings)
-    }
-
-    fn as_require_expr(&mut self, call_expr: &mut CallExpr) -> Option<Expr> {
-        match call_expr {
-            // Replace CommonJS requires.
-            //
-            // ```js
-            // require('...');
-            // ```
-            CallExpr {
-                args,
-                callee: Callee::Expr(callee_expr),
-                type_args: None,
-                ..
-            } if args.len() == 1
-                && callee_expr.is_ident_ref_to("require")
-                && callee_expr.as_ident().unwrap().ctxt == self.unresolved_ctxt =>
-            {
-                match &*args[0].expr {
-                    // The first argument of the `require` function must be a string type only.
-                    Expr::Lit(lit) => {
-                        Some(require_call(self.ctx_ident, get_src_lit(lit, &self.paths)))
-                    }
-                    _ => HANDLER.with(|handler| {
-                        handler
-                            .struct_span_err(callee_expr.span(), "invalid require call")
-                            .emit();
-
-                        None
-                    }),
-                }
-            }
-            // Replace ESModule's dynamic imports.
-            //
-            // ```js
-            // import('...', {});
-            // ```
-            CallExpr {
-                args,
-                callee: Callee::Import(_),
-                type_args: None,
-                ..
-            } => {
-                let src = args.get(0).expect("invalid dynamic import call");
-
-                match &*src.expr {
-                    // The first argument of the `import` function must be a string type only.
-                    Expr::Lit(lit) => {
-                        return Some(require_call(self.ctx_ident, get_src_lit(lit, &self.paths)));
-                    }
-                    _ => HANDLER.with(|handler| {
-                        handler
-                            .struct_span_err(call_expr.span(), "unsupported dynamic import usage")
-                            .emit();
-
-                        None
-                    }),
-                }
-            }
-            _ => return None,
-        }
     }
 }
 
@@ -246,11 +185,44 @@ impl<'a> VisitMut for ModuleCollector<'a> {
 
     fn visit_mut_expr(&mut self, expr: &mut Expr) {
         match expr {
-            Expr::Call(call_expr) => {
-                if let Some(require_call_expr) = self.as_require_expr(call_expr) {
-                    *expr = require_call_expr;
-                } else {
-                    call_expr.visit_mut_children_with(self);
+            Expr::Call(
+                call_expr @ CallExpr {
+                    callee: Callee::Expr(_),
+                    type_args: None,
+                    ..
+                },
+            ) if is_require_call(self.unresolved_ctxt, call_expr) => {
+                match &*call_expr.args[0].expr {
+                    // The first argument of the `require` function must be a string type only.
+                    Expr::Lit(lit) => {
+                        *expr = require_call(self.ctx_ident, get_src_lit(lit, &self.paths));
+                    }
+                    _ => HANDLER.with(|handler| {
+                        handler
+                            .struct_span_err(call_expr.span(), "invalid require call")
+                            .emit();
+                    }),
+                }
+            }
+            Expr::Call(
+                call_expr @ CallExpr {
+                    callee: Callee::Import(_),
+                    type_args: None,
+                    ..
+                },
+            ) => {
+                let maybe_src = call_expr.args.get(0).expect("invalid dynamic import call");
+
+                match &*maybe_src.expr {
+                    // The first argument of the `import` function must be a string type only.
+                    Expr::Lit(lit) => {
+                        *expr = require_call(self.ctx_ident, get_src_lit(lit, &self.paths));
+                    }
+                    _ => HANDLER.with(|handler| {
+                        handler
+                            .struct_span_err(call_expr.span(), "unsupported dynamic import usage")
+                            .emit();
+                    }),
                 }
             }
             Expr::Assign(
