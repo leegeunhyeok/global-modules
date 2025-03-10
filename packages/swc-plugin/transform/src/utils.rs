@@ -1,7 +1,6 @@
 pub mod ast {
     use crate::models::*;
     use core::panic;
-    use std::mem;
     use swc_core::{
         atoms::Atom,
         common::{collections::AHashMap, Spanned, SyntaxContext, DUMMY_SP},
@@ -11,7 +10,6 @@ pub mod ast {
         },
         plugin::errors::HANDLER,
     };
-    use tracing::{debug, field::debug};
 
     pub fn anonymous_default_binding_ident() -> Ident {
         private_ident!("__default")
@@ -45,6 +43,13 @@ pub mod ast {
         })))
     }
 
+    pub fn obj_kv_prop(key: Ident, value: Ident) -> ObjectPatProp {
+        ObjectPatProp::KeyValue(KeyValuePatProp {
+            key: PropName::Ident(key.into()),
+            value: Box::new(Pat::Ident(value.into())),
+        })
+    }
+
     /// Returns a spread property ast.
     ///
     /// ```js
@@ -58,6 +63,14 @@ pub mod ast {
         PropOrSpread::Spread(SpreadElement {
             expr: expr.into(),
             ..Default::default()
+        })
+    }
+
+    pub fn obj_assign_prop(key: Ident) -> ObjectPatProp {
+        ObjectPatProp::Assign(AssignPatProp {
+            key: key.into(),
+            value: None,
+            span: DUMMY_SP,
         })
     }
 
@@ -95,12 +108,12 @@ pub mod ast {
     /// // Code
     /// 'foo'
     /// ```
-    pub fn str_lit_expr(str: &String) -> Expr {
-        Expr::Lit(Lit::Str(Str {
+    pub fn str_lit(str: &String) -> Lit {
+        Lit::Str(Str {
             value: str.as_str().into(),
             raw: None,
             span: DUMMY_SP,
-        }))
+        })
     }
 
     /// Returns a variable declarator bound to the provided identifier.
@@ -112,11 +125,11 @@ pub mod ast {
     /// // VarDeclarators
     /// // => foo, bar, baz
     /// ```
-    pub fn var_declarator(ident: Ident) -> VarDeclarator {
+    pub fn var_declarator(name: Pat, init: Option<Box<Expr>>) -> VarDeclarator {
         VarDeclarator {
-            name: Pat::Ident(ident.into()),
+            name,
+            init,
             definite: false,
-            init: None,
             span: DUMMY_SP,
         }
     }
@@ -382,70 +395,6 @@ pub mod ast {
         }
     }
 
-    /// Extracts and returns the its ident from the declarations.
-    ///
-    /// ```js
-    /// export default function foo() {};
-    /// export default class Bar {}
-    /// ```
-    pub fn get_ident_from_default_decl(default_decl: &DefaultDecl) -> Option<Ident> {
-        match default_decl {
-            DefaultDecl::Class(ClassExpr { ident, .. }) => ident.clone().into(),
-            DefaultDecl::Fn(FnExpr { ident, .. }) => ident.clone().into(),
-            _ => None,
-        }
-    }
-
-    /// Extracts and returns the expression from the default declaration statement.
-    ///
-    /// ```js
-    /// // Input
-    /// export default function foo() {};
-    /// export default class Bar {};
-    ///
-    /// // Code
-    /// function foo() {};
-    /// class Bar {};
-    /// ```
-    pub fn get_expr_from_default_decl(default_decl: &DefaultDecl) -> Expr {
-        match default_decl {
-            DefaultDecl::Class(class_expr) => Expr::Class(class_expr.clone()),
-            DefaultDecl::Fn(fn_expr) => Expr::Fn(fn_expr.clone()),
-            _ => HANDLER.with(|handler| {
-                handler
-                    .struct_span_err(
-                        default_decl.span(),
-                        "unsupported default export declaration",
-                    )
-                    .emit();
-
-                Expr::default()
-            }),
-        }
-    }
-
-    /// Converts `DefaultDecl` into `Decl`.
-    pub fn into_decl(default_decl: &DefaultDecl) -> Decl {
-        match default_decl {
-            DefaultDecl::Class(class_expr) => class_expr.clone().as_class_decl().unwrap().into(),
-            DefaultDecl::Fn(fn_expr) => fn_expr.clone().as_fn_decl().unwrap().into(),
-            _ => HANDLER.with(|handler| {
-                handler
-                    .struct_span_err(
-                        default_decl.span(),
-                        "unsupported default export declaration",
-                    )
-                    .emit();
-
-                Decl::Var(Box::new(VarDecl {
-                    kind: VarDeclKind::Var,
-                    decls: vec![],
-                    ..Default::default()
-                }))
-            }),
-        }
-    }
-
     pub fn get_src_lit(lit: &Lit, deps_id: &Option<AHashMap<String, String>>) -> Lit {
         match lit {
             Lit::Str(str_lit) => {
@@ -488,7 +437,6 @@ pub mod ast {
         }
     }
 
-    // NEW API
     pub fn import_as_dep(import_decl: &ImportDecl) -> Option<Dep> {
         let src = import_decl.src.value.to_string();
         let members = import_decl
@@ -611,12 +559,10 @@ pub mod ast {
         )]));
 
         let default_var_decl = VarDecl {
-            decls: vec![VarDeclarator {
-                name: binding_ident.clone().into(),
-                init: Some(Box::new(*export_default_expr.expr.clone())),
-                definite: false,
-                span: DUMMY_SP,
-            }],
+            decls: vec![var_declarator(
+                binding_ident.clone().into(),
+                Some(Box::new(*export_default_expr.expr.clone())),
+            )],
             kind: VarDeclKind::Const,
             ..Default::default()
         };
@@ -736,43 +682,7 @@ pub mod ast {
             },
         };
 
-        use super::{arrow_with_paren_expr, obj_lit_expr, str_lit_expr, ExpMember};
-
-        /// Returns the global module context declaration statement (register).
-        ///
-        /// ```js
-        /// var ctx_ident = global.__modules.register(id);
-        /// ```
-        pub fn global_module_register_stmt(id: &String, ctx_ident: &Ident) -> Stmt {
-            member_expr!(Default::default(), DUMMY_SP, global.__modules.register)
-                .as_call(DUMMY_SP, vec![str_lit_expr(id).as_arg()])
-                .into_var_decl(VarDeclKind::Var, ctx_ident.clone().into())
-                .into()
-        }
-
-        /// Returns the global module context declaration statement (getContext).
-        ///
-        /// ```js
-        /// var ctx_ident = global.__modules.getContext(id);
-        /// ```
-        pub fn global_module_get_ctx_stmt(id: &String, ctx_ident: &Ident) -> Stmt {
-            member_expr!(Default::default(), DUMMY_SP, global.__modules.getContext)
-                .as_call(DUMMY_SP, vec![str_lit_expr(id).as_arg()])
-                .into_var_decl(VarDeclKind::Var, ctx_ident.clone().into())
-                .into()
-        }
-
-        /// Returns the global module context reset call expression.
-        ///
-        /// ```js
-        /// ctx_ident.reset();
-        /// ```
-        pub fn ctx_reset_call(ctx_ident: &Ident) -> Expr {
-            ctx_ident
-                .clone()
-                .make_member(quote_ident!("reset"))
-                .as_call(DUMMY_SP, vec![])
-        }
+        use super::{arrow_with_paren_expr, obj_lit_expr, str_lit, var_declarator};
 
         /// Returns a global module's require call expression.
         ///
@@ -805,19 +715,6 @@ pub mod ast {
                 )
         }
 
-        /// Returns the global module's require call and dependency declaration statement.
-        ///
-        /// ```js
-        /// // Code
-        /// // Pat: { foo, bar, default: baz }
-        /// var { foo, bar, default: baz } = __ctx.require('./foo');
-        /// ```
-        pub fn decl_require_deps_stmt(ctx_ident: &Ident, src: Lit, pat: Pat) -> Stmt {
-            require_call(ctx_ident, src)
-                .into_var_decl(VarDeclKind::Var, pat)
-                .into()
-        }
-
         /// TODO
         ///
         /// ```js
@@ -848,7 +745,7 @@ pub mod ast {
                         ..Default::default()
                     })
                     .into(),
-                    str_lit_expr(id).as_arg(),
+                    str_lit(id).as_arg(),
                     deps_ident.clone().as_arg(),
                 ],
             )
@@ -900,10 +797,9 @@ pub mod ast {
 
         pub fn to_deps_decl(dep_ident: &Ident, dep_getters: Vec<(String, Expr)>) -> Decl {
             Decl::Var(Box::new(VarDecl {
-                decls: vec![VarDeclarator {
-                    name: Pat::Ident(dep_ident.clone().into()),
-                    definite: false,
-                    init: Some(Box::new(Expr::Object(ObjectLit {
+                decls: vec![var_declarator(
+                    dep_ident.clone().into(),
+                    Some(Box::new(Expr::Object(ObjectLit {
                         props: dep_getters
                             .iter()
                             .map(|(src, expr)| {
@@ -915,8 +811,7 @@ pub mod ast {
                             .collect(),
                         ..Default::default()
                     }))),
-                    span: DUMMY_SP,
-                }],
+                )],
                 kind: VarDeclKind::Const,
                 ..Default::default()
             }))

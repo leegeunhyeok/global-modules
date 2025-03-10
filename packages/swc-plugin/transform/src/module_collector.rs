@@ -1,10 +1,9 @@
-use std::{collections::HashMap, mem};
+use std::mem;
 
 use swc_core::{
-    common::{collections::AHashMap, util::take::Take, Spanned, SyntaxContext, DUMMY_SP},
+    common::{collections::AHashMap, util::take::Take, Spanned, SyntaxContext},
     ecma::{
         ast::*,
-        utils::{private_ident, ExprFactory},
         visit::{noop_visit_mut_type, VisitMut, VisitMutWith},
     },
     plugin::errors::HANDLER,
@@ -14,7 +13,7 @@ use tracing::debug;
 use crate::{
     models::{Dep, Exp, ExpBinding},
     utils::ast::{
-        assign_expr, export_all_as_exp, export_decl_as_exp, export_default_decl_as_exp,
+        export_all_as_exp, export_decl_as_exp, export_default_decl_as_exp,
         export_default_expr_as_exp, export_named_as_exp, get_src_lit, import_as_dep,
         presets::require_call,
     },
@@ -123,8 +122,6 @@ impl<'a> VisitMut for ModuleCollector<'a> {
     noop_visit_mut_type!();
 
     fn visit_mut_module_items(&mut self, items: &mut Vec<ModuleItem>) {
-        debug!("items: {:?}", items);
-
         for item in items.iter_mut() {
             match item {
                 // Statements (It can include CommonJS's require call and module exports / ESModule's dynamic imports)

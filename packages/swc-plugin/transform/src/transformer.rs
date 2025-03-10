@@ -11,19 +11,17 @@ use crate::{
             define_call, exports_call, require_call, to_dep_getter_expr, to_deps_decl,
             to_named_exps,
         },
-        to_ns_export,
+        var_declarator,
     },
 };
 use swc_core::{
     common::{collections::AHashMap, SyntaxContext, DUMMY_SP},
     ecma::{
         ast::*,
-        transforms::base::quote,
-        utils::{private_ident, quote_ident, ExprFactory},
+        utils::{private_ident, ExprFactory},
         visit::{noop_visit_mut_type, VisitMut, VisitMutWith},
     },
 };
-use tracing::debug;
 
 pub struct GlobalModuleTransformer {
     id: String,
@@ -101,17 +99,15 @@ impl VisitMut for GlobalModuleTransformer {
             require_calls.push(
                 VarDecl {
                     kind: VarDeclKind::Const,
-                    decls: vec![VarDeclarator {
-                        name: Pat::Object(ObjectPat {
+                    decls: vec![var_declarator(
+                        Pat::Object(ObjectPat {
                             props: require_props,
                             optional: false,
                             type_ann: None,
                             span: DUMMY_SP,
                         }),
-                        definite: false,
-                        init: Some(Box::new(require_call(&self.ctx_ident, dep.src.into()))),
-                        span: DUMMY_SP,
-                    }],
+                        Some(Box::new(require_call(&self.ctx_ident, dep.src.into()))),
+                    )],
                     ..Default::default()
                 }
                 .into(),
