@@ -2,7 +2,7 @@ use core::panic;
 use std::mem;
 
 use crate::{
-    models::Exp,
+    models::{Dep, Exp, LazyDep},
     module_collector::ModuleCollector,
     phase::ModulePhase,
     utils::ast::{
@@ -88,30 +88,38 @@ impl VisitMut for GlobalModuleTransformer {
         let mut exp_decls: Vec<VarDeclarator> = Vec::new();
         let mut exp_specs: Vec<ExportSpecifier> = Vec::new();
 
-        deps.into_iter().for_each(|dep| {
-            let require_props = dep
-                .members
-                .into_iter()
-                .map(|member| member.into_obj_pat_prop())
-                .collect::<Vec<ObjectPatProp>>();
+        deps.into_iter().for_each(|dep| match dep {
+            Dep::Default(default_dep) => {
+                let require_props = default_dep
+                    .members
+                    .into_iter()
+                    .map(|member| member.into_obj_pat_prop())
+                    .collect::<Vec<ObjectPatProp>>();
 
-            dep_getters.push((dep.src.clone(), to_dep_getter_expr(&require_props)));
-            require_calls.push(
-                VarDecl {
-                    kind: VarDeclKind::Const,
-                    decls: vec![var_declarator(
-                        Pat::Object(ObjectPat {
-                            props: require_props,
-                            optional: false,
-                            type_ann: None,
-                            span: DUMMY_SP,
-                        }),
-                        Some(Box::new(require_call(&self.ctx_ident, dep.src.into()))),
-                    )],
-                    ..Default::default()
-                }
-                .into(),
-            );
+                dep_getters.push((default_dep.src.clone(), to_dep_getter_expr(&require_props)));
+                require_calls.push(
+                    VarDecl {
+                        kind: VarDeclKind::Const,
+                        decls: vec![var_declarator(
+                            Pat::Object(ObjectPat {
+                                props: require_props,
+                                optional: false,
+                                type_ann: None,
+                                span: DUMMY_SP,
+                            }),
+                            Some(Box::new(require_call(
+                                &self.ctx_ident,
+                                default_dep.src.into(),
+                            ))),
+                        )],
+                        ..Default::default()
+                    }
+                    .into(),
+                );
+            }
+            Dep::Lazy(LazyDep { src, expr }) => {
+                dep_getters.push((src, arrow_with_paren_expr(expr)))
+            }
         });
 
         stmts.extend(require_calls);

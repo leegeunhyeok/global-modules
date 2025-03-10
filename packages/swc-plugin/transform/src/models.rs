@@ -8,7 +8,23 @@ use crate::utils::ast::*;
 
 // Dependency of module
 #[derive(Debug)]
-pub struct Dep {
+pub enum Dep {
+    Default(DefaultDep),
+    Lazy(LazyDep),
+}
+
+impl Dep {
+    pub fn default(src: String, members: Vec<DepMember>) -> Self {
+        Dep::Default(DefaultDep { src, members })
+    }
+
+    pub fn lazy(src: String, expr: Expr) -> Self {
+        Dep::Lazy(LazyDep { src, expr })
+    }
+}
+
+#[derive(Debug)]
+pub struct DefaultDep {
     pub src: String,
     pub members: Vec<DepMember>,
 }
@@ -30,6 +46,12 @@ impl DepMember {
             None => obj_assign_prop(self.ident.into()),
         }
     }
+}
+
+#[derive(Debug)]
+pub struct LazyDep {
+    pub src: String,
+    pub expr: Expr,
 }
 
 #[derive(Debug)]

@@ -14,11 +14,7 @@ use tracing::debug;
 use crate::{
     models::{Dep, Exp, ExpBinding},
     utils::ast::{
-        export_all_as_exp, export_decl_as_exp, export_default_decl_as_exp,
-        export_default_expr_as_exp, export_named_as_exp, get_src_lit, import_as_dep,
-        is_cjs_exports_member, is_cjs_module_member, is_require_call,
-        presets::{assign_cjs_module_expr, module_exports_member, require_call},
-        to_cjs_export_name,
+        export_all_as_exp, export_decl_as_exp, export_default_decl_as_exp, export_default_expr_as_exp, export_named_as_exp, get_src, import_as_dep, is_cjs_exports_member, is_cjs_module_member, is_require_call, presets::{assign_cjs_module_expr, module_exports_member, require_call}, to_cjs_export_name
     },
 };
 
@@ -185,6 +181,7 @@ impl<'a> VisitMut for ModuleCollector<'a> {
 
     fn visit_mut_expr(&mut self, expr: &mut Expr) {
         match expr {
+            // CommonJS's require call
             Expr::Call(
                 call_expr @ CallExpr {
                     callee: Callee::Expr(_),
@@ -195,7 +192,9 @@ impl<'a> VisitMut for ModuleCollector<'a> {
                 match &*call_expr.args[0].expr {
                     // The first argument of the `require` function must be a string type only.
                     Expr::Lit(lit) => {
-                        *expr = require_call(self.ctx_ident, get_src_lit(lit, &self.paths));
+                        let src = get_src(lit, &self.paths);
+                        self.deps.push(Dep::lazy(src.clone(), expr.clone()));
+                        *expr = require_call(self.ctx_ident, Lit::Str(src.into()));
                     }
                     _ => HANDLER.with(|handler| {
                         handler
@@ -204,6 +203,7 @@ impl<'a> VisitMut for ModuleCollector<'a> {
                     }),
                 }
             }
+            // ESModule's dynamic import call
             Expr::Call(
                 call_expr @ CallExpr {
                     callee: Callee::Import(_),
@@ -216,7 +216,9 @@ impl<'a> VisitMut for ModuleCollector<'a> {
                 match &*maybe_src.expr {
                     // The first argument of the `import` function must be a string type only.
                     Expr::Lit(lit) => {
-                        *expr = require_call(self.ctx_ident, get_src_lit(lit, &self.paths));
+                        let src = get_src(lit, &self.paths);
+                        self.deps.push(Dep::lazy(src.clone(), expr.clone()));
+                        *expr = require_call(self.ctx_ident, Lit::Str(src.into()));
                     }
                     _ => HANDLER.with(|handler| {
                         handler

@@ -282,23 +282,21 @@ pub mod ast {
         }
     }
 
-    pub fn get_src_lit(lit: &Lit, deps_id: &Option<AHashMap<String, String>>) -> Lit {
+    pub fn get_src(lit: &Lit, deps_id: &Option<AHashMap<String, String>>) -> String {
         match lit {
-            Lit::Str(str_lit) => {
-                let src = str_lit.value.clone();
-                let src_lit = deps_id
+            Lit::Str(Str { value, .. }) => {
+                let src = value.to_string();
+                deps_id
                     .as_ref()
                     .and_then(|deps_id| deps_id.get(src.as_str()))
-                    .map_or_else(|| str_lit.clone().into(), |id| Lit::from(id.as_str()));
-
-                src_lit
+                    .map_or_else(|| src, |id| id.as_str().to_string())
             }
             _ => HANDLER.with(|handler| {
                 handler
                     .struct_span_err(lit.span(), "unsupported literal type")
                     .emit();
 
-                Lit::Null(Null { span: DUMMY_SP })
+                panic!()
             }),
         }
     }
@@ -355,7 +353,7 @@ pub mod ast {
         if members.is_empty() {
             None
         } else {
-            Dep { src, members }.into()
+            Some(Dep::default(src, members))
         }
     }
 
