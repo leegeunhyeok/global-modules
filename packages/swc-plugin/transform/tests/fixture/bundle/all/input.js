@@ -21,16 +21,14 @@ Object.assign(module.exports, {
 export const variable = 1;
 export class Class {}
 export function func() {}
-// export default function () {
-//   require('./cjs-2');
+export default function () {
+  require('./cjs-2');
 
-//   const inner = async () => {
-//     await import('./esm');
-//     require('./cjs-3');
-//   };
-// }
-
-export default 1;
+  const inner = async () => {
+    await import('./esm');
+    require('./cjs-3');
+  };
+}
 
 export { value as value2 };
 export { foo, foo2 };

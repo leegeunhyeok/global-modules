@@ -4,6 +4,7 @@ use swc_core::{
     common::{collections::AHashMap, util::take::Take, Spanned, SyntaxContext},
     ecma::{
         ast::*,
+        utils::ExprFactory,
         visit::{noop_visit_mut_type, VisitMut, VisitMutWith},
     },
     plugin::errors::HANDLER,
@@ -15,7 +16,9 @@ use crate::{
     utils::ast::{
         export_all_as_exp, export_decl_as_exp, export_default_decl_as_exp,
         export_default_expr_as_exp, export_named_as_exp, get_src_lit, import_as_dep,
-        presets::require_call,
+        is_cjs_exports_member, is_cjs_module_member,
+        presets::{assign_cjs_module_expr, module_exports_member, require_call},
+        to_cjs_export_name,
     },
 };
 
@@ -244,27 +247,62 @@ impl<'a> VisitMut for ModuleCollector<'a> {
     fn visit_mut_expr(&mut self, expr: &mut Expr) {
         match expr {
             Expr::Call(call_expr) => {
-                if let Some(new_expr) = self.as_require_expr(call_expr) {
-                    *expr = new_expr;
+                if let Some(require_call_expr) = self.as_require_expr(call_expr) {
+                    *expr = require_call_expr;
                 } else {
                     call_expr.visit_mut_children_with(self);
                 }
             }
-            // TODO
-            // Expr::Assign(assign_expr) => {
-            //     if let Some(new_expr) = self.delegate.assign_expr(assign_expr) {
-            //         *expr = new_expr;
-            //     } else {
-            //         assign_expr.visit_mut_children_with(self);
-            //     }
-            // }
-            // Expr::Member(member_expr) => {
-            //     if let Some(new_expr) = self.delegate.member_expr(member_expr) {
-            //         *expr = new_expr;
-            //     } else {
-            //         member_expr.visit_mut_children_with(self);
-            //     }
-            // }
+            Expr::Assign(
+                assign_expr @ AssignExpr {
+                    op: AssignOp::Assign,
+                    ..
+                },
+            ) => match &assign_expr.left {
+                AssignTarget::Simple(SimpleAssignTarget::Member(member_expr)) => {
+                    let module_assign_expr =
+                        if is_cjs_exports_member(self.unresolved_ctxt, member_expr) {
+                            Some(assign_cjs_module_expr(
+                                self.ctx_ident,
+                                *assign_expr.right.clone(),
+                                to_cjs_export_name(&member_expr.prop).into(),
+                            ))
+                        } else if is_cjs_module_member(self.unresolved_ctxt, member_expr) {
+                            Some(assign_cjs_module_expr(
+                                self.ctx_ident,
+                                *assign_expr.right.clone(),
+                                None,
+                            ))
+                        } else if let Some(leading_member) = member_expr.obj.as_member() {
+                            // `module.exports.foo = ...;`
+                            // `module.exports['foo'] = ...;`
+                            if is_cjs_module_member(self.unresolved_ctxt, leading_member) {
+                                Some(assign_cjs_module_expr(
+                                    self.ctx_ident,
+                                    *assign_expr.right.clone(),
+                                    to_cjs_export_name(&member_expr.prop).into(),
+                                ))
+                            } else {
+                                None
+                            }
+                        } else {
+                            None
+                        };
+
+                    if let Some(module_assign_expr) = module_assign_expr {
+                        assign_expr.right = Box::new(module_assign_expr);
+                    } else {
+                        expr.visit_mut_children_with(self);
+                    }
+                }
+                _ => expr.visit_mut_children_with(self),
+            },
+            Expr::Member(member_expr)
+                if is_cjs_module_member(self.unresolved_ctxt, member_expr) =>
+            {
+                *expr = module_exports_member(self.ctx_ident)
+                    .make_assign_to(AssignOp::Assign, member_expr.clone().into());
+            }
             _ => expr.visit_mut_children_with(self),
         }
     }

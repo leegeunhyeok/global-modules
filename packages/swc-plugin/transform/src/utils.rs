@@ -174,7 +174,7 @@ pub mod ast {
     /// // Code
     /// exports.foo; // true;
     /// ```
-    pub fn is_cjs_exports_member(member_expr: &MemberExpr, unresolved_ctxt: SyntaxContext) -> bool {
+    pub fn is_cjs_exports_member(unresolved_ctxt: SyntaxContext, member_expr: &MemberExpr) -> bool {
         member_expr.obj.is_ident_ref_to("exports")
             && member_expr.obj.as_ident().unwrap().ctxt == unresolved_ctxt
     }
@@ -185,7 +185,7 @@ pub mod ast {
     /// // Code
     /// module.exports; // true;
     /// ```
-    pub fn is_cjs_module_member(member_expr: &MemberExpr, unresolved_ctxt: SyntaxContext) -> bool {
+    pub fn is_cjs_module_member(unresolved_ctxt: SyntaxContext, member_expr: &MemberExpr) -> bool {
         member_expr.obj.is_ident_ref_to("module")
             && member_expr.obj.as_ident().unwrap().ctxt == unresolved_ctxt
             && member_expr.prop.is_ident_with("exports")
@@ -212,133 +212,6 @@ pub mod ast {
             })))),
             ..Default::default()
         })
-    }
-
-    /// Returns a new expression that binds the CommonJS module export statement.
-    ///
-    ///
-    pub fn get_new_assign_expr(
-        ctx_ident: Ident,
-        expr: Expr,
-        export_name: Option<Expr>,
-    ) -> Option<Expr> {
-        // `ctx_ident.module;`
-        let ctx_module = ctx_ident
-            .make_member(IdentName {
-                sym: "module".into(),
-                ..Default::default()
-            })
-            .make_member(IdentName {
-                sym: "exports".into(),
-                ..Default::default()
-            });
-
-        assign_member(
-            match export_name {
-                Some(name_expr) => match name_expr {
-                    Expr::Lit(Lit::Str(str_lit)) => ctx_module.make_member(IdentName {
-                        sym: str_lit.value.clone().into(),
-                        ..Default::default()
-                    }),
-                    _ => ctx_module.computed_member(name_expr.clone()),
-                },
-                None => ctx_module,
-            },
-            expr,
-        )
-        .into()
-    }
-
-    /// Returns a new expression that binds the CommonJS module export statement.
-    ///
-    /// ```js
-    /// // Input
-    /// module.exports = orig_expr;
-    ///
-    /// // ModulePhase::Bundle
-    /// ctx_ident.module.exports = module.exports = orig_expr;
-    /// ctx_ident.module.exports.foo = module.exports.foo = orig_expr;
-    ///
-    /// // ModulePhase::Runtime
-    /// ctx_ident.module.exports = orig_expr;
-    /// ctx_ident.module.exports.foo = orig_expr;
-    /// ```
-    pub fn to_binding_module_from_assign_expr(
-        ctx_ident: Ident,
-        assign_expr: &AssignExpr,
-        unresolved_ctxt: SyntaxContext,
-    ) -> Option<Expr> {
-        if assign_expr.op != AssignOp::Assign {
-            return None;
-        }
-
-        match &assign_expr.left {
-            AssignTarget::Simple(SimpleAssignTarget::Member(member_expr)) => {
-                if is_cjs_exports_member(member_expr, unresolved_ctxt) {
-                    // `exports.foo = ...;`
-                    // `exports['foo'] = ...;`
-                    get_new_assign_expr(
-                        ctx_ident,
-                        *assign_expr.right.clone(),
-                        get_expr_from_member_prop(&member_expr.prop).into(),
-                    )
-                } else if is_cjs_module_member(member_expr, unresolved_ctxt) {
-                    // `module.exports = ...;`
-                    get_new_assign_expr(ctx_ident, *assign_expr.right.clone(), None)
-                } else if let Some(leading_member) = member_expr.obj.as_member() {
-                    if is_cjs_module_member(leading_member, unresolved_ctxt) {
-                        // `module.exports.foo = ...;`
-                        // `module.exports['foo'] = ...;`
-                        get_new_assign_expr(
-                            ctx_ident,
-                            *assign_expr.right.clone(),
-                            get_expr_from_member_prop(&member_expr.prop).into(),
-                        )
-                    } else {
-                        None
-                    }
-                } else {
-                    None
-                }
-            }
-            _ => None,
-        }
-    }
-
-    /// Returns a new expression that binds the CommonJS module export statement.
-    ///
-    /// ```js
-    /// // Input
-    /// module.exports; // Object.assign(module.exports, { ... });
-    ///
-    /// // ModulePhase::Bundle
-    /// ctx_ident.module.exports = module.exports;
-    /// ctx_ident.module.exports.foo = module.exports.foo;
-    ///
-    /// // ModulePhase::Runtime
-    /// ctx_ident.module.exports;
-    /// ctx_ident.module.exports.foo;
-    /// ```
-    pub fn to_binding_module_from_member_expr(
-        ctx_ident: Ident,
-        member_expr: &MemberExpr,
-        unresolved_ctxt: SyntaxContext,
-    ) -> Option<MemberExpr> {
-        if is_cjs_module_member(member_expr, unresolved_ctxt) == false {
-            return None;
-        }
-
-        let ctx_module_member = ctx_ident
-            .make_member(IdentName {
-                sym: "module".into(),
-                ..Default::default()
-            })
-            .make_member(IdentName {
-                sym: "exports".into(),
-                ..Default::default()
-            });
-
-        ctx_module_member.into()
     }
 
     /// Extracts and returns the its ident from the declarations.
@@ -416,7 +289,7 @@ pub mod ast {
         }
     }
 
-    pub fn get_expr_from_member_prop(prop: &MemberProp) -> Expr {
+    pub fn to_cjs_export_name(prop: &MemberProp) -> Expr {
         match prop {
             MemberProp::Ident(ident) => Expr::Lit(Lit::Str(Str {
                 value: ident.sym.as_str().into(),
@@ -682,7 +555,7 @@ pub mod ast {
             },
         };
 
-        use super::{arrow_with_paren_expr, obj_lit_expr, str_lit, var_declarator};
+        use super::{arrow_with_paren_expr, assign_member, obj_lit_expr, str_lit, var_declarator};
 
         /// Returns a global module's require call expression.
         ///
@@ -713,6 +586,45 @@ pub mod ast {
                     DUMMY_SP,
                     vec![obj_lit_expr(exp_props).into_lazy_fn(vec![]).as_arg()],
                 )
+        }
+
+        pub fn module_exports_member(ctx_ident: &Ident) -> MemberExpr {
+            ctx_ident
+                .clone()
+                .make_member(IdentName {
+                    sym: "module".into(),
+                    ..Default::default()
+                })
+                .make_member(IdentName {
+                    sym: "exports".into(),
+                    ..Default::default()
+                })
+        }
+
+        /// Returns a new expression that binds the CommonJS module export statement.
+        ///
+        ///
+        pub fn assign_cjs_module_expr(
+            ctx_ident: &Ident,
+            expr: Expr,
+            export_name: Option<Expr>,
+        ) -> Expr {
+            let ctx_module_member = module_exports_member(ctx_ident);
+
+            assign_member(
+                match export_name {
+                    Some(name_expr) => match name_expr {
+                        Expr::Lit(Lit::Str(str_lit)) => ctx_module_member.make_member(IdentName {
+                            sym: str_lit.value.clone().into(),
+                            ..Default::default()
+                        }),
+                        _ => ctx_module_member.computed_member(name_expr.clone()),
+                    },
+                    None => ctx_module_member,
+                },
+                expr,
+            )
+            .into()
         }
 
         /// TODO
