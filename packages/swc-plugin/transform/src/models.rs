@@ -721,19 +721,22 @@ impl DefaultExp {
 }
 
 #[derive(Debug)]
-pub struct ReExportAllExp(pub String, pub Option<Ident>);
+pub struct ReExportAllExp {
+    pub src: String,
+    pub alias: Option<Ident>,
+}
 
 impl ReExportAllExp {
     pub fn default(src: String) -> Self {
-        Self(src, None)
+        Self { src, alias: None }
     }
 
     pub fn alias(src: String, ident: Ident) -> Self {
-        Self(src, Some(ident))
+        Self { src, alias: Some(ident) }
     }
 
-    fn get_src(&self) -> String {
-        self.0.clone()
+    pub fn get_src(&self) -> String {
+        self.src.clone()
     }
 
     pub fn to_import_stmt(&self, mod_ident: Ident) -> ModuleItem {
@@ -763,7 +766,7 @@ impl ReExportAllExp {
             .into()
     }
     pub fn to_exp_props(&self, ctx_ident: &Ident, mod_ident: Ident) -> PropOrSpread {
-        match &self.1 {
+        match &self.alias {
             Some(ident) => PropOrSpread::Prop(Box::new(Prop::KeyValue(KeyValueProp {
                 key: PropName::Ident(IdentName {
                     sym: ident.sym.clone(),

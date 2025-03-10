@@ -138,8 +138,7 @@ impl VisitMut for GlobalModuleTransformer {
             }
             Exp::ReExportAll(re_export_all) => {
                 let mod_ident = mod_ident();
-                let src = re_export_all.0.clone();
-                let ident = re_export_all.1.clone();
+                let src = re_export_all.get_src();
 
                 imports.push(re_export_all.to_import_stmt(mod_ident.clone()));
                 dep_getters.push((src, arrow_with_paren_expr(mod_ident.clone().into())));
