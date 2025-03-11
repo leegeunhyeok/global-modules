@@ -740,6 +740,13 @@ pub mod ast {
                 ..Default::default()
             }))
         }
+
+        pub fn to_empty_deps_decl(dep_ident: &Ident) -> Decl {
+            Decl::Var(Box::new(VarDecl {
+                decls: vec![var_declarator(dep_ident.clone().into(), None)],
+                ..Default::default()
+            }))
+        }
     }
 }
 

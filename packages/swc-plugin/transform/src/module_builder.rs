@@ -1,13 +1,14 @@
-use std::iter;
+use std::{iter, option::IntoIter};
 
 use crate::{
     models::{Dep, Exp, LazyDep},
     module_collector::ModuleCollector,
+    phase::ModulePhase,
     utils::ast::{
         arrow_with_paren_expr, mod_ident,
         presets::{
             define_call, exports_call, require_call, to_dep_getter_expr, to_deps_decl,
-            to_named_exps,
+            to_empty_deps_decl, to_named_exps,
         },
         var_declarator,
     },
@@ -160,39 +161,104 @@ impl ModuleBuilder {
         .into_stmt();
     }
 
-    pub fn build(self, id: &String) -> Vec<ModuleItem> {
-        let has_exp_specs = self.exp_specs.len() > 0;
-        let has_exp_decls = self.exp_decls.len() > 0;
-        let stmts = self
-            .stmts
-            .into_iter()
-            .chain(vec![
-                self.binding_stmt,
-                exports_call(&self.ctx_ident, self.exp_props).into_stmt(),
-            ])
-            .collect();
+    pub fn build_module(self, id: &String, phase: ModulePhase) -> Vec<ModuleItem> {
+        let deps_decl = if phase == ModulePhase::Bundle {
+            to_deps_decl(&self.deps_ident, self.dep_getters)
+        } else {
+            to_empty_deps_decl(&self.deps_ident)
+        };
 
-        self.imports
+        let stmts = vec![
+            deps_decl.into(),
+            define_call(
+                id,
+                &self.ctx_ident,
+                &self.deps_ident,
+                self.stmts
+                    .into_iter()
+                    .chain(vec![
+                        self.binding_stmt,
+                        exports_call(&self.ctx_ident, self.exp_props).into_stmt(),
+                    ])
+                    .collect(),
+            )
+            .into_stmt(),
+        ];
+
+        let imports = if phase == ModulePhase::Bundle {
+            self.imports
+        } else {
+            vec![]
+        };
+
+        let exports = if phase == ModulePhase::Bundle {
+            self.exports
+                .into_iter()
+                .chain(
+                    if self.exp_specs.len() > 0 {
+                        Some(to_named_exps(self.exp_specs))
+                    } else {
+                        None
+                    }
+                    .into_iter(),
+                )
+                .collect()
+        } else {
+            vec![]
+        };
+
+        imports
             .into_iter()
-            .chain(iter::once(
-                to_deps_decl(&self.deps_ident, self.dep_getters).into(),
-            ))
-            .chain(iter::once(
-                define_call(id, &self.ctx_ident, &self.deps_ident, stmts)
-                    .into_stmt()
-                    .into(),
-            ))
-            .chain(self.exports)
+            .chain(stmts.into_iter().map(|stmt| stmt.into()))
+            .chain(exports)
             .chain(
-                if has_exp_specs {
-                    Some(to_named_exps(self.exp_specs))
+                if self.exp_decls.len() > 0 {
+                    Some(
+                        Decl::Var(Box::new(VarDecl {
+                            decls: self.exp_decls,
+                            kind: VarDeclKind::Var,
+                            declare: false,
+                            span: DUMMY_SP,
+                            ctxt: SyntaxContext::default(),
+                        }))
+                        .into(),
+                    )
                 } else {
                     None
                 }
                 .into_iter(),
             )
+            .collect()
+    }
+
+    pub fn build_script(self, id: &String, phase: ModulePhase) -> Vec<Stmt> {
+        let deps_decl = if phase == ModulePhase::Bundle {
+            to_deps_decl(&self.deps_ident, self.dep_getters)
+        } else {
+            to_empty_deps_decl(&self.deps_ident)
+        };
+
+        let stmts = vec![
+            deps_decl.into(),
+            define_call(
+                id,
+                &self.ctx_ident,
+                &self.deps_ident,
+                self.stmts
+                    .into_iter()
+                    .chain(vec![
+                        self.binding_stmt,
+                        exports_call(&self.ctx_ident, self.exp_props).into_stmt(),
+                    ])
+                    .collect(),
+            )
+            .into_stmt(),
+        ];
+
+        stmts
+            .into_iter()
             .chain(
-                if has_exp_decls {
+                if self.exp_decls.len() > 0 {
                     Some(
                         Decl::Var(Box::new(VarDecl {
                             decls: self.exp_decls,

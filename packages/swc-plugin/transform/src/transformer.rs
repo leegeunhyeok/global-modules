@@ -47,7 +47,7 @@ impl VisitMut for GlobalModuleTransformer {
         module.visit_mut_children_with(&mut collector);
         builder.collect_module_body(&mut collector, mem::take(&mut module.body));
 
-        module.body = builder.build(&self.id);
+        module.body = builder.build_module(&self.id, self.phase);
     }
 
     fn visit_mut_script(&mut self, script: &mut Script) {
@@ -57,14 +57,6 @@ impl VisitMut for GlobalModuleTransformer {
         script.visit_mut_children_with(&mut collector);
         builder.collect_script_body(&mut collector, mem::take(&mut script.body));
 
-        // TODO: build_script
-        script.body = builder
-            .build(&self.id)
-            .into_iter()
-            .filter_map(|item| match item {
-                ModuleItem::Stmt(stmt) => Some(stmt),
-                _ => None,
-            })
-            .collect();
+        script.body = builder.build_script(&self.id, self.phase);
     }
 }
