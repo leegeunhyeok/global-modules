@@ -70,14 +70,53 @@ impl VisitMut for GlobalModuleTransformer {
             ModuleCollector::new(self.unresolved_ctxt, &self.ctx_ident, &self.paths);
 
         module.visit_mut_children_with(&mut collector);
-        let mut builder = ModuleBuilder::new();
 
         let body = mem::take(&mut module.body);
-        let deps = collector.take_deps();
-        let exps = collector.take_exps();
-        let bindings = collector.take_bindings();
+        let mut builder = ModuleBuilder::new(&mut collector);
 
-        deps.into_iter().for_each(|dep| match dep {
+        body.into_iter().for_each(|item| match item {
+            ModuleItem::ModuleDecl(ModuleDecl::Import(_)) => builder.imports.push(item),
+            ModuleItem::ModuleDecl(_) => builder.exports.push(item),
+            ModuleItem::Stmt(stmt) if !stmt.is_empty() => builder.stmts.push(stmt),
+            _ => {}
+        });
+
+        module.body = builder.build(&self.id, &self.ctx_ident, &self.deps_ident);
+    }
+}
+
+struct ModuleBuilder {
+    pub imports: Vec<ModuleItem>,
+    pub exports: Vec<ModuleItem>,
+    pub stmts: Vec<Stmt>,
+    pub binding_stmt: Stmt,
+    pub dep_getters: Vec<(String, Expr)>,
+    pub exp_props: Vec<PropOrSpread>,
+    pub exp_decls: Vec<VarDeclarator>,
+    pub exp_specs: Vec<ExportSpecifier>,
+}
+
+impl ModuleBuilder {
+    pub fn new(collector: &mut ModuleCollector) -> Self {
+        let mut builder = Self {
+            imports: Vec::new(),
+            exports: Vec::new(),
+            stmts: Vec::new(),
+            binding_stmt: Stmt::default(),
+            dep_getters: Vec::new(),
+            exp_props: Vec::new(),
+            exp_decls: Vec::new(),
+            exp_specs: Vec::new(),
+        };
+
+        builder.collect_deps(collector);
+        builder.collect_exps(collector);
+        builder.collect_bindings(collector);
+        builder
+    }
+
+    fn collect_deps(&mut self, collector: &mut ModuleCollector) {
+        collector.take_deps().into_iter().for_each(|dep| match dep {
             Dep::Default(default_dep) => {
                 let require_props = default_dep
                     .members
@@ -85,11 +124,10 @@ impl VisitMut for GlobalModuleTransformer {
                     .map(|member| member.into_obj_pat_prop())
                     .collect::<Vec<ObjectPatProp>>();
 
-                builder
-                    .dep_getters
+                self.dep_getters
                     .push((default_dep.src.clone(), to_dep_getter_expr(&require_props)));
 
-                builder.stmts.push(
+                self.stmts.push(
                     VarDecl {
                         kind: VarDeclKind::Const,
                         decls: vec![var_declarator(
@@ -100,7 +138,7 @@ impl VisitMut for GlobalModuleTransformer {
                                 span: DUMMY_SP,
                             }),
                             Some(Box::new(require_call(
-                                &self.ctx_ident,
+                                collector.ctx_ident,
                                 default_dep.src.into(),
                             ))),
                         )],
@@ -110,89 +148,61 @@ impl VisitMut for GlobalModuleTransformer {
                 )
             }
             Dep::Lazy(LazyDep { src, expr }) => {
-                builder.dep_getters.push((src, arrow_with_paren_expr(expr)))
+                self.dep_getters.push((src, arrow_with_paren_expr(expr)))
             }
         });
+    }
 
-        exps.into_iter().for_each(|exp| match exp {
+    fn collect_exps(&mut self, collector: &mut ModuleCollector) {
+        collector.take_exps().into_iter().for_each(|exp| match exp {
             Exp::Default(exp) => {
                 let (decls, props, specs) = exp.into_asts();
 
-                builder.exp_decls.extend(decls);
-                builder.exp_props.extend(props);
-                builder.exp_specs.extend(specs);
+                self.exp_decls.extend(decls);
+                self.exp_props.extend(props);
+                self.exp_specs.extend(specs);
             }
             Exp::ReExportNamed(re_export_named) => {
                 let mod_ident = mod_ident();
                 let src = re_export_named.src.clone();
                 let imp_stmt = re_export_named.to_import_stmt(mod_ident.clone());
                 let getter = (src, arrow_with_paren_expr(mod_ident.clone().into()));
-                let req_stmt = re_export_named.to_require_stmt(&self.ctx_ident, mod_ident.clone());
+                let req_stmt =
+                    re_export_named.to_require_stmt(collector.ctx_ident, mod_ident.clone());
                 let exp_prop = re_export_named.to_exp_props(mod_ident);
 
-                builder.imports.push(imp_stmt);
-                builder.dep_getters.push(getter);
-                builder.stmts.push(req_stmt);
-                builder.exp_props.extend(exp_prop);
+                self.imports.push(imp_stmt);
+                self.dep_getters.push(getter);
+                self.stmts.push(req_stmt);
+                self.exp_props.extend(exp_prop);
             }
             Exp::ReExportAll(re_export_all) => {
                 let mod_ident = mod_ident();
                 let src = re_export_all.get_src();
                 let imp_stmt = re_export_all.to_import_stmt(mod_ident.clone());
                 let getter = (src, arrow_with_paren_expr(mod_ident.clone().into()));
-                let req_stmt = re_export_all.to_require_stmt(&self.ctx_ident, mod_ident.clone());
-                let exp_prop = re_export_all.to_exp_props(&self.ctx_ident, mod_ident);
+                let req_stmt =
+                    re_export_all.to_require_stmt(collector.ctx_ident, mod_ident.clone());
+                let exp_prop = re_export_all.to_exp_props(collector.ctx_ident, mod_ident);
 
-                builder.imports.push(imp_stmt);
-                builder.dep_getters.push(getter);
-                builder.stmts.push(req_stmt);
-                builder.exp_props.push(exp_prop);
+                self.imports.push(imp_stmt);
+                self.dep_getters.push(getter);
+                self.stmts.push(req_stmt);
+                self.exp_props.push(exp_prop);
             }
         });
-
-        body.into_iter().for_each(|item| match item {
-            ModuleItem::ModuleDecl(ModuleDecl::Import(_)) => builder.imports.push(item),
-            ModuleItem::ModuleDecl(_) => builder.exports.push(item),
-            ModuleItem::Stmt(stmt) if !stmt.is_empty() => builder.stmts.push(stmt),
-            _ => {}
-        });
-
-        builder.stmts.push(
-            Expr::Seq(SeqExpr {
-                exprs: bindings
-                    .into_iter()
-                    .map(|binding| Box::new(binding.to_assign_expr()))
-                    .collect::<Vec<Box<Expr>>>(),
-                ..Default::default()
-            })
-            .into_stmt(),
-        );
-
-        module.body = builder.build(&self.id, &self.ctx_ident, &self.deps_ident);
     }
-}
 
-struct ModuleBuilder {
-    pub imports: Vec<ModuleItem>,
-    pub exports: Vec<ModuleItem>,
-    pub stmts: Vec<Stmt>,
-    pub exp_props: Vec<PropOrSpread>,
-    pub exp_decls: Vec<VarDeclarator>,
-    pub exp_specs: Vec<ExportSpecifier>,
-    pub dep_getters: Vec<(String, Expr)>,
-}
-
-impl ModuleBuilder {
-    pub fn new() -> Self {
-        Self {
-            imports: Vec::new(),
-            exports: Vec::new(),
-            stmts: Vec::new(),
-            exp_props: Vec::new(),
-            exp_decls: Vec::new(),
-            exp_specs: Vec::new(),
-            dep_getters: Vec::new(),
-        }
+    fn collect_bindings(&mut self, collector: &mut ModuleCollector) {
+        self.binding_stmt = Expr::Seq(SeqExpr {
+            exprs: collector
+                .take_bindings()
+                .into_iter()
+                .map(|binding| Box::new(binding.to_assign_expr()))
+                .collect::<Vec<Box<Expr>>>(),
+            ..Default::default()
+        })
+        .into_stmt();
     }
 
     pub fn build(self, id: &String, ctx_ident: &Ident, deps_ident: &Ident) -> Vec<ModuleItem> {
@@ -201,9 +211,10 @@ impl ModuleBuilder {
         let stmts = self
             .stmts
             .into_iter()
-            .chain(iter::once(
+            .chain(vec![
+                self.binding_stmt,
                 exports_call(ctx_ident, self.exp_props).into_stmt(),
-            ))
+            ])
             .collect();
 
         self.imports

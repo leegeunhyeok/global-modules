@@ -22,8 +22,8 @@ pub struct ModuleCollector<'a> {
     pub deps: Vec<Dep>,
     pub exps: Vec<Exp>,
     pub exp_bindings: Vec<ExpBinding>,
+    pub ctx_ident: &'a Ident,
     unresolved_ctxt: SyntaxContext,
-    ctx_ident: &'a Ident,
     paths: &'a Option<AHashMap<String, String>>,
 }
 
