@@ -23,6 +23,7 @@ pub fn global_modules(
 
 mod models;
 mod module_collector;
+mod module_builder;
 mod phase;
 mod transformer;
 mod utils;
