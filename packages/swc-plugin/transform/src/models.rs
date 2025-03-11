@@ -71,7 +71,7 @@ impl DefaultExp {
         Self { members }
     }
 
-    pub fn into_exp_ast(self) -> (Vec<VarDeclarator>, Vec<PropOrSpread>, Vec<ExportSpecifier>) {
+    pub fn into_asts(self) -> (Vec<VarDeclarator>, Vec<PropOrSpread>, Vec<ExportSpecifier>) {
         let len = self.members.len();
         let mut declarators = Vec::with_capacity(len);
         let mut props = Vec::with_capacity(len);
@@ -122,7 +122,7 @@ impl ReExportAllExp {
     }
 
     pub fn to_require_stmt(&self, ctx_ident: &Ident, mod_ident: Ident) -> Stmt {
-        require_call(ctx_ident, self.get_src().clone().into())
+        require_call(ctx_ident, self.get_src().into())
             .into_var_decl(VarDeclKind::Const, mod_ident.into())
             .into()
     }
@@ -161,7 +161,7 @@ impl ReExportNamedExp {
     }
 
     pub fn to_require_stmt(&self, ctx_ident: &Ident, mod_ident: Ident) -> Stmt {
-        require_call(ctx_ident, self.get_src().clone().into())
+        require_call(ctx_ident, self.get_src().into())
             .into_var_decl(VarDeclKind::Const, mod_ident.into())
             .into()
     }
