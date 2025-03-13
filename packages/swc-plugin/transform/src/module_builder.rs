@@ -9,17 +9,14 @@ use crate::{
 };
 use swc_core::{
     common::{collections::AHashMap, SyntaxContext, DUMMY_SP},
-    ecma::{
-        ast::*,
-        utils::{private_ident, ExprFactory},
-    },
+    ecma::{ast::*, utils::ExprFactory},
 };
 
-pub struct ModuleBuilder {
+pub struct ModuleBuilder<'a> {
     /// Context identifier
-    ctx_ident: Ident,
+    ctx_ident: &'a Ident,
     /// Dependencies identifier
-    deps_ident: Ident,
+    deps_ident: &'a Ident,
     /// Imports statements
     imports: Vec<ModuleItem>,
     /// Exports statements
@@ -83,11 +80,11 @@ pub struct ModuleBuilder {
     pub exp_specs: Vec<ExportSpecifier>,
 }
 
-impl ModuleBuilder {
-    pub fn new() -> Self {
+impl<'a> ModuleBuilder<'a> {
+    pub fn new(ctx_ident: &'a Ident, deps_ident: &'a Ident) -> Self {
         Self {
-            ctx_ident: private_ident!("__context"),
-            deps_ident: private_ident!("__deps"),
+            ctx_ident,
+            deps_ident,
             imports: Vec::new(),
             exports: Vec::new(),
             stmts: Vec::new(),
@@ -117,7 +114,7 @@ impl ModuleBuilder {
     }
 
     /// Appends a dependency property to the dependency properties map.
-    fn append_dep_getters(&mut self, src: String, getter: DepGetter) {
+    fn insert_dep_getter(&mut self, src: String, getter: DepGetter) {
         match self.dep_getters.entry(src) {
             Entry::Occupied(mut entry) => match (entry.get_mut(), getter) {
                 (DepGetter::Props(prev_props), DepGetter::Props(new_props)) => {
@@ -143,16 +140,14 @@ impl ModuleBuilder {
     fn collect_deps(&mut self, collector: &mut ModuleCollector) {
         collector.take_deps().into_iter().for_each(|dep| match dep {
             Dep::Base(base_dep) => {
+                let src = base_dep.src;
                 let require_props = base_dep
                     .members
                     .into_iter()
                     .map(|member| member.into_obj_pat_prop())
                     .collect::<Vec<ObjectPatProp>>();
 
-                self.append_dep_getters(
-                    base_dep.src.clone(),
-                    DepGetter::Props(require_props.clone()),
-                );
+                self.insert_dep_getter(src.clone(), DepGetter::Props(require_props.clone()));
                 self.stmts.push(
                     VarDecl {
                         kind: VarDeclKind::Const,
@@ -163,10 +158,7 @@ impl ModuleBuilder {
                                 type_ann: None,
                                 span: DUMMY_SP,
                             }),
-                            Some(Box::new(require_call(
-                                collector.ctx_ident,
-                                base_dep.src.into(),
-                            ))),
+                            Some(Box::new(require_call(collector.ctx_ident, src.into()))),
                         )],
                         ..Default::default()
                     }
@@ -174,7 +166,7 @@ impl ModuleBuilder {
                 )
             }
             Dep::Runtime(RuntimeDep { src, expr }) => {
-                self.append_dep_getters(src, DepGetter::Expr(arrow_with_paren_expr(expr)));
+                self.insert_dep_getter(src, DepGetter::Expr(arrow_with_paren_expr(expr)));
             }
         });
     }
@@ -192,30 +184,30 @@ impl ModuleBuilder {
             Exp::ReExportNamed(re_export_named) => {
                 let mod_ident = mod_ident();
                 let src = re_export_named.src.clone();
-                let imp_stmt = re_export_named.to_import_stmt(mod_ident.clone());
+                let imp_stmt = to_import_namespace_stmt(mod_ident.clone(), src.clone());
                 let getter_expr = arrow_with_paren_expr(mod_ident.clone().into());
                 let req_stmt =
-                    re_export_named.to_require_stmt(collector.ctx_ident, mod_ident.clone());
+                    to_require_stmt(&collector.ctx_ident, mod_ident.clone(), src.clone());
                 let exp_prop = re_export_named.to_exp_props(mod_ident);
 
                 self.imports.push(imp_stmt);
                 self.stmts.push(req_stmt);
                 self.exp_props.extend(exp_prop);
-                self.append_dep_getters(src, DepGetter::Expr(getter_expr));
+                self.insert_dep_getter(src, DepGetter::Expr(getter_expr));
             }
             Exp::ReExportAll(re_export_all) => {
                 let mod_ident = mod_ident();
-                let src = re_export_all.get_src();
-                let imp_stmt = re_export_all.to_import_stmt(mod_ident.clone());
+                let src = re_export_all.src.clone();
+                let imp_stmt = to_import_all_stmt(mod_ident.clone(), src.clone());
                 let getter_expr = arrow_with_paren_expr(mod_ident.clone().into());
                 let req_stmt =
-                    re_export_all.to_require_stmt(collector.ctx_ident, mod_ident.clone());
+                    to_require_stmt(&collector.ctx_ident, mod_ident.clone(), src.clone());
                 let exp_prop = re_export_all.to_exp_props(collector.ctx_ident, mod_ident);
 
                 self.imports.push(imp_stmt);
                 self.stmts.push(req_stmt);
                 self.exp_props.push(exp_prop);
-                self.append_dep_getters(src, DepGetter::Expr(getter_expr));
+                self.insert_dep_getter(src, DepGetter::Expr(getter_expr));
             }
         });
     }

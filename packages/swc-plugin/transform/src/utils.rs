@@ -3,7 +3,7 @@ pub mod ast {
     use core::panic;
     use swc_core::{
         atoms::Atom,
-        common::{collections::AHashMap, Spanned, SyntaxContext, DUMMY_SP},
+        common::{Spanned, SyntaxContext, DUMMY_SP},
         ecma::{
             ast::*,
             utils::{private_ident, ExprFactory},
@@ -144,6 +144,14 @@ pub mod ast {
         })
     }
 
+    /// Returns a string from the given literal.
+    pub fn lit_to_string(lit: &Lit) -> String {
+        match lit {
+            Lit::Str(Str { value, .. }) => value.to_string(),
+            _ => panic!("unsupported literal type"),
+        }
+    }
+
     /// Returns a variable declarator bound to the provided identifier.
     ///
     /// ```js
@@ -168,7 +176,7 @@ pub mod ast {
     /// // Code
     /// import * as ident from 'src';
     /// ```
-    pub fn import_star(ident: Ident, src: Atom) -> ModuleItem {
+    pub fn import_all(ident: Ident, src: Atom) -> ModuleItem {
         ModuleDecl::Import(ImportDecl {
             phase: ImportPhase::Evaluation,
             specifiers: vec![ImportSpecifier::Namespace(ImportStarAsSpecifier {
@@ -332,30 +340,33 @@ pub mod ast {
         }
     }
 
-    /// Returns a mapped source string from the given literal.
+    /// Converts to import statement
     ///
-    /// When lit argument is `Lit::Str(Str { value: 'src' })`:
-    /// - Case 1. No matches key in `deps_id`
-    ///   - Returns `"src"`
-    /// - Case 2. Matches key in `deps_id` ({ "src": "override_src" })
-    ///   - Returns `"override_src"`
-    pub fn get_src(lit: &Lit, deps_id: &Option<AHashMap<String, String>>) -> String {
-        match lit {
-            Lit::Str(Str { value, .. }) => {
-                let src = value.to_string();
-                deps_id
-                    .as_ref()
-                    .and_then(|deps_id| deps_id.get(src.as_str()))
-                    .map_or_else(|| src, |id| id.as_str().to_string())
-            }
-            _ => HANDLER.with(|handler| {
-                handler
-                    .struct_span_err(lit.span(), "unsupported literal type")
-                    .emit();
+    /// ```js
+    /// import * as mod_ident from 'src';
+    /// ```
+    pub fn to_import_all_stmt(mod_ident: Ident, src: String) -> ModuleItem {
+        import_all(mod_ident, src.into())
+    }
 
-                panic!()
-            }),
+    /// Converts to import statement
+    ///
+    /// ```js
+    /// import * as mod_ident from 'src';
+    /// ```
+    pub fn to_import_namespace_stmt(mod_ident: Ident, src: String) -> ModuleItem {
+        ImportDecl {
+            src: Box::new(src.into()),
+            specifiers: vec![ImportSpecifier::Namespace(ImportStarAsSpecifier {
+                local: mod_ident,
+                span: DUMMY_SP,
+            })],
+            phase: ImportPhase::Evaluation,
+            type_only: false,
+            with: None,
+            span: DUMMY_SP,
         }
+        .into()
     }
 
     /// Returns an expression that represents a CommonJS module export name.
@@ -731,6 +742,17 @@ pub mod presets {
             .clone()
             .make_member(quote_ident!("require"))
             .as_call(DUMMY_SP, vec![src.as_arg()])
+    }
+
+    /// Converts to require statement
+    ///
+    /// ```js
+    /// const mod_ident = ctx_ident.require('src');
+    /// ```
+    pub fn to_require_stmt(ctx_ident: &Ident, mod_ident: Ident, src: String) -> Stmt {
+        require_call(ctx_ident, src.into())
+            .into_var_decl(VarDeclKind::Const, mod_ident.into())
+            .into()
     }
 
     /// Returns a global module's exports call expression.

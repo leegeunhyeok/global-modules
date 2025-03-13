@@ -12,8 +12,7 @@ use swc_core::{
 
 use crate::{
     models::{Dep, Exp, ExpBinding},
-    utils::ast::*,
-    utils::presets::*,
+    utils::{ast::*, presets::*},
 };
 
 pub struct ModuleCollector<'a> {
@@ -25,25 +24,18 @@ pub struct ModuleCollector<'a> {
     pub exp_bindings: Vec<ExpBinding>,
     /// Context identifier
     pub ctx_ident: &'a Ident,
-    /// Paths
-    pub paths: &'a Option<AHashMap<String, String>>,
     /// Unresolved context
     pub unresolved_ctxt: SyntaxContext,
 }
 
 impl<'a> ModuleCollector<'a> {
-    pub fn new(
-        ctx_ident: &'a Ident,
-        paths: &'a Option<AHashMap<String, String>>,
-        unresolved_ctxt: SyntaxContext,
-    ) -> Self {
+    pub fn new(unresolved_ctxt: SyntaxContext, ctx_ident: &'a Ident) -> Self {
         Self {
+            unresolved_ctxt,
+            ctx_ident,
             deps: Vec::new(),
             exps: Vec::new(),
             exp_bindings: Vec::new(),
-            ctx_ident,
-            paths,
-            unresolved_ctxt,
         }
     }
 
@@ -196,7 +188,7 @@ impl<'a> VisitMut for ModuleCollector<'a> {
                 match &*call_expr.args[0].expr {
                     // The first argument of the `require` function must be a string type only.
                     Expr::Lit(lit) => {
-                        let src = get_src(lit, &self.paths);
+                        let src = lit_to_string(lit);
                         self.deps.push(Dep::runtime(src.clone(), expr.clone()));
                         *expr = require_call(self.ctx_ident, Lit::Str(src.into()));
                     }
@@ -220,7 +212,7 @@ impl<'a> VisitMut for ModuleCollector<'a> {
                 match &*src.expr {
                     // The first argument of the `import` function must be a string type only.
                     Expr::Lit(lit) => {
-                        let src = get_src(lit, &self.paths);
+                        let src = lit_to_string(lit);
                         self.deps.push(Dep::runtime(src.clone(), expr.clone()));
                         *expr = require_call(self.ctx_ident, Lit::Str(src.into()));
                     }
@@ -311,9 +303,8 @@ impl<'a> VisitMut for ModuleCollector<'a> {
 }
 
 pub fn create_collector<'a>(
-    ctx_ident: &'a Ident,
-    paths: &'a Option<AHashMap<String, String>>,
     unresolved_ctxt: SyntaxContext,
+    ctx_ident: &'a Ident,
 ) -> ModuleCollector<'a> {
-    ModuleCollector::new(ctx_ident, paths, unresolved_ctxt)
+    ModuleCollector::new(unresolved_ctxt, ctx_ident)
 }

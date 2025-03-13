@@ -203,31 +203,6 @@ impl ReExportAllExp {
         }
     }
 
-    /// Gets source
-    pub fn get_src(&self) -> String {
-        self.src.clone()
-    }
-
-    /// Converts to import statement
-    ///
-    /// ```js
-    /// import * as mod_ident from 'src';
-    /// ```
-    pub fn to_import_stmt(&self, mod_ident: Ident) -> ModuleItem {
-        import_star(mod_ident, self.get_src().into())
-    }
-
-    /// Converts to require statement
-    ///
-    /// ```js
-    /// const mod_ident = ctx_ident.require('src');
-    /// ```
-    pub fn to_require_stmt(&self, ctx_ident: &Ident, mod_ident: Ident) -> Stmt {
-        require_call(ctx_ident, self.get_src().into())
-            .into_var_decl(VarDeclKind::Const, mod_ident.into())
-            .into()
-    }
-
     /// Converts to export properties
     ///
     /// ```js
@@ -258,42 +233,6 @@ pub struct ReExportNamedExp {
 }
 
 impl ReExportNamedExp {
-    /// Gets source
-    fn get_src(&self) -> String {
-        self.src.clone()
-    }
-
-    /// Converts to import statement
-    ///
-    /// ```js
-    /// import * as mod_ident from 'src';
-    /// ```
-    pub fn to_import_stmt(&self, mod_ident: Ident) -> ModuleItem {
-        ImportDecl {
-            src: Box::new(self.get_src().into()),
-            specifiers: vec![ImportSpecifier::Namespace(ImportStarAsSpecifier {
-                local: mod_ident,
-                span: DUMMY_SP,
-            })],
-            phase: ImportPhase::Evaluation,
-            type_only: false,
-            with: None,
-            span: DUMMY_SP,
-        }
-        .into()
-    }
-
-    /// Converts to require statement
-    ///
-    /// ```js
-    /// const mod_ident = ctx_ident.require('src');
-    /// ```
-    pub fn to_require_stmt(&self, ctx_ident: &Ident, mod_ident: Ident) -> Stmt {
-        require_call(ctx_ident, self.get_src().into())
-            .into_var_decl(VarDeclKind::Const, mod_ident.into())
-            .into()
-    }
-
     /// Converts to export properties
     ///
     /// ```js

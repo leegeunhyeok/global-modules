@@ -11,7 +11,6 @@ use swc_global_modules::global_modules;
 struct GlobalModuleConfig {
     id: String,
     phase: f64,
-    paths: Option<AHashMap<String, String>>,
 }
 
 #[plugin_transform]
@@ -29,7 +28,6 @@ pub fn global_modules_plugin(
     program.apply(&mut global_modules(
         config.id,
         config.phase,
-        config.paths,
         SyntaxContext::empty().apply_mark(metadata.unresolved_mark),
     ))
 }

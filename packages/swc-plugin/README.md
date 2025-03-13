@@ -19,11 +19,6 @@ await swc.transform(code, {
             id: 'module-id',
             // `Phase.Bundle` or `Phase.Runtime`.
             phase: Phase.Bundle,
-            // ID values used to replace the original sources.
-            paths: {
-              react: 'id-of-react',
-              './Container': 'id-of-container',
-            },
           },
         ],
       ],
@@ -38,7 +33,6 @@ await swc.transform(code, {
 | ------- | ------------------------ | ------------------------------------------ | -------- |
 | `id`    | `string`                 | The module's unique identifier.            | O        |
 | `phase` | `Phase`                  | The phase of the plugin.                   | O        |
-| `paths` | `Record<string, string>` | The paths to replace the original sources. |          |
 
 - `Phase.Bundle`: Register only the module's exports. At this phase, the module statements(ESM: `import`, `export` / CommonJS: `require`, `module`) are not transformed, as these are delegated to the bundler to follow its module resolution specification.
 - `Phase.Runtime`: Register the module's exports and strip module statements. At this phase, module reference statements are transformed into the global module's require call expression(`global.__modules.require()`) to reference other modules' exports at runtime.
