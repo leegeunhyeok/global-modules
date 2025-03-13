@@ -11,26 +11,42 @@ pub mod ast {
         plugin::errors::HANDLER,
     };
 
+    /// Returns a binding identifier for the default export.
+    ///
+    /// ```js
+    /// // Code
+    /// __default;
+    /// ```
     pub fn anonymous_default_binding_ident() -> Ident {
         private_ident!("__default")
     }
 
+    /// Returns a binding identifier.
+    ///
+    /// ```js
+    /// // Code
+    /// __x;
+    /// ```
     pub fn exp_binding_ident() -> Ident {
         private_ident!("__x")
     }
 
+    /// Returns a module identifier.
+    ///
+    /// ```js
+    /// // Code
+    /// __mod;
+    /// ```
     pub fn mod_ident() -> Ident {
         private_ident!("__mod")
     }
 
-    /// Returns a key-value property ast.
+    /// Returns a key-value property.
+    /// Can be used to create a assign expression.
     ///
     /// ```js
     /// // Code
-    /// { key: value }
-    ///
-    /// // Property
-    /// // => key: value
+    /// var { key: value } = value;
     /// ```
     pub fn kv_prop(key: Atom, value: Expr) -> PropOrSpread {
         PropOrSpread::Prop(Box::new(Prop::KeyValue(KeyValueProp {
@@ -43,21 +59,12 @@ pub mod ast {
         })))
     }
 
-    pub fn obj_kv_prop(key: Ident, value: Ident) -> ObjectPatProp {
-        ObjectPatProp::KeyValue(KeyValuePatProp {
-            key: PropName::Ident(key.into()),
-            value: Box::new(Pat::Ident(value.into())),
-        })
-    }
-
-    /// Returns a spread property ast.
+    /// Returns a spread property.
+    /// Can be used to create a assign expression.
     ///
     /// ```js
     /// // Code
-    /// { ...expr };
-    ///
-    /// // Property
-    /// // => ...expr
+    /// var { ...expr } = value;
     /// ```
     pub fn spread_prop(expr: Expr) -> PropOrSpread {
         PropOrSpread::Spread(SpreadElement {
@@ -66,6 +73,27 @@ pub mod ast {
         })
     }
 
+    /// Returns an object key-value property.
+    /// Can be used to create a object literal expression.
+    ///
+    /// ```js
+    /// // Code
+    /// var value = { key: value };
+    /// ```
+    pub fn obj_kv_prop(key: Ident, value: Ident) -> ObjectPatProp {
+        ObjectPatProp::KeyValue(KeyValuePatProp {
+            key: PropName::Ident(key.into()),
+            value: Box::new(Pat::Ident(value.into())),
+        })
+    }
+
+    /// Returns an object assign property.
+    /// Can be used to create a object literal expression.
+    ///
+    /// ```js
+    /// // Code
+    /// var value = { key };
+    /// ```
     pub fn obj_assign_prop(key: Ident) -> ObjectPatProp {
         ObjectPatProp::Assign(AssignPatProp {
             key: key.into(),
@@ -93,7 +121,7 @@ pub mod ast {
     ///
     /// ```js
     /// // Code
-    /// { prop: value, prop_1: value }
+    /// { prop: value }
     /// ```
     pub fn obj_lit_expr(props: Vec<PropOrSpread>) -> Expr {
         Expr::Object(ObjectLit {
@@ -119,11 +147,11 @@ pub mod ast {
     /// Returns a variable declarator bound to the provided identifier.
     ///
     /// ```js
-    /// // Code
-    /// var foo, bar, baz;
+    /// // Declarator
+    /// // name, init
     ///
-    /// // VarDeclarators
-    /// // => foo, bar, baz
+    /// // Code
+    /// var name = init;
     /// ```
     pub fn var_declarator(name: Pat, init: Option<Box<Expr>>) -> VarDeclarator {
         VarDeclarator {
@@ -155,26 +183,39 @@ pub mod ast {
         .into()
     }
 
-    /// Wraps the given expression with a `__ctx.exports.ns` function call expression.
+    /// Wraps the given expression with a `ctx_ident.exports.ns` function call expression.
     ///
     /// ```js
     /// // Code
-    /// __ctx.exports.ns(<expr>);
+    /// ctx_ident.exports.ns(expr);
     /// ```
-    pub fn to_ns_export(ident: Ident, expr: Expr) -> Expr {
-        ident
+    pub fn to_ns_export(ctx_ident: Ident, expr: Expr) -> Expr {
+        ctx_ident
             .make_member("exports".into())
             .make_member("ns".into())
             .as_call(DUMMY_SP, vec![expr.into()])
     }
 
+    /// Checks whether it is a CommonJS `require` function call.
+    ///
+    /// ```js
+    /// // Case 1.
+    /// require('src'); // true
+    ///
+    /// // Case 2.
+    /// function foo(require) {
+    ///   require('src'); // false
+    /// }
+    /// ```
     pub fn is_require_call(unresolved_ctxt: SyntaxContext, call_expr: &CallExpr) -> bool {
+        // `require` call must have exactly one argument
         if call_expr.args.len() != 1 {
             return false;
         }
 
         match &call_expr.callee {
             Callee::Expr(callee_expr) => {
+                // Check callee name is `require` and its context is unresolved (global identifier)
                 callee_expr.is_ident_ref_to("require")
                     && callee_expr.as_ident().unwrap().ctxt == unresolved_ctxt
             }
@@ -189,6 +230,7 @@ pub mod ast {
     /// exports.foo; // true;
     /// ```
     pub fn is_cjs_exports_member(unresolved_ctxt: SyntaxContext, member_expr: &MemberExpr) -> bool {
+        // Check object is `exports` and its context is unresolved (global identifier)
         member_expr.obj.is_ident_ref_to("exports")
             && member_expr.obj.as_ident().unwrap().ctxt == unresolved_ctxt
     }
@@ -200,6 +242,7 @@ pub mod ast {
     /// module.exports; // true;
     /// ```
     pub fn is_cjs_module_member(unresolved_ctxt: SyntaxContext, member_expr: &MemberExpr) -> bool {
+        // Check object is `module` and its context is unresolved (global identifier)
         member_expr.obj.is_ident_ref_to("module")
             && member_expr.obj.as_ident().unwrap().ctxt == unresolved_ctxt
             && member_expr.prop.is_ident_with("exports")
@@ -208,7 +251,7 @@ pub mod ast {
     /// Returns a new expression that assigns to a member expression.
     ///
     /// ```js
-    /// // left = right;
+    /// // Code
     /// member.prop = right_expr;
     /// ```
     pub fn assign_member(left: MemberExpr, right: Expr) -> Expr {
@@ -218,6 +261,12 @@ pub mod ast {
         )
     }
 
+    /// Returns an arrow function expression with a parenthesized expression.
+    ///
+    /// ```js
+    /// // Code
+    /// () => (expr);
+    /// ```
     pub fn arrow_with_paren_expr(expr: Expr) -> Expr {
         Expr::Arrow(ArrowExpr {
             body: Box::new(BlockStmtOrExpr::Expr(Box::new(Expr::Paren(ParenExpr {
@@ -231,9 +280,10 @@ pub mod ast {
     /// Extracts and returns the its ident from the declarations.
     ///
     /// ```js
-    /// function foo {}
-    /// class Bar {}
-    /// const baz = expr;
+    /// // Code
+    /// function foo {} // foo
+    /// class Bar {} // Bar
+    /// const baz = expr; // baz
     /// ```
     pub fn get_ident_from_decl(decl: &Decl) -> Option<Ident> {
         match decl {
@@ -282,6 +332,13 @@ pub mod ast {
         }
     }
 
+    /// Returns a mapped source string from the given literal.
+    ///
+    /// When lit argument is `Lit::Str(Str { value: 'src' })`:
+    /// - Case 1. No matches key in `deps_id`
+    ///   - Returns `"src"`
+    /// - Case 2. Matches key in `deps_id` ({ "src": "override_src" })
+    ///   - Returns `"override_src"`
     pub fn get_src(lit: &Lit, deps_id: &Option<AHashMap<String, String>>) -> String {
         match lit {
             Lit::Str(Str { value, .. }) => {
@@ -301,6 +358,12 @@ pub mod ast {
         }
     }
 
+    /// Returns an expression that represents a CommonJS module export name.
+    ///
+    /// ```js
+    /// // Given code
+    /// exports.foo; // Returns "foo"
+    /// ```
     pub fn to_cjs_export_name(prop: &MemberProp) -> Expr {
         match prop {
             MemberProp::Ident(ident) => Expr::Lit(Lit::Str(Str {
@@ -322,12 +385,18 @@ pub mod ast {
         }
     }
 
+    /// Converts an import declaration to a `Dep`.
     pub fn import_as_dep(import_decl: &ImportDecl) -> Option<Dep> {
         let src = import_decl.src.value.to_string();
         let members = import_decl
             .specifiers
             .iter()
             .filter_map(|spec| match spec {
+                // Named import
+                //
+                // ```js
+                // import { foo, bar as baz } from 'src';
+                // ```
                 ImportSpecifier::Named(ImportNamedSpecifier {
                     imported,
                     local,
@@ -340,9 +409,19 @@ pub mod ast {
                         ModuleExportName::Str(str) => str.value.to_string(),
                     }),
                 )),
+                // Default import
+                //
+                // ```js
+                // import foo from 'src';
+                // ```
                 ImportSpecifier::Default(ImportDefaultSpecifier { local, .. }) => {
                     Some(DepMember::new(local.clone(), Some("default".into())))
                 }
+                // Namespace import
+                //
+                // ```js
+                // import * as foo from 'src';
+                // ```
                 ImportSpecifier::Namespace(ImportStarAsSpecifier { local, .. }) => {
                     Some(DepMember::new(local.clone(), None))
                 }
@@ -350,25 +429,37 @@ pub mod ast {
             })
             .collect::<Vec<DepMember>>();
 
+        // If there are no members, return None
         if members.is_empty() {
             None
         } else {
-            Some(Dep::default(src, members))
+            Some(Dep::base(src, members))
         }
     }
 
+    /// Converts an export declaration to an `Exp`.
     pub fn export_decl_as_exp(export_decl: &ExportDecl) -> Option<(Exp, Stmt, ExpBinding)> {
+        // When export declaration has a own identifier.
         if let Some(decl_ident) = get_ident_from_decl(&export_decl.decl) {
             let exp_binding_ident = exp_binding_ident();
             let name = decl_ident.sym.as_str().to_string();
-            let exp = Exp::Default(DefaultExp::new(vec![ExpMember::new(
+            let exp = Exp::Base(BaseExp::new(vec![ExpMember::new(
                 exp_binding_ident.clone(),
                 name,
             )]));
 
             Some((
                 exp,
+                // Keep the original export declaration
                 Stmt::Decl(export_decl.decl.clone()),
+                // Create binding to reference the export declaration's identifier
+                //
+                // ```js
+                // // Given code
+                // export function foo() {}
+                // ```
+                // - binding_ident: __x
+                // - expr: foo (decl_ident)
                 ExpBinding {
                     binding_ident: exp_binding_ident,
                     expr: decl_ident.into(),
@@ -379,11 +470,13 @@ pub mod ast {
         }
     }
 
+    /// Converts an export default declaration to an `Exp`.
     pub fn export_default_decl_as_exp(
         export_default_decl: &ExportDefaultDecl,
     ) -> Option<(Exp, Decl, ExpBinding)> {
         if let Some(decl) = match &export_default_decl.decl {
             DefaultDecl::Class(class_expr) => {
+                // Clone class identifier if has one or create a new anonymous identifier for bind
                 let class_ident = class_expr
                     .ident
                     .clone()
@@ -396,6 +489,7 @@ pub mod ast {
                 }))
             }
             DefaultDecl::Fn(fn_expr) => {
+                // Clone function identifier if has one or create a new anonymous identifier for bind
                 let fn_ident = fn_expr
                     .ident
                     .clone()
@@ -407,25 +501,35 @@ pub mod ast {
                     declare: false,
                 }))
             }
+            // Ignore TypeScript interface declaration
             DefaultDecl::TsInterfaceDecl(_) => None,
         } {
-            let binding_ident = match &decl {
+            let decl_ident = match &decl {
                 Decl::Class(class_decl) => class_decl.ident.clone(),
                 Decl::Fn(fn_decl) => fn_decl.ident.clone(),
                 _ => unreachable!(),
             };
             let exp_binding_ident = exp_binding_ident();
-            let exp = Exp::Default(DefaultExp::new(vec![ExpMember::new(
+            let exp = Exp::Base(BaseExp::new(vec![ExpMember::new(
                 exp_binding_ident.clone(),
                 "default".into(),
             )]));
 
             Some((
                 exp,
+                // Keep the original export default declaration
                 decl,
+                // Create binding to reference the export declaration's identifier
+                //
+                // ```js
+                // // Given code
+                // export default function() {} // No identifier. It will be created an anonymous identifier for binding
+                // ```
+                // - binding_ident: __x
+                // - expr: __default (decl_ident)
                 ExpBinding {
                     binding_ident: exp_binding_ident,
-                    expr: binding_ident.into(),
+                    expr: decl_ident.into(),
                 },
             ))
         } else {
@@ -433,16 +537,26 @@ pub mod ast {
         }
     }
 
+    /// Converts an export default expression to an `Exp`.
     pub fn export_default_expr_as_exp(
         export_default_expr: &mut ExportDefaultExpr,
     ) -> (Exp, Stmt, ExpBinding) {
         let binding_ident = anonymous_default_binding_ident();
         let exp_binding_ident = exp_binding_ident();
-        let exp = Exp::Default(DefaultExp::new(vec![ExpMember::new(
+        let exp = Exp::Base(BaseExp::new(vec![ExpMember::new(
             exp_binding_ident.clone(),
             "default".into(),
         )]));
 
+        // Create a variable declaration to bind the default export expression
+        //
+        // ```js
+        // // Given code
+        // export default foo;
+        //
+        // // Returns
+        // var __default = foo; // Use `__default` as binding identifier
+        // ```
         let default_var_decl = VarDecl {
             decls: vec![var_declarator(
                 binding_ident.clone().into(),
@@ -454,7 +568,17 @@ pub mod ast {
 
         (
             exp,
+            // Replace the original export default expression with a variable declaration
             default_var_decl.into(),
+            // Create binding to reference the default export expression
+            //
+            // ```js
+            // // Given code
+            // // export default foo;
+            // var __default = foo;
+            // ```
+            // - binding_ident: __x
+            // - expr: __default (binding_ident)
             ExpBinding {
                 binding_ident: exp_binding_ident,
                 expr: binding_ident.into(),
@@ -462,9 +586,11 @@ pub mod ast {
         )
     }
 
+    /// Converts an export named declaration to an `Exp`.
     pub fn export_named_as_exp(export_named: &NamedExport) -> Option<(Exp, Vec<ExpBinding>)> {
         let mut exp_bindings: Vec<ExpBinding> = Vec::new();
 
+        // If namespace export, it always has one specifier
         if let Some(specifier) = export_named.specifiers.get(0) {
             if specifier.is_namespace() {
                 let ns = specifier.as_namespace().unwrap();
@@ -485,10 +611,16 @@ pub mod ast {
             }
         }
 
+        // Otherwise, it has multiple specifiers (Non-namespace export)
         let members = export_named
             .specifiers
             .iter()
             .filter_map(|spec| match spec {
+                // Default export
+                //
+                // ```js
+                // export value from 'src';
+                // ```
                 ExportSpecifier::Default(default) => {
                     let exp_binding_ident = exp_binding_ident();
 
@@ -499,6 +631,17 @@ pub mod ast {
 
                     Some(ExpMember::new(exp_binding_ident, "default".into()))
                 }
+                // Named export
+                //
+                // ```js
+                // // Named export
+                // export { foo, bar as baz };
+                // export { value as default };
+                //
+                // // Re-export
+                // export { foo, bar as baz } from 'src';
+                // export { value as default } from 'src';
+                // ```
                 ExportSpecifier::Named(ExportNamedSpecifier {
                     orig,
                     exported,
@@ -530,18 +673,22 @@ pub mod ast {
                         Some(ExpMember::new(exported_ident, name))
                     }
                 }
+                // Namespace export is already handled from the above condition
                 ExportSpecifier::Namespace(_) => unreachable!(),
                 _ => None,
             })
             .collect::<Vec<ExpMember>>();
 
+        // If there are no members, return None
         if members.is_empty() {
             None
         } else {
             Some((
                 if export_named.src.is_none() {
-                    Exp::Default(DefaultExp::new(members))
+                    // Plain named export
+                    Exp::Base(BaseExp::new(members))
                 } else {
+                    // Named re-export
                     Exp::ReExportNamed(ReExportNamedExp {
                         src: export_named.src.as_ref().unwrap().clone().value.to_string(),
                         members,
@@ -552,8 +699,9 @@ pub mod ast {
         }
     }
 
+    /// Converts an export all declaration to an `Exp`.
     pub fn export_all_as_exp(export_all: &ExportAll) -> Exp {
-        Exp::ReExportAll(ReExportAllExp::default(
+        Exp::ReExportAll(ReExportAllExp::new(
             export_all.src.as_ref().clone().value.to_string(),
         ))
     }
@@ -600,6 +748,12 @@ pub mod ast {
                 )
         }
 
+        /// Returns a context module's exports member expression.
+        ///
+        /// ```js
+        /// // Code
+        /// ctx_ident.module.exports;
+        /// ```
         pub fn module_exports_member(ctx_ident: &Ident) -> MemberExpr {
             ctx_ident
                 .clone()
@@ -615,16 +769,20 @@ pub mod ast {
 
         /// Returns a new expression that binds the CommonJS module export statement.
         ///
-        ///
-        pub fn assign_cjs_module_expr(
-            ctx_ident: &Ident,
-            expr: Expr,
-            export_name: Option<Expr>,
-        ) -> Expr {
+        /// ```js
+        /// // Code
+        /// ctx_ident.module.exports.name = expr;
+        /// ```
+        pub fn assign_cjs_module_expr(ctx_ident: &Ident, expr: Expr, name: Option<Expr>) -> Expr {
             let ctx_module_member = module_exports_member(ctx_ident);
 
             assign_member(
-                match export_name {
+                match name {
+                    // Named export
+                    //
+                    // ```js
+                    // module.exports.foo = expr;
+                    // ```
                     Some(name_expr) => match name_expr {
                         Expr::Lit(Lit::Str(str_lit)) => ctx_module_member.make_member(IdentName {
                             sym: str_lit.value.clone().into(),
@@ -632,6 +790,11 @@ pub mod ast {
                         }),
                         _ => ctx_module_member.computed_member(name_expr.clone()),
                     },
+                    // Main export
+                    //
+                    // ```js
+                    // module.exports = expr;
+                    // ```
                     None => ctx_module_member,
                 },
                 expr,
@@ -639,13 +802,13 @@ pub mod ast {
             .into()
         }
 
-        /// TODO
+        /// Returns a global module's define call expression.
         ///
         /// ```js
         /// // Code
-        /// global.__modules.define(function (context) {
+        /// global.__modules.define(function (ctx_ident) {
         ///   // <stmts>
-        /// }, id, {});
+        /// }, id, deps_ident);
         /// ```
         pub fn define_call(
             id: &String,
@@ -675,6 +838,12 @@ pub mod ast {
             )
         }
 
+        /// Returns a named export statement based on given export specifiers.
+        ///
+        /// ```js
+        /// // Code
+        /// export { foo, bar as baz };
+        /// ```
         pub fn to_named_exps(exp_specs: Vec<ExportSpecifier>) -> ModuleItem {
             ModuleItem::ModuleDecl(ModuleDecl::ExportNamed(NamedExport {
                 specifiers: exp_specs,
@@ -685,6 +854,15 @@ pub mod ast {
             }))
         }
 
+        /// Returns a dependency getter expression based on given dependency member properties.
+        ///
+        /// ```js
+        /// // Given code (= `{ foo, bar: baz }`)
+        /// const { foo, bar: baz } = value;
+        ///
+        /// // Returns
+        /// () => ({ foo, bar: baz });
+        /// ```
         pub fn to_dep_getter_expr(dep_member_props: &Vec<ObjectPatProp>) -> Expr {
             let dep_obj_props = dep_member_props
                 .iter()
@@ -719,6 +897,16 @@ pub mod ast {
             )
         }
 
+        /// Returns a dependency declaration based on given dependency identifier and dependency getter expressions.
+        ///
+        /// ```js
+        /// // Code
+        /// const dep_ident = {
+        ///   "src_1": () => ({ foo }),
+        ///   "src_2": () => ({ bar }),
+        ///   "src_3": () => ({ baz }),
+        /// };
+        /// ```
         pub fn to_deps_decl(dep_ident: &Ident, dep_getters: Vec<(String, Expr)>) -> Decl {
             Decl::Var(Box::new(VarDecl {
                 decls: vec![var_declarator(
@@ -741,6 +929,12 @@ pub mod ast {
             }))
         }
 
+        /// Returns an empty dependency declaration.
+        ///
+        /// ```js
+        /// // Code
+        /// const dep_ident = {};
+        /// ```
         pub fn to_empty_deps_decl(dep_ident: &Ident) -> Decl {
             Decl::Var(Box::new(VarDecl {
                 decls: vec![var_declarator(dep_ident.clone().into(), None)],

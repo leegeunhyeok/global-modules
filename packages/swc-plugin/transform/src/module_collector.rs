@@ -9,7 +9,6 @@ use swc_core::{
     },
     plugin::errors::HANDLER,
 };
-use tracing::debug;
 
 use crate::{
     models::{Dep, Exp, ExpBinding},
@@ -23,27 +22,33 @@ use crate::{
 };
 
 pub struct ModuleCollector<'a> {
+    /// Dependencies
     pub deps: Vec<Dep>,
+    /// Exports
     pub exps: Vec<Exp>,
+    /// Export bindings
     pub exp_bindings: Vec<ExpBinding>,
+    /// Context identifier
     pub ctx_ident: &'a Ident,
-    unresolved_ctxt: SyntaxContext,
-    paths: &'a Option<AHashMap<String, String>>,
+    /// Paths
+    pub paths: &'a Option<AHashMap<String, String>>,
+    /// Unresolved context
+    pub unresolved_ctxt: SyntaxContext,
 }
 
 impl<'a> ModuleCollector<'a> {
     pub fn new(
-        unresolved_ctxt: SyntaxContext,
         ctx_ident: &'a Ident,
         paths: &'a Option<AHashMap<String, String>>,
+        unresolved_ctxt: SyntaxContext,
     ) -> Self {
         Self {
-            deps: vec![],
-            exps: vec![],
-            exp_bindings: vec![],
+            deps: Vec::new(),
+            exps: Vec::new(),
+            exp_bindings: Vec::new(),
             ctx_ident,
-            unresolved_ctxt,
             paths,
+            unresolved_ctxt,
         }
     }
 
@@ -66,12 +71,12 @@ impl<'a> VisitMut for ModuleCollector<'a> {
     fn visit_mut_module_items(&mut self, items: &mut Vec<ModuleItem>) {
         for item in items.iter_mut() {
             match item {
-                // Statements (It can include CommonJS's require call and module exports / ESModule's dynamic imports)
+                // Statements
+                //
+                // It can include CommonJS's require call / module exports or ESModule's dynamic imports.
                 ModuleItem::Stmt(_) => item.visit_mut_children_with(self),
                 // Imports & Exports (ESModule)
                 ModuleItem::ModuleDecl(module_decl) => {
-                    debug!("module_decl: {:?}", module_decl);
-
                     match module_decl {
                         // Import statements.
                         //
@@ -154,7 +159,7 @@ impl<'a> VisitMut for ModuleCollector<'a> {
                         ) => {
                             if let Some((exp, exp_bindings)) = export_named_as_exp(export_named) {
                                 match exp {
-                                    Exp::Default(_) => {
+                                    Exp::Base(_) => {
                                         self.exp_bindings.extend(exp_bindings);
                                         item.take();
                                     }
@@ -197,7 +202,7 @@ impl<'a> VisitMut for ModuleCollector<'a> {
                     // The first argument of the `require` function must be a string type only.
                     Expr::Lit(lit) => {
                         let src = get_src(lit, &self.paths);
-                        self.deps.push(Dep::lazy(src.clone(), expr.clone()));
+                        self.deps.push(Dep::runtime(src.clone(), expr.clone()));
                         *expr = require_call(self.ctx_ident, Lit::Str(src.into()));
                     }
                     _ => HANDLER.with(|handler| {
@@ -215,13 +220,13 @@ impl<'a> VisitMut for ModuleCollector<'a> {
                     ..
                 },
             ) => {
-                let maybe_src = call_expr.args.get(0).expect("invalid dynamic import call");
+                let src = call_expr.args.get(0).expect("invalid dynamic import call");
 
-                match &*maybe_src.expr {
+                match &*src.expr {
                     // The first argument of the `import` function must be a string type only.
                     Expr::Lit(lit) => {
                         let src = get_src(lit, &self.paths);
-                        self.deps.push(Dep::lazy(src.clone(), expr.clone()));
+                        self.deps.push(Dep::runtime(src.clone(), expr.clone()));
                         *expr = require_call(self.ctx_ident, Lit::Str(src.into()));
                     }
                     _ => HANDLER.with(|handler| {
@@ -231,6 +236,13 @@ impl<'a> VisitMut for ModuleCollector<'a> {
                     }),
                 }
             }
+            // Case 1. CommonJS's module exports assignment
+            //
+            // ```js
+            // exports.foo = ...;
+            // module.exports = ...;
+            // module.exports.foo = ...;
+            // ```
             Expr::Assign(
                 assign_expr @ AssignExpr {
                     op: AssignOp::Assign,
@@ -240,12 +252,14 @@ impl<'a> VisitMut for ModuleCollector<'a> {
                 AssignTarget::Simple(SimpleAssignTarget::Member(member_expr)) => {
                     let module_assign_expr =
                         if is_cjs_exports_member(self.unresolved_ctxt, member_expr) {
+                            // `exports.foo = ...;`
                             Some(assign_cjs_module_expr(
                                 self.ctx_ident,
                                 *assign_expr.right.clone(),
                                 to_cjs_export_name(&member_expr.prop).into(),
                             ))
                         } else if is_cjs_module_member(self.unresolved_ctxt, member_expr) {
+                            // `module.exports = ...;`
                             Some(assign_cjs_module_expr(
                                 self.ctx_ident,
                                 *assign_expr.right.clone(),
@@ -253,7 +267,6 @@ impl<'a> VisitMut for ModuleCollector<'a> {
                             ))
                         } else if let Some(leading_member) = member_expr.obj.as_member() {
                             // `module.exports.foo = ...;`
-                            // `module.exports['foo'] = ...;`
                             if is_cjs_module_member(self.unresolved_ctxt, leading_member) {
                                 Some(assign_cjs_module_expr(
                                     self.ctx_ident,
@@ -268,6 +281,7 @@ impl<'a> VisitMut for ModuleCollector<'a> {
                         };
 
                     if let Some(module_assign_expr) = module_assign_expr {
+                        // If it is a module exports assignment, replace the right-hand side with the new expression.
                         assign_expr.right = Box::new(module_assign_expr);
                     } else {
                         expr.visit_mut_children_with(self);
@@ -275,9 +289,24 @@ impl<'a> VisitMut for ModuleCollector<'a> {
                 }
                 _ => expr.visit_mut_children_with(self),
             },
+            // Case 2. CommonJS's module exports as value
+            //
+            // ```js
+            // Object.assign(module.exports, ...);
+            // Object.assign(module.exports.foo, ...);
+            // ```
             Expr::Member(member_expr)
                 if is_cjs_module_member(self.unresolved_ctxt, member_expr) =>
             {
+                // Replace the member expression with the new expression.
+                //
+                // ```js
+                // // Given code
+                // Object.assign(module.exports, ...);
+                //
+                // // Transformed code
+                // Object.assign(ctx_ident.module.exports = module.exports, ...);
+                // ```
                 *expr = module_exports_member(self.ctx_ident)
                     .make_assign_to(AssignOp::Assign, member_expr.clone().into());
             }
@@ -287,9 +316,9 @@ impl<'a> VisitMut for ModuleCollector<'a> {
 }
 
 pub fn create_collector<'a>(
-    unresolved_ctxt: SyntaxContext,
     ctx_ident: &'a Ident,
     paths: &'a Option<AHashMap<String, String>>,
+    unresolved_ctxt: SyntaxContext,
 ) -> ModuleCollector<'a> {
-    ModuleCollector::new(unresolved_ctxt, ctx_ident, paths)
+    ModuleCollector::new(ctx_ident, paths, unresolved_ctxt)
 }

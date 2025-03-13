@@ -1,7 +1,5 @@
-use std::{iter, option::IntoIter};
-
 use crate::{
-    models::{Dep, Exp, LazyDep},
+    models::{Dep, Exp, RuntimeDep},
     module_collector::ModuleCollector,
     phase::ModulePhase,
     utils::ast::{
@@ -22,15 +20,70 @@ use swc_core::{
 };
 
 pub struct ModuleBuilder {
+    /// Context identifier
     ctx_ident: Ident,
+    /// Dependencies identifier
     deps_ident: Ident,
-    pub imports: Vec<ModuleItem>,
-    pub exports: Vec<ModuleItem>,
-    pub stmts: Vec<Stmt>,
-    pub binding_stmt: Stmt,
+    /// Imports statements
+    imports: Vec<ModuleItem>,
+    /// Exports statements
+    exports: Vec<ModuleItem>,
+    /// Statements
+    stmts: Vec<Stmt>,
+    /// Binding statement
+    ///
+    /// ```js
+    /// // Actual module statements
+    /// // <- Binding statement
+    /// // Exports call expression
+    /// ```
+    binding_stmt: Stmt,
+    /// Dependency getters
+    ///
+    /// ```js
+    /// const __deps = {
+    ///   "dep_1": () => expr,
+    ///   "dep_2": () => expr,
+    /// };
+    /// ```
     pub dep_getters: Vec<(String, Expr)>,
+    /// Export properties
+    ///
+    /// ```js
+    /// // Vector of `PropOrSpread`
+    /// // key: foo, value: __x
+    /// // key: bar, value: __x1
+    /// // key: baz, value: __x2
+    ///
+    /// // Will be transformed into
+    /// context.exports({
+    ///   "foo": __x,
+    ///   "bar": __x1,
+    ///   "baz": __x2,
+    /// });
+    /// ```
     pub exp_props: Vec<PropOrSpread>,
+    /// Export var declarators
+    ///
+    /// ```js
+    /// // Vector of `VarDeclarator`
+    /// // "foo", "bar", "baz"
+    ///
+    /// // Will be transformed into
+    /// var foo, bar, baz;
+    /// ```
     pub exp_decls: Vec<VarDeclarator>,
+    /// Export specifiers
+    ///
+    /// ```js
+    /// // Vector of `ExportSpecifier`
+    /// // name: "foo", ident: __x
+    /// // name: "bar", ident: __x1
+    /// // name: "default", ident: __x2
+    ///
+    /// // Will be transformed into
+    /// export { foo as __x, bar as __x1, default as __x2 };
+    /// ```
     pub exp_specs: Vec<ExportSpecifier>,
 }
 
@@ -50,6 +103,7 @@ impl ModuleBuilder {
         }
     }
 
+    /// Collects ASTs from the collector and module body.
     pub fn collect_module_body(&mut self, collector: &mut ModuleCollector, body: Vec<ModuleItem>) {
         self.collect(collector);
         body.into_iter().for_each(|item| match item {
@@ -60,28 +114,31 @@ impl ModuleBuilder {
         });
     }
 
+    /// Collects ASTs from the collector and script body.
     pub fn collect_script_body(&mut self, collector: &mut ModuleCollector, body: Vec<Stmt>) {
         self.collect(collector);
         self.stmts.extend(body);
     }
 
+    /// Collects ASTs from the collected dependencies, exports, and bindings
     fn collect(&mut self, collector: &mut ModuleCollector) {
         self.collect_deps(collector);
         self.collect_exps(collector);
         self.collect_bindings(collector);
     }
 
+    /// Collects ASTs from the collected dependencies
     fn collect_deps(&mut self, collector: &mut ModuleCollector) {
         collector.take_deps().into_iter().for_each(|dep| match dep {
-            Dep::Default(default_dep) => {
-                let require_props = default_dep
+            Dep::Base(base_dep) => {
+                let require_props = base_dep
                     .members
                     .into_iter()
                     .map(|member| member.into_obj_pat_prop())
                     .collect::<Vec<ObjectPatProp>>();
 
                 self.dep_getters
-                    .push((default_dep.src.clone(), to_dep_getter_expr(&require_props)));
+                    .push((base_dep.src.clone(), to_dep_getter_expr(&require_props)));
 
                 self.stmts.push(
                     VarDecl {
@@ -95,7 +152,7 @@ impl ModuleBuilder {
                             }),
                             Some(Box::new(require_call(
                                 collector.ctx_ident,
-                                default_dep.src.into(),
+                                base_dep.src.into(),
                             ))),
                         )],
                         ..Default::default()
@@ -103,15 +160,16 @@ impl ModuleBuilder {
                     .into(),
                 )
             }
-            Dep::Lazy(LazyDep { src, expr }) => {
+            Dep::Runtime(RuntimeDep { src, expr }) => {
                 self.dep_getters.push((src, arrow_with_paren_expr(expr)))
             }
         });
     }
 
+    /// Collects ASTs from the collected exports
     fn collect_exps(&mut self, collector: &mut ModuleCollector) {
         collector.take_exps().into_iter().for_each(|exp| match exp {
-            Exp::Default(exp) => {
+            Exp::Base(exp) => {
                 let (decls, props, specs) = exp.into_asts();
 
                 self.exp_decls.extend(decls);
@@ -149,6 +207,13 @@ impl ModuleBuilder {
         });
     }
 
+    /// Collects bindings from the collector and
+    /// creates a statement that assigns them to the each binding
+    ///
+    /// ```js
+    /// // binding_stmt
+    /// __x = foo, __x1 = bar, __x2 = baz;
+    /// ```
     fn collect_bindings(&mut self, collector: &mut ModuleCollector) {
         self.binding_stmt = Expr::Seq(SeqExpr {
             exprs: collector
@@ -161,6 +226,7 @@ impl ModuleBuilder {
         .into_stmt();
     }
 
+    /// Returns a list of statements that can be used to source type: 'module'
     pub fn build_module(self, id: &String, phase: ModulePhase) -> Vec<ModuleItem> {
         let deps_decl = if phase == ModulePhase::Bundle {
             to_deps_decl(&self.deps_ident, self.dep_getters)
@@ -231,6 +297,7 @@ impl ModuleBuilder {
             .collect()
     }
 
+    /// Returns a list of statements that can be used to source type: 'script'
     pub fn build_script(self, id: &String, phase: ModulePhase) -> Vec<Stmt> {
         let deps_decl = if phase == ModulePhase::Bundle {
             to_deps_decl(&self.deps_ident, self.dep_getters)

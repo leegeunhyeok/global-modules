@@ -13,11 +13,16 @@ use swc_core::{
 };
 
 pub struct GlobalModuleTransformer {
+    /// Module ID
     id: String,
+    /// Module phase
     phase: ModulePhase,
+    /// Paths map
     paths: Option<AHashMap<String, String>>,
-    unresolved_ctxt: SyntaxContext,
+    /// Context identifier
     ctx_ident: Ident,
+    /// Unresolved context
+    unresolved_ctxt: SyntaxContext,
 }
 
 impl GlobalModuleTransformer {
@@ -41,7 +46,7 @@ impl VisitMut for GlobalModuleTransformer {
     noop_visit_mut_type!();
 
     fn visit_mut_module(&mut self, module: &mut Module) {
-        let mut collector = create_collector(self.unresolved_ctxt, &self.ctx_ident, &self.paths);
+        let mut collector = create_collector(&self.ctx_ident, &self.paths, self.unresolved_ctxt);
         let mut builder = ModuleBuilder::new();
 
         module.visit_mut_children_with(&mut collector);
@@ -51,7 +56,7 @@ impl VisitMut for GlobalModuleTransformer {
     }
 
     fn visit_mut_script(&mut self, script: &mut Script) {
-        let mut collector = create_collector(self.unresolved_ctxt, &self.ctx_ident, &self.paths);
+        let mut collector = create_collector(&self.ctx_ident, &self.paths, self.unresolved_ctxt);
         let mut builder = ModuleBuilder::new();
 
         script.visit_mut_children_with(&mut collector);
