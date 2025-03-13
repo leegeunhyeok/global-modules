@@ -3,7 +3,7 @@ use swc_core::{
     ecma::{ast::*, utils::ExprFactory},
 };
 
-use crate::utils::{ast::*, presets::*};
+use crate::utils::ast::*;
 
 // Dependency
 #[derive(Debug)]

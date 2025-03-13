@@ -1,7 +1,7 @@
 use std::mem;
 
 use swc_core::{
-    common::{collections::AHashMap, util::take::Take, Spanned, SyntaxContext},
+    common::{util::take::Take, Spanned, SyntaxContext},
     ecma::{
         ast::*,
         utils::ExprFactory,

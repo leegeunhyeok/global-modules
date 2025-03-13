@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 
 use swc_core::{
-    common::{collections::AHashMap, Mark, SyntaxContext},
+    common::{Mark, SyntaxContext},
     ecma::{ast::Pass, transforms::base::resolver, visit::VisitMut},
 };
 use swc_ecma_parser::{Syntax, TsSyntax};
