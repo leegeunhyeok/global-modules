@@ -1,18 +1,20 @@
+use std::collections::hash_map::Entry;
+
 use crate::{
-    models::{Dep, Exp, RuntimeDep},
+    models::{Dep, DepGetter, Exp, RuntimeDep},
     module_collector::ModuleCollector,
     phase::ModulePhase,
     utils::ast::{
         arrow_with_paren_expr, mod_ident,
         presets::{
-            define_call, exports_call, require_call, to_dep_getter_expr, to_deps_decl,
-            to_empty_deps_decl, to_named_exps,
+            define_call, exports_call, require_call, to_deps_decl, to_empty_deps_decl,
+            to_named_exps,
         },
         var_declarator,
     },
 };
 use swc_core::{
-    common::{SyntaxContext, DUMMY_SP},
+    common::{collections::AHashMap, SyntaxContext, DUMMY_SP},
     ecma::{
         ast::*,
         utils::{private_ident, ExprFactory},
@@ -46,7 +48,7 @@ pub struct ModuleBuilder {
     ///   "dep_2": () => expr,
     /// };
     /// ```
-    pub dep_getters: Vec<(String, Expr)>,
+    pub dep_getters: AHashMap<String, DepGetter>,
     /// Export properties
     ///
     /// ```js
@@ -96,7 +98,7 @@ impl ModuleBuilder {
             exports: Vec::new(),
             stmts: Vec::new(),
             binding_stmt: Stmt::default(),
-            dep_getters: Vec::new(),
+            dep_getters: AHashMap::default(),
             exp_props: Vec::new(),
             exp_decls: Vec::new(),
             exp_specs: Vec::new(),
@@ -120,6 +122,22 @@ impl ModuleBuilder {
         self.stmts.extend(body);
     }
 
+    /// Appends a dependency property to the dependency properties map.
+    fn append_dep_getters(&mut self, src: String, getter: DepGetter) {
+        match self.dep_getters.entry(src) {
+            Entry::Occupied(mut entry) => match (entry.get_mut(), getter) {
+                (DepGetter::Props(prev_props), DepGetter::Props(new_props)) => {
+                    prev_props.extend(new_props);
+                }
+                (DepGetter::Expr(prev_expr), DepGetter::Expr(expr)) => {
+                    *prev_expr = expr;
+                }
+                _ => unreachable!(),
+            },
+            Entry::Vacant(entry) => drop(entry.insert(getter)),
+        };
+    }
+
     /// Collects ASTs from the collected dependencies, exports, and bindings
     fn collect(&mut self, collector: &mut ModuleCollector) {
         self.collect_deps(collector);
@@ -137,9 +155,10 @@ impl ModuleBuilder {
                     .map(|member| member.into_obj_pat_prop())
                     .collect::<Vec<ObjectPatProp>>();
 
-                self.dep_getters
-                    .push((base_dep.src.clone(), to_dep_getter_expr(&require_props)));
-
+                self.append_dep_getters(
+                    base_dep.src.clone(),
+                    DepGetter::Props(require_props.clone()),
+                );
                 self.stmts.push(
                     VarDecl {
                         kind: VarDeclKind::Const,
@@ -161,7 +180,7 @@ impl ModuleBuilder {
                 )
             }
             Dep::Runtime(RuntimeDep { src, expr }) => {
-                self.dep_getters.push((src, arrow_with_paren_expr(expr)))
+                self.append_dep_getters(src, DepGetter::Expr(arrow_with_paren_expr(expr)));
             }
         });
     }
@@ -180,29 +199,29 @@ impl ModuleBuilder {
                 let mod_ident = mod_ident();
                 let src = re_export_named.src.clone();
                 let imp_stmt = re_export_named.to_import_stmt(mod_ident.clone());
-                let getter = (src, arrow_with_paren_expr(mod_ident.clone().into()));
+                let getter_expr = arrow_with_paren_expr(mod_ident.clone().into());
                 let req_stmt =
                     re_export_named.to_require_stmt(collector.ctx_ident, mod_ident.clone());
                 let exp_prop = re_export_named.to_exp_props(mod_ident);
 
                 self.imports.push(imp_stmt);
-                self.dep_getters.push(getter);
                 self.stmts.push(req_stmt);
                 self.exp_props.extend(exp_prop);
+                self.append_dep_getters(src, DepGetter::Expr(getter_expr));
             }
             Exp::ReExportAll(re_export_all) => {
                 let mod_ident = mod_ident();
                 let src = re_export_all.get_src();
                 let imp_stmt = re_export_all.to_import_stmt(mod_ident.clone());
-                let getter = (src, arrow_with_paren_expr(mod_ident.clone().into()));
+                let getter_expr = arrow_with_paren_expr(mod_ident.clone().into());
                 let req_stmt =
                     re_export_all.to_require_stmt(collector.ctx_ident, mod_ident.clone());
                 let exp_prop = re_export_all.to_exp_props(collector.ctx_ident, mod_ident);
 
                 self.imports.push(imp_stmt);
-                self.dep_getters.push(getter);
                 self.stmts.push(req_stmt);
                 self.exp_props.push(exp_prop);
+                self.append_dep_getters(src, DepGetter::Expr(getter_expr));
             }
         });
     }

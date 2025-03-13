@@ -708,14 +708,16 @@ pub mod ast {
 
     pub mod presets {
         use swc_core::{
-            common::DUMMY_SP,
+            common::{collections::AHashMap, DUMMY_SP},
             ecma::{
                 ast::*,
                 utils::{member_expr, quote_ident, ExprFactory},
             },
         };
 
-        use super::{arrow_with_paren_expr, assign_member, obj_lit_expr, str_lit, var_declarator};
+        use super::{
+            arrow_with_paren_expr, assign_member, obj_lit_expr, str_lit, var_declarator, DepGetter,
+        };
 
         /// Returns a global module's require call expression.
         ///
@@ -907,18 +909,26 @@ pub mod ast {
         ///   "src_3": () => ({ baz }),
         /// };
         /// ```
-        pub fn to_deps_decl(dep_ident: &Ident, dep_getters: Vec<(String, Expr)>) -> Decl {
+        pub fn to_deps_decl(dep_ident: &Ident, dep_getters: AHashMap<String, DepGetter>) -> Decl {
             Decl::Var(Box::new(VarDecl {
                 decls: vec![var_declarator(
                     dep_ident.clone().into(),
                     Some(Box::new(Expr::Object(ObjectLit {
                         props: dep_getters
                             .iter()
-                            .map(|(src, expr)| {
-                                PropOrSpread::Prop(Box::new(Prop::KeyValue(KeyValueProp {
-                                    key: PropName::Str(src.clone().into()),
-                                    value: Box::new(expr.clone()),
-                                })))
+                            .map(|(src, getter)| match getter {
+                                DepGetter::Props(props) => {
+                                    PropOrSpread::Prop(Box::new(Prop::KeyValue(KeyValueProp {
+                                        key: PropName::Str(src.clone().into()),
+                                        value: Box::new(to_dep_getter_expr(props)),
+                                    })))
+                                }
+                                DepGetter::Expr(expr) => {
+                                    PropOrSpread::Prop(Box::new(Prop::KeyValue(KeyValueProp {
+                                        key: PropName::Str(src.clone().into()),
+                                        value: Box::new(expr.clone()),
+                                    })))
+                                }
                             })
                             .collect(),
                         ..Default::default()
@@ -940,45 +950,6 @@ pub mod ast {
                 decls: vec![var_declarator(dep_ident.clone().into(), None)],
                 ..Default::default()
             }))
-        }
-    }
-}
-
-pub mod collections {
-    use swc_core::common::collections::AHashMap;
-
-    /// Ordered HashMap
-    #[derive(Debug)]
-    pub struct OHashMap<K, V> {
-        map: AHashMap<K, V>,
-        keys: Vec<K>,
-    }
-
-    impl<K: std::cmp::Eq + std::hash::Hash + Clone, V> OHashMap<K, V> {
-        pub fn get_mut(&mut self, key: &K) -> Option<&mut V> {
-            self.map.get_mut(key)
-        }
-
-        pub fn insert(&mut self, key: &K, value: V) {
-            if !self.map.contains_key(&key) {
-                self.keys.push(key.clone());
-            }
-            self.map.insert(key.clone(), value);
-        }
-
-        pub fn iter(&self) -> impl Iterator<Item = (&K, &V)> {
-            self.keys
-                .iter()
-                .filter_map(move |key| self.map.get(key).map(|value| (key, value)))
-        }
-    }
-
-    impl<K: std::cmp::Eq + std::hash::Hash + Clone, V> Default for OHashMap<K, V> {
-        fn default() -> Self {
-            Self {
-                map: AHashMap::default(),
-                keys: Vec::new(),
-            }
         }
     }
 }

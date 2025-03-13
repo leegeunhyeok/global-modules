@@ -92,6 +92,12 @@ pub struct RuntimeDep {
 }
 
 #[derive(Debug)]
+pub enum DepGetter {
+    Props(Vec<ObjectPatProp>),
+    Expr(Expr),
+}
+
+#[derive(Debug)]
 pub enum Exp {
     /// Base export
     ///
