@@ -705,251 +705,251 @@ pub mod ast {
             export_all.src.as_ref().clone().value.to_string(),
         ))
     }
+}
 
-    pub mod presets {
-        use swc_core::{
-            common::{collections::AHashMap, DUMMY_SP},
-            ecma::{
-                ast::*,
-                utils::{member_expr, quote_ident, ExprFactory},
-            },
-        };
+pub mod presets {
+    use swc_core::{
+        common::{collections::AHashMap, DUMMY_SP},
+        ecma::{
+            ast::*,
+            utils::{member_expr, quote_ident, ExprFactory},
+        },
+    };
 
-        use super::{
-            arrow_with_paren_expr, assign_member, obj_lit_expr, str_lit, var_declarator, DepGetter,
-        };
+    use crate::models::DepGetter;
 
-        /// Returns a global module's require call expression.
-        ///
-        /// ```js
-        /// // Code
-        /// ctx_ident.require(src);
-        /// ```
-        pub fn require_call(ctx_ident: &Ident, src: Lit) -> Expr {
-            ctx_ident
-                .clone()
-                .make_member(quote_ident!("require"))
-                .as_call(DUMMY_SP, vec![src.as_arg()])
-        }
+    use super::ast::*;
 
-        /// Returns a global module's exports call expression.
-        ///
-        /// ```js
-        /// // Code
-        /// ctx_ident.exports(function () {
-        ///   return expr;
-        /// });
-        /// ```
-        pub fn exports_call(ctx_ident: &Ident, exp_props: Vec<PropOrSpread>) -> Expr {
-            ctx_ident
-                .clone()
-                .make_member(quote_ident!("exports"))
-                .as_call(
-                    DUMMY_SP,
-                    vec![obj_lit_expr(exp_props).into_lazy_fn(vec![]).as_arg()],
-                )
-        }
+    /// Returns a global module's require call expression.
+    ///
+    /// ```js
+    /// // Code
+    /// ctx_ident.require(src);
+    /// ```
+    pub fn require_call(ctx_ident: &Ident, src: Lit) -> Expr {
+        ctx_ident
+            .clone()
+            .make_member(quote_ident!("require"))
+            .as_call(DUMMY_SP, vec![src.as_arg()])
+    }
 
-        /// Returns a context module's exports member expression.
-        ///
-        /// ```js
-        /// // Code
-        /// ctx_ident.module.exports;
-        /// ```
-        pub fn module_exports_member(ctx_ident: &Ident) -> MemberExpr {
-            ctx_ident
-                .clone()
-                .make_member(IdentName {
-                    sym: "module".into(),
-                    ..Default::default()
-                })
-                .make_member(IdentName {
-                    sym: "exports".into(),
-                    ..Default::default()
-                })
-        }
-
-        /// Returns a new expression that binds the CommonJS module export statement.
-        ///
-        /// ```js
-        /// // Code
-        /// ctx_ident.module.exports.name = expr;
-        /// ```
-        pub fn assign_cjs_module_expr(ctx_ident: &Ident, expr: Expr, name: Option<Expr>) -> Expr {
-            let ctx_module_member = module_exports_member(ctx_ident);
-
-            assign_member(
-                match name {
-                    // Named export
-                    //
-                    // ```js
-                    // module.exports.foo = expr;
-                    // ```
-                    Some(name_expr) => match name_expr {
-                        Expr::Lit(Lit::Str(str_lit)) => ctx_module_member.make_member(IdentName {
-                            sym: str_lit.value.clone().into(),
-                            ..Default::default()
-                        }),
-                        _ => ctx_module_member.computed_member(name_expr.clone()),
-                    },
-                    // Main export
-                    //
-                    // ```js
-                    // module.exports = expr;
-                    // ```
-                    None => ctx_module_member,
-                },
-                expr,
-            )
-            .into()
-        }
-
-        /// Returns a global module's define call expression.
-        ///
-        /// ```js
-        /// // Code
-        /// global.__modules.define(function (ctx_ident) {
-        ///   // <stmts>
-        /// }, id, deps_ident);
-        /// ```
-        pub fn define_call(
-            id: &String,
-            ctx_ident: &Ident,
-            deps_ident: &Ident,
-            stmts: Vec<Stmt>,
-        ) -> Expr {
-            member_expr!(Default::default(), DUMMY_SP, global.__modules.define).as_call(
+    /// Returns a global module's exports call expression.
+    ///
+    /// ```js
+    /// // Code
+    /// ctx_ident.exports(function () {
+    ///   return expr;
+    /// });
+    /// ```
+    pub fn exports_call(ctx_ident: &Ident, exp_props: Vec<PropOrSpread>) -> Expr {
+        ctx_ident
+            .clone()
+            .make_member(quote_ident!("exports"))
+            .as_call(
                 DUMMY_SP,
-                vec![
-                    Expr::Fn(FnExpr {
-                        ident: None,
-                        function: Box::new(Function {
-                            params: vec![ctx_ident.clone().into()],
-                            body: Some(BlockStmt {
-                                stmts,
-                                ..Default::default()
-                            }),
+                vec![obj_lit_expr(exp_props).into_lazy_fn(vec![]).as_arg()],
+            )
+    }
+
+    /// Returns a context module's exports member expression.
+    ///
+    /// ```js
+    /// // Code
+    /// ctx_ident.module.exports;
+    /// ```
+    pub fn module_exports_member(ctx_ident: &Ident) -> MemberExpr {
+        ctx_ident
+            .clone()
+            .make_member(IdentName {
+                sym: "module".into(),
+                ..Default::default()
+            })
+            .make_member(IdentName {
+                sym: "exports".into(),
+                ..Default::default()
+            })
+    }
+
+    /// Returns a new expression that binds the CommonJS module export statement.
+    ///
+    /// ```js
+    /// // Code
+    /// ctx_ident.module.exports.name = expr;
+    /// ```
+    pub fn assign_cjs_module_expr(ctx_ident: &Ident, expr: Expr, name: Option<Expr>) -> Expr {
+        let ctx_module_member = module_exports_member(ctx_ident);
+
+        assign_member(
+            match name {
+                // Named export
+                //
+                // ```js
+                // module.exports.foo = expr;
+                // ```
+                Some(name_expr) => match name_expr {
+                    Expr::Lit(Lit::Str(str_lit)) => ctx_module_member.make_member(IdentName {
+                        sym: str_lit.value.clone().into(),
+                        ..Default::default()
+                    }),
+                    _ => ctx_module_member.computed_member(name_expr.clone()),
+                },
+                // Main export
+                //
+                // ```js
+                // module.exports = expr;
+                // ```
+                None => ctx_module_member,
+            },
+            expr,
+        )
+        .into()
+    }
+
+    /// Returns a global module's define call expression.
+    ///
+    /// ```js
+    /// // Code
+    /// global.__modules.define(function (ctx_ident) {
+    ///   // <stmts>
+    /// }, id, deps_ident);
+    /// ```
+    pub fn define_call(
+        id: &String,
+        ctx_ident: &Ident,
+        deps_ident: &Ident,
+        stmts: Vec<Stmt>,
+    ) -> Expr {
+        member_expr!(Default::default(), DUMMY_SP, global.__modules.define).as_call(
+            DUMMY_SP,
+            vec![
+                Expr::Fn(FnExpr {
+                    ident: None,
+                    function: Box::new(Function {
+                        params: vec![ctx_ident.clone().into()],
+                        body: Some(BlockStmt {
+                            stmts,
                             ..Default::default()
                         }),
                         ..Default::default()
-                    })
-                    .into(),
-                    str_lit(id).as_arg(),
-                    deps_ident.clone().as_arg(),
-                ],
-            )
-        }
-
-        /// Returns a named export statement based on given export specifiers.
-        ///
-        /// ```js
-        /// // Code
-        /// export { foo, bar as baz };
-        /// ```
-        pub fn to_named_exps(exp_specs: Vec<ExportSpecifier>) -> ModuleItem {
-            ModuleItem::ModuleDecl(ModuleDecl::ExportNamed(NamedExport {
-                specifiers: exp_specs,
-                type_only: false,
-                src: None,
-                with: None,
-                span: DUMMY_SP,
-            }))
-        }
-
-        /// Returns a dependency getter expression based on given dependency member properties.
-        ///
-        /// ```js
-        /// // Given code (= `{ foo, bar: baz }`)
-        /// const { foo, bar: baz } = value;
-        ///
-        /// // Returns
-        /// () => ({ foo, bar: baz });
-        /// ```
-        pub fn to_dep_getter_expr(dep_member_props: &Vec<ObjectPatProp>) -> Expr {
-            let dep_obj_props = dep_member_props
-                .iter()
-                .filter_map(|prop| match prop {
-                    ObjectPatProp::KeyValue(KeyValuePatProp { key, value })
-                        if matches!(&**value, Pat::Ident(_)) =>
-                    {
-                        match &**value {
-                            Pat::Ident(ident) => Some(
-                                Prop::KeyValue(KeyValueProp {
-                                    key: key.clone(),
-                                    value: Box::new(Expr::Ident(ident.clone().into())),
-                                })
-                                .into(),
-                            ),
-                            _ => None,
-                        }
-                    }
-                    ObjectPatProp::Assign(AssignPatProp {
-                        key, value: None, ..
-                    }) => Some(Prop::Shorthand(key.clone().into()).into()),
-                    _ => None,
-                })
-                .collect::<Vec<PropOrSpread>>();
-
-            arrow_with_paren_expr(
-                ObjectLit {
-                    props: dep_obj_props,
+                    }),
                     ..Default::default()
-                }
+                })
                 .into(),
-            )
-        }
+                str_lit(id).as_arg(),
+                deps_ident.clone().as_arg(),
+            ],
+        )
+    }
 
-        /// Returns a dependency declaration based on given dependency identifier and dependency getter expressions.
-        ///
-        /// ```js
-        /// // Code
-        /// const dep_ident = {
-        ///   "src_1": () => ({ foo }),
-        ///   "src_2": () => ({ bar }),
-        ///   "src_3": () => ({ baz }),
-        /// };
-        /// ```
-        pub fn to_deps_decl(dep_ident: &Ident, dep_getters: AHashMap<String, DepGetter>) -> Decl {
-            Decl::Var(Box::new(VarDecl {
-                decls: vec![var_declarator(
-                    dep_ident.clone().into(),
-                    Some(Box::new(Expr::Object(ObjectLit {
-                        props: dep_getters
-                            .iter()
-                            .map(|(src, getter)| match getter {
-                                DepGetter::Props(props) => {
-                                    PropOrSpread::Prop(Box::new(Prop::KeyValue(KeyValueProp {
-                                        key: PropName::Str(src.clone().into()),
-                                        value: Box::new(to_dep_getter_expr(props)),
-                                    })))
-                                }
-                                DepGetter::Expr(expr) => {
-                                    PropOrSpread::Prop(Box::new(Prop::KeyValue(KeyValueProp {
-                                        key: PropName::Str(src.clone().into()),
-                                        value: Box::new(expr.clone()),
-                                    })))
-                                }
+    /// Returns a named export statement based on given export specifiers.
+    ///
+    /// ```js
+    /// // Code
+    /// export { foo, bar as baz };
+    /// ```
+    pub fn to_named_exps(exp_specs: Vec<ExportSpecifier>) -> ModuleItem {
+        ModuleItem::ModuleDecl(ModuleDecl::ExportNamed(NamedExport {
+            specifiers: exp_specs,
+            type_only: false,
+            src: None,
+            with: None,
+            span: DUMMY_SP,
+        }))
+    }
+
+    /// Returns a dependency getter expression based on given dependency member properties.
+    ///
+    /// ```js
+    /// // Given code (= `{ foo, bar: baz }`)
+    /// const { foo, bar: baz } = value;
+    ///
+    /// // Returns
+    /// () => ({ foo, bar: baz });
+    /// ```
+    pub fn to_dep_getter_expr(dep_member_props: &Vec<ObjectPatProp>) -> Expr {
+        let dep_obj_props = dep_member_props
+            .iter()
+            .filter_map(|prop| match prop {
+                ObjectPatProp::KeyValue(KeyValuePatProp { key, value })
+                    if matches!(&**value, Pat::Ident(_)) =>
+                {
+                    match &**value {
+                        Pat::Ident(ident) => Some(
+                            Prop::KeyValue(KeyValueProp {
+                                key: key.clone(),
+                                value: Box::new(Expr::Ident(ident.clone().into())),
                             })
-                            .collect(),
-                        ..Default::default()
-                    }))),
-                )],
-                kind: VarDeclKind::Const,
-                ..Default::default()
-            }))
-        }
+                            .into(),
+                        ),
+                        _ => None,
+                    }
+                }
+                ObjectPatProp::Assign(AssignPatProp {
+                    key, value: None, ..
+                }) => Some(Prop::Shorthand(key.clone().into()).into()),
+                _ => None,
+            })
+            .collect::<Vec<PropOrSpread>>();
 
-        /// Returns an empty dependency declaration.
-        ///
-        /// ```js
-        /// // Code
-        /// const dep_ident = {};
-        /// ```
-        pub fn to_empty_deps_decl(dep_ident: &Ident) -> Decl {
-            Decl::Var(Box::new(VarDecl {
-                decls: vec![var_declarator(dep_ident.clone().into(), None)],
+        arrow_with_paren_expr(
+            ObjectLit {
+                props: dep_obj_props,
                 ..Default::default()
-            }))
-        }
+            }
+            .into(),
+        )
+    }
+
+    /// Returns a dependency declaration based on given dependency identifier and dependency getter expressions.
+    ///
+    /// ```js
+    /// // Code
+    /// const dep_ident = {
+    ///   "src_1": () => ({ foo }),
+    ///   "src_2": () => ({ bar }),
+    ///   "src_3": () => ({ baz }),
+    /// };
+    /// ```
+    pub fn to_deps_decl(dep_ident: &Ident, dep_getters: AHashMap<String, DepGetter>) -> Decl {
+        Decl::Var(Box::new(VarDecl {
+            decls: vec![var_declarator(
+                dep_ident.clone().into(),
+                Some(Box::new(Expr::Object(ObjectLit {
+                    props: dep_getters
+                        .iter()
+                        .map(|(src, getter)| match getter {
+                            DepGetter::Props(props) => {
+                                PropOrSpread::Prop(Box::new(Prop::KeyValue(KeyValueProp {
+                                    key: PropName::Str(src.clone().into()),
+                                    value: Box::new(to_dep_getter_expr(props)),
+                                })))
+                            }
+                            DepGetter::Expr(expr) => {
+                                PropOrSpread::Prop(Box::new(Prop::KeyValue(KeyValueProp {
+                                    key: PropName::Str(src.clone().into()),
+                                    value: Box::new(expr.clone()),
+                                })))
+                            }
+                        })
+                        .collect(),
+                    ..Default::default()
+                }))),
+            )],
+            kind: VarDeclKind::Const,
+            ..Default::default()
+        }))
+    }
+
+    /// Returns an empty dependency declaration.
+    ///
+    /// ```js
+    /// // Code
+    /// const dep_ident = {};
+    /// ```
+    pub fn to_empty_deps_decl(dep_ident: &Ident) -> Decl {
+        Decl::Var(Box::new(VarDecl {
+            decls: vec![var_declarator(dep_ident.clone().into(), None)],
+            ..Default::default()
+        }))
     }
 }

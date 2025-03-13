@@ -4,14 +4,8 @@ use crate::{
     models::{Dep, DepGetter, Exp, RuntimeDep},
     module_collector::ModuleCollector,
     phase::ModulePhase,
-    utils::ast::{
-        arrow_with_paren_expr, mod_ident,
-        presets::{
-            define_call, exports_call, require_call, to_deps_decl, to_empty_deps_decl,
-            to_named_exps,
-        },
-        var_declarator,
-    },
+    utils::ast::*,
+    utils::presets::*,
 };
 use swc_core::{
     common::{collections::AHashMap, SyntaxContext, DUMMY_SP},

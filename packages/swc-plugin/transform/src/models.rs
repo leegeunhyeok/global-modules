@@ -1,10 +1,9 @@
-use presets::require_call;
 use swc_core::{
     common::DUMMY_SP,
     ecma::{ast::*, utils::ExprFactory},
 };
 
-use crate::utils::ast::*;
+use crate::utils::{ast::*, presets::*};
 
 // Dependency
 #[derive(Debug)]
