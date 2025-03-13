@@ -1,7 +1,7 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import * as swc from '@swc/core';
-import globalModulePlugin, { Phase } from '../esm/index.mjs';
+import globalModulePlugin from '../esm/index.mjs';
 
 const code = await fs.promises.readFile(
   path.join(import.meta.dirname, 'code.js'),
@@ -15,7 +15,7 @@ function bundlePreset() {
     globalModulePlugin,
     {
       id: 'mod-id',
-      phase: Phase.Bundle,
+      runtime: false,
     },
   ];
 }
@@ -25,7 +25,7 @@ function runtimePreset() {
     globalModulePlugin,
     {
       id: 'mod-id',
-      phase: Phase.Runtime,
+      phase: true,
     },
   ];
 }

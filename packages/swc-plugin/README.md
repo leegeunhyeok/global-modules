@@ -6,7 +6,7 @@ A [SWC](https://swc.rs) plugin that transforms code to comply with the [@global-
 
 ```ts
 import * as swc from '@swc/core';
-import plugin, { Phase } from '@global-modules/swc-plugin';
+import plugin from '@global-modules/swc-plugin';
 
 await swc.transform(code, {
   jsc: {
@@ -17,8 +17,9 @@ await swc.transform(code, {
           {
             // The module's id.
             id: 'module-id',
-            // `Phase.Bundle` or `Phase.Runtime`.
-            phase: Phase.Bundle,
+            // Bundle phase: `false`
+            // Runtime phase: `true`
+            runtime: false,
           },
         ],
       ],
@@ -29,15 +30,15 @@ await swc.transform(code, {
 
 ### Options
 
-| Option  | Type                     | Description                                | Required |
-| ------- | ------------------------ | ------------------------------------------ | -------- |
-| `id`    | `string`                 | The module's unique identifier.            | O        |
-| `phase` | `Phase`                  | The phase of the plugin.                   | O        |
+| Option    | Type      | Description                     | Required |
+| --------- | --------- | ------------------------------- | -------- |
+| `id`      | `string`  | The module's unique identifier. | O        |
+| `runtime` | `boolean` | The phase of the plugin.        | O        |
 
-- `Phase.Bundle`: Register only the module's exports. At this phase, the module statements(ESM: `import`, `export` / CommonJS: `require`, `module`) are not transformed, as these are delegated to the bundler to follow its module resolution specification.
-- `Phase.Runtime`: Register the module's exports and strip module statements. At this phase, module reference statements are transformed into the global module's require call expression(`global.__modules.require()`) to reference other modules' exports at runtime.
+- `runtime: false`: Register only the module's exports. At this phase, the module statements(ESM: `import`, `export` / CommonJS: `require`, `module`) are not transformed, as these are delegated to the bundler to follow its module resolution specification.
+- `runtime: true`: Register the module's exports and strip module statements. At this phase, module reference statements are transformed into the global module's require call expression(`global.__modules.require()`) to reference other modules' exports at runtime.
 
-|                         | Phase.Bundle | Phase.Runtime |
+|                         | Bundle Phase | Runtime Phase |
 | ----------------------- | ------------ | ------------- |
 | Register exports        | ✅           | ✅            |
 | Strip module statements | ❌           | ✅            |
@@ -56,7 +57,7 @@ export function Component() {
 
 <details>
 
-<summary>Phase.Bundle</summary>
+<summary>Bundle phase</summary>
 
 ```ts
 import React, { useState, useCallback } from 'react';
@@ -79,7 +80,7 @@ export { __x as Component };
 
 <details>
 
-<summary>Phase.Runtime</summary>
+<summary>Runtime phase</summary>
 
 ```ts
 var __ctx = global.__modules.getContext('1');

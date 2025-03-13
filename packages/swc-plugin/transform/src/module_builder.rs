@@ -3,7 +3,6 @@ use std::collections::hash_map::Entry;
 use crate::{
     models::{Dep, DepGetter, Exp, RuntimeDep},
     module_collector::ModuleCollector,
-    phase::ModulePhase,
     utils::ast::*,
     utils::presets::*,
 };
@@ -232,11 +231,11 @@ impl<'a> ModuleBuilder<'a> {
     }
 
     /// Returns a list of statements that can be used to source type: 'module'
-    pub fn build_module(self, id: &String, phase: ModulePhase) -> Vec<ModuleItem> {
-        let deps_decl = if phase == ModulePhase::Bundle {
-            to_deps_decl(&self.deps_ident, self.dep_getters)
-        } else {
+    pub fn build_module(self, id: &String, runtime: bool) -> Vec<ModuleItem> {
+        let deps_decl = if runtime {
             to_empty_deps_decl(&self.deps_ident)
+        } else {
+            to_deps_decl(&self.deps_ident, self.dep_getters)
         };
 
         let stmts = vec![
@@ -256,13 +255,10 @@ impl<'a> ModuleBuilder<'a> {
             .into_stmt(),
         ];
 
-        let imports = if phase == ModulePhase::Bundle {
-            self.imports
-        } else {
+        let imports = if runtime { vec![] } else { self.imports };
+        let exports = if runtime {
             vec![]
-        };
-
-        let exports = if phase == ModulePhase::Bundle {
+        } else {
             self.exports
                 .into_iter()
                 .chain(
@@ -274,8 +270,6 @@ impl<'a> ModuleBuilder<'a> {
                     .into_iter(),
                 )
                 .collect()
-        } else {
-            vec![]
         };
 
         imports
@@ -303,11 +297,11 @@ impl<'a> ModuleBuilder<'a> {
     }
 
     /// Returns a list of statements that can be used to source type: 'script'
-    pub fn build_script(self, id: &String, phase: ModulePhase) -> Vec<Stmt> {
-        let deps_decl = if phase == ModulePhase::Bundle {
-            to_deps_decl(&self.deps_ident, self.dep_getters)
-        } else {
+    pub fn build_script(self, id: &String, runtime: bool) -> Vec<Stmt> {
+        let deps_decl = if runtime {
             to_empty_deps_decl(&self.deps_ident)
+        } else {
+            to_deps_decl(&self.deps_ident, self.dep_getters)
         };
 
         let stmts = vec![

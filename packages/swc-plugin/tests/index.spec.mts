@@ -1,5 +1,4 @@
 import { vi, describe, it, expect } from 'vitest';
-import { Phase } from '../types.js';
 import { bundle, bundleWithFoo } from './utils/bundle.js';
 import { evaluateOnSandbox } from './utils/sandbox.js';
 import { tests } from './module-tests.mjs';
@@ -24,7 +23,7 @@ describe('@global-modules/swc-plugin', () => {
           export { bar, value as baz };
           `,
         },
-        { phase: Phase.Bundle },
+        { runtime: false },
       );
 
       const bridge = vi.fn();
@@ -54,7 +53,7 @@ describe('@global-modules/swc-plugin', () => {
           newObj.key = 'key';
           `,
         },
-        { phase: Phase.Bundle },
+        { runtime: false },
       );
 
       const bridge = vi.fn();
@@ -96,7 +95,7 @@ describe('@global-modules/swc-plugin', () => {
           invalidCommonJS({ exports: {} });
           `,
         },
-        { phase: Phase.Bundle },
+        { runtime: false },
       );
 
       const bridge = vi.fn();
@@ -132,7 +131,7 @@ describe('@global-modules/swc-plugin', () => {
           export { bar, value as baz };
           `,
         },
-        { phase: Phase.Runtime },
+        { runtime: true },
       );
 
       const bridge = vi.fn();
@@ -162,7 +161,7 @@ describe('@global-modules/swc-plugin', () => {
           newObj.key = 'key';
           `,
         },
-        { phase: Phase.Runtime },
+        { runtime: true },
       );
 
       const bridge = vi.fn();
@@ -204,7 +203,7 @@ describe('@global-modules/swc-plugin', () => {
           invalidCommonJS({ exports: {} });
           `,
         },
-        { phase: Phase.Runtime },
+        { runtime: true },
       );
 
       const bridge = vi.fn();
@@ -225,7 +224,7 @@ describe('@global-modules/swc-plugin', () => {
     const index = tests.indexOf(input);
 
     it(`Case #${index}`, async () => {
-      const bundleCode = await bundle(input, { index, phase: Phase.Bundle });
+      const bundleCode = await bundle(input, { index, runtime: false });
 
       const resultBridgeObject = {
         input: {

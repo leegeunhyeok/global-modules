@@ -1,10 +1,8 @@
 use std::mem;
 
-use crate::{
-    module_builder::ModuleBuilder, module_collector::create_collector, phase::ModulePhase,
-};
+use crate::{module_builder::ModuleBuilder, module_collector::create_collector};
 use swc_core::{
-    common::{collections::AHashMap, SyntaxContext},
+    common::SyntaxContext,
     ecma::{
         ast::*,
         utils::private_ident,
@@ -15,8 +13,8 @@ use swc_core::{
 pub struct GlobalModuleTransformer {
     /// Module ID
     id: String,
-    /// Module phase
-    phase: ModulePhase,
+    /// Runtime phase flag
+    runtime: bool,
     /// Context identifier
     ctx_ident: Ident,
     /// Dependencies identifier
@@ -26,10 +24,10 @@ pub struct GlobalModuleTransformer {
 }
 
 impl GlobalModuleTransformer {
-    pub fn new(id: String, phase: ModulePhase, unresolved_ctxt: SyntaxContext) -> Self {
+    pub fn new(id: String, runtime: bool, unresolved_ctxt: SyntaxContext) -> Self {
         Self {
             id,
-            phase,
+            runtime,
             unresolved_ctxt,
             ctx_ident: private_ident!("__context"),
             deps_ident: private_ident!("__deps"),
@@ -47,7 +45,7 @@ impl VisitMut for GlobalModuleTransformer {
         module.visit_mut_children_with(&mut collector);
         builder.collect_module_body(&mut collector, mem::take(&mut module.body));
 
-        module.body = builder.build_module(&self.id, self.phase);
+        module.body = builder.build_module(&self.id, self.runtime);
     }
 
     fn visit_mut_script(&mut self, script: &mut Script) {
@@ -57,6 +55,6 @@ impl VisitMut for GlobalModuleTransformer {
         script.visit_mut_children_with(&mut collector);
         builder.collect_script_body(&mut collector, mem::take(&mut script.body));
 
-        script.body = builder.build_script(&self.id, self.phase);
+        script.body = builder.build_script(&self.id, self.runtime);
     }
 }

@@ -9,19 +9,14 @@ use transformer::GlobalModuleTransformer;
 
 pub fn global_modules(
     id: String,
-    phase: f64,
+    runtime: bool,
     unresolved_ctxt: SyntaxContext,
 ) -> impl VisitMut + Pass {
-    visit_mut_pass(GlobalModuleTransformer::new(
-        id,
-        (phase as u32).into(),
-        unresolved_ctxt,
-    ))
+    visit_mut_pass(GlobalModuleTransformer::new(id, runtime, unresolved_ctxt))
 }
 
 mod models;
 mod module_builder;
 mod module_collector;
-mod phase;
 mod transformer;
 mod utils;
