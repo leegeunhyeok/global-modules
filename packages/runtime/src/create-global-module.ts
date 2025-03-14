@@ -48,7 +48,6 @@ export function createGlobalModule(): GlobalModule {
     module.factory(module.context);
   }
 
-  let re = 0;
   function require(
     this: null | Record<string, (() => Exports) | string>,
     id: ModuleId,

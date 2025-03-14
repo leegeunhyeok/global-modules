@@ -56,6 +56,7 @@ describe('@global-modules/runtime', () => {
       expect(typeof globalRegistry.apply).toEqual('function');
       expect(typeof globalRegistry.require).toEqual('function');
       expect(typeof globalRegistry.clear).toEqual('function');
+      expect(typeof globalRegistry.getRegistry).toEqual('function');
     });
   });
 
@@ -94,16 +95,72 @@ describe('@global-modules/runtime', () => {
     });
   });
 
-  describe('getRegistry', () => {
+  describe('when define the module with dependency', () => {
+    const mockedPrint = vi.fn();
     let context: SandboxContext;
 
     beforeAll(() => {
-      context = createSandboxContext();
+      mockedPrint.mockReset();
+      context = createSandboxContext({ print: mockedPrint });
       context.setup();
     });
 
-    it('should return the global module registry', () => {
-      expect(context.getGlobalModule().getRegistry()).toBeTruthy();
+    it('should reference the provided dependency', () => {
+      context.evaluate(`
+        __modules.define((context) => {
+          const mod = context.require('react');
+          print(mod);
+        }, 'mod-0', {
+          'react': () => ({
+            default: 'React',
+            useState: 'hook#useState',
+            useEffect: 'hook#useEffect',
+          }),
+        });
+      `);
+
+      expect(mockedPrint).toBeCalledWith({
+        default: 'React',
+        useState: 'hook#useState',
+        useEffect: 'hook#useEffect',
+      });
+    });
+  });
+
+  describe('when apply the module with dependency id map', () => {
+    const mockedPrint = vi.fn();
+    let context: SandboxContext;
+
+    beforeAll(() => {
+      mockedPrint.mockReset();
+      context = createSandboxContext({ print: mockedPrint });
+      context.setup();
+    });
+
+    it('should reference the module that provided id', () => {
+      context.evaluate(`
+        __modules.define((context) => {
+          const mod = context.require('./foo');
+          print('require foo', mod);
+        }, 'mod', {
+          './foo': () => ({ default: 'foo' }),
+        });
+      `);
+
+      expect(mockedPrint).toBeCalledWith('require foo', { default: 'foo' });
+
+      context.evaluate(`
+        __modules.define((context) => {
+          context.exports(() => ({ default: 'defined foo', foo: 'foo' }));
+        }, 'foo-id');
+        __modules.apply('mod', { './foo': 'foo-id' });
+      `);
+
+      // `context.require('./foo')` should reference the re-mapped module (`foo-id`).
+      expect(mockedPrint).toBeCalledWith('require foo', {
+        default: 'defined foo',
+        foo: 'foo',
+      });
     });
   });
 
