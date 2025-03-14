@@ -17,8 +17,10 @@ await swc.transform(code, {
           {
             // The module's id.
             id: 'module-id',
-            // Bundle phase: `false`
-            // Runtime phase: `true`
+            // Transform as runtime module.
+            //
+            // - `false`: Bundle phase.
+            // - `true`: Runtime phase.
             runtime: false,
           },
         ],
@@ -30,10 +32,10 @@ await swc.transform(code, {
 
 ### Options
 
-| Option    | Type      | Description                     | Required |
-| --------- | --------- | ------------------------------- | -------- |
-| `id`      | `string`  | The module's unique identifier. | O        |
-| `runtime` | `boolean` | The phase of the plugin.        | O        |
+| Option    | Type      | Description                               | Required |
+| --------- | --------- | ----------------------------------------- | -------- |
+| `id`      | `string`  | The module's unique identifier.           | O        |
+| `runtime` | `boolean` | The flag for transform as runtime module. | O        |
 
 - `runtime: false`: Register only the module's exports. At this phase, the module statements(ESM: `import`, `export` / CommonJS: `require`, `module`) are not transformed, as these are delegated to the bundler to follow its module resolution specification.
 - `runtime: true`: Register the module's exports and strip module statements. At this phase, module reference statements are transformed into the global module's require call expression(`global.__modules.require()`) to reference other modules' exports at runtime.
@@ -62,18 +64,39 @@ export function Component() {
 ```ts
 import React, { useState, useCallback } from 'react';
 import { Component } from './Container';
-var __ctx = global.__modules.register('1');
-function Component() {
-  // ...
-}
-__x = Component;
-__ctx.exports(function () {
-  return {
-    Component: __x,
-  };
-});
-var __x;
+const __deps = {
+  react: () => ({
+    default: React,
+    useState,
+    useCallback,
+  }),
+  './Container': () => ({
+    Component,
+  }),
+};
+global.__modules.define(
+  function (__context) {
+    const {
+      default: React,
+      useState,
+      useCallback,
+    } = __context.require('react');
+    const { Component } = __context.require('./Container');
+    function Component() {
+      // ...
+    }
+    __x = Component;
+    __context.exports(function () {
+      return {
+        Component: __x,
+      };
+    });
+  },
+  'mod-id',
+  __deps,
+);
 export { __x as Component };
+var __x;
 ```
 
 </details>
@@ -83,23 +106,19 @@ export { __x as Component };
 <summary>Runtime phase</summary>
 
 ```ts
-var __ctx = global.__modules.getContext('1');
-__ctx.reset();
-var {
-  default: React,
-  useState,
-  useCallback,
-} = global.__modules.require('1000');
-var { Component } = global.__modules.require('1234');
-function Component() {
-  // ...
-}
-__x = Component;
-__ctx.exports(function () {
-  return {
-    Component: __x,
-  };
-});
+global.__modules.define(function (__context) {
+  const { default: React, useState, useCallback } = __context.require('react');
+  const { Component } = __context.require('./Container');
+  function Component() {
+    // ...
+  }
+  __x = Component;
+  __context.exports(function () {
+    return {
+      Component: __x,
+    };
+  });
+}, 'mod-id');
 var __x;
 ```
 

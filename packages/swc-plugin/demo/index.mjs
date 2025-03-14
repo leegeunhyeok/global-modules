@@ -25,7 +25,7 @@ function runtimePreset() {
     globalModulePlugin,
     {
       id: 'mod-id',
-      phase: true,
+      runtime: true,
     },
   ];
 }

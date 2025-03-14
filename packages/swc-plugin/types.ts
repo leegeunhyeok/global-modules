@@ -4,7 +4,7 @@ export interface PluginConfig {
    */
   id: string;
   /**
-   * The module phase.
+   * The flag for transform as runtime module.
    */
   runtime: boolean;
 }
