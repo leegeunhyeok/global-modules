@@ -119,7 +119,7 @@ describe('@global-modules/swc-plugin', () => {
           entry: `
           import * as mod from './foo';
 
-          bridge(global.__modules.getContext('0').module.exports);
+          bridge(global.__modules.require('0'));
           `,
           foo: `
           const foo = 'foo';
@@ -152,7 +152,7 @@ describe('@global-modules/swc-plugin', () => {
           entry: `
           import * as mod from './foo';
 
-          bridge(global.__modules.getContext('0').module.exports);
+          bridge(global.__modules.require('0'));
           `,
           foo: `
           const obj = { value: 0 };
@@ -177,7 +177,7 @@ describe('@global-modules/swc-plugin', () => {
           entry: `
           const mod = require('./foo');
 
-          bridge(global.__modules.getContext('0').module.exports);
+          bridge(global.__modules.require('0'));
           `,
           foo: `
           const foo = 'foo';
@@ -215,6 +215,7 @@ describe('@global-modules/swc-plugin', () => {
         bar: 'bar',
         baz: 'baz',
         qux: 'qux',
+        default: expect.anything(),
       });
       expect(bridge).not.toBeCalledWith({ invalid: 'invalid' });
     });

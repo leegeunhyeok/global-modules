@@ -9,7 +9,7 @@ global.__modules.define(function(__context) {
     const __mod2 = __context.require("./re-exp-3");
     const __mod3 = __context.require("./re-exp-4");
     const __mod4 = __context.require("./re-exp-5");
-    React.lazy(()=>__context.require("./Component"));
+    React.lazy(()=>__context.import("./Component"));
     if (__DEV__) {
         __context.require("./cjs-1");
     }
@@ -26,7 +26,7 @@ global.__modules.define(function(__context) {
     function __default() {
         __context.require("./cjs-2");
         const inner = async ()=>{
-            await __context.require("./esm");
+            await __context.import("./esm");
             __context.require("./cjs-3");
         };
     }

@@ -744,6 +744,21 @@ pub mod presets {
             .as_call(DUMMY_SP, vec![src.as_arg()])
     }
 
+    /// Returns a global module's import call expression.
+    ///
+    /// This is same as `ctx_ident.require(src)` but it returns a `Promise`.
+    ///
+    /// ```js
+    /// // Code
+    /// ctx_ident.import(src);
+    /// ```
+    pub fn import_call(ctx_ident: &Ident, src: Lit) -> Expr {
+        ctx_ident
+            .clone()
+            .make_member(quote_ident!("import"))
+            .as_call(DUMMY_SP, vec![src.as_arg()])
+    }
+
     /// Converts to require statement
     ///
     /// ```js

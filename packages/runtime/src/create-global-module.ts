@@ -97,6 +97,7 @@ export function createGlobalModule(): GlobalModule {
     dependencies: Record<string, unknown> | null,
   ): ModuleContext {
     const module = { exports: createExports() };
+    const boundRequire = require.bind(dependencies) as ModuleContext['require'];
 
     return {
       // Exports object
@@ -111,7 +112,8 @@ export function createGlobalModule(): GlobalModule {
         }) as ModuleExports,
         { ns: toNamespaceExports },
       ),
-      require: require.bind(dependencies),
+      require: boundRequire,
+      import: (source: string) => Promise.resolve(boundRequire(source)),
     };
   }
 

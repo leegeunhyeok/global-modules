@@ -17,6 +17,7 @@ export interface ModuleContext {
     exports: Exports;
   };
   require: ModuleRequire;
+  import: ModuleImport;
 }
 
 export interface ModuleExports {
@@ -24,6 +25,7 @@ export interface ModuleExports {
   ns: (exports: Exports) => Exports;
 }
 export type ModuleRequire = (id: ModuleId) => Exports;
+export type ModuleImport = (id: ModuleId) => Promise<Exports>;
 export type Exports = Record<string, unknown>;
 
 export interface GlobalModule {

@@ -48,12 +48,7 @@ export async function bundleWithFoo(
       loader: 'js',
     },
     banner: {
-      js: [
-        runtimeCode,
-        runtime ? `global.__modules.register('0');` : null,
-      ]
-        .filter(Boolean)
-        .join('\n'),
+      js: runtimeCode,
     },
     plugins: [
       {
