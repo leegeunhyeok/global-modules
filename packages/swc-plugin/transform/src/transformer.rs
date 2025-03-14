@@ -2,7 +2,7 @@ use std::mem;
 
 use crate::{module_builder::ModuleBuilder, module_collector::create_collector};
 use swc_core::{
-    common::SyntaxContext,
+    common::{collections::AHashMap, SyntaxContext},
     ecma::{
         ast::*,
         utils::private_ident,
@@ -15,6 +15,8 @@ pub struct GlobalModuleTransformer {
     id: String,
     /// Runtime phase flag
     runtime: bool,
+    /// Paths
+    paths: Option<AHashMap<String, String>>,
     /// Context identifier
     ctx_ident: Ident,
     /// Dependencies identifier
@@ -24,10 +26,16 @@ pub struct GlobalModuleTransformer {
 }
 
 impl GlobalModuleTransformer {
-    pub fn new(id: String, runtime: bool, unresolved_ctxt: SyntaxContext) -> Self {
+    pub fn new(
+        id: String,
+        runtime: bool,
+        paths: Option<AHashMap<String, String>>,
+        unresolved_ctxt: SyntaxContext,
+    ) -> Self {
         Self {
             id,
             runtime,
+            paths,
             unresolved_ctxt,
             ctx_ident: private_ident!("__context"),
             deps_ident: private_ident!("__deps"),
@@ -39,7 +47,7 @@ impl VisitMut for GlobalModuleTransformer {
     noop_visit_mut_type!();
 
     fn visit_mut_module(&mut self, module: &mut Module) {
-        let mut collector = create_collector(self.unresolved_ctxt, &self.ctx_ident);
+        let mut collector = create_collector(self.unresolved_ctxt, &self.ctx_ident, &self.paths);
         let mut builder = ModuleBuilder::new(&self.ctx_ident, &self.deps_ident);
 
         module.visit_mut_children_with(&mut collector);
@@ -49,7 +57,7 @@ impl VisitMut for GlobalModuleTransformer {
     }
 
     fn visit_mut_script(&mut self, script: &mut Script) {
-        let mut collector = create_collector(self.unresolved_ctxt, &self.ctx_ident);
+        let mut collector = create_collector(self.unresolved_ctxt, &self.ctx_ident, &self.paths);
         let mut builder = ModuleBuilder::new(&self.ctx_ident, &self.deps_ident);
 
         script.visit_mut_children_with(&mut collector);

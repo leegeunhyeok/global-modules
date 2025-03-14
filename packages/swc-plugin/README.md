@@ -22,6 +22,11 @@ await swc.transform(code, {
             // - `false`: Bundle phase.
             // - `true`: Runtime phase.
             runtime: false,
+            // The paths for mapping module sources.
+            paths: {
+              react: 'react-module-id',
+              './Container': 'container-module-id',
+            },
           },
         ],
       ],
@@ -32,10 +37,11 @@ await swc.transform(code, {
 
 ### Options
 
-| Option    | Type      | Description                               | Required |
-| --------- | --------- | ----------------------------------------- | -------- |
-| `id`      | `string`  | The module's unique identifier.           | O        |
-| `runtime` | `boolean` | The flag for transform as runtime module. | O        |
+| Option    | Type                     | Description                               | Required |
+| --------- | ------------------------ | ----------------------------------------- | -------- |
+| `id`      | `string`                 | The module's unique identifier.           | O        |
+| `runtime` | `boolean`                | The flag for transform as runtime module. | O        |
+| `paths`   | `Record<string, string>` | The paths for mapping module sources.     |          |
 
 - `runtime: false`: Register only the module's exports. At this phase, the module statements(ESM: `import`, `export` / CommonJS: `require`, `module`) are not transformed, as these are delegated to the bundler to follow its module resolution specification.
 - `runtime: true`: Register the module's exports and strip module statements. At this phase, module reference statements are transformed into the global module's require call expression(`global.__modules.require()`) to reference other modules' exports at runtime.
@@ -107,10 +113,24 @@ var __x;
 
 <summary>Runtime phase</summary>
 
-```ts
+````ts
+/**
+ * With `paths`
+ *
+ * ```js
+ * {
+ *   "react": "react-module-id",
+ *   "./Container": "container-module-id",
+ * }
+ * ```
+ */
 global.__modules.define(function (__context) {
-  const { default: React, useState, useCallback } = __context.require('react', 0);
-  const { Component } = __context.require('./Container', 1);
+  const {
+    default: React,
+    useState,
+    useCallback,
+  } = __context.require('react-module-id', 0); // `react`
+  const { Component } = __context.require('container-module-id', 1); // `./Container`
   function Component() {
     // ...
   }
@@ -122,6 +142,6 @@ global.__modules.define(function (__context) {
   });
 }, 'mod-id');
 var __x;
-```
+````
 
 </details>

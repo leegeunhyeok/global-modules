@@ -16,6 +16,9 @@ function bundlePreset() {
     {
       id: 'mod-id',
       runtime: false,
+      paths: {
+        react: 'react-module-id',
+      },
     },
   ];
 }
@@ -26,6 +29,9 @@ function runtimePreset() {
     {
       id: 'mod-id',
       runtime: true,
+      paths: {
+        react: 'react-module-id',
+      },
     },
   ];
 }

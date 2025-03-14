@@ -58,3 +58,5 @@ For more details about usage, see [demo implementation (HMR on esbuild)](https:/
 ## License
 
 [MIT](./LICENSE)
+
+paths

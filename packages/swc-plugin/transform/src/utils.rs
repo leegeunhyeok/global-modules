@@ -3,13 +3,15 @@ pub mod ast {
     use core::panic;
     use swc_core::{
         atoms::Atom,
-        common::{Spanned, SyntaxContext, DUMMY_SP},
+        common::{collections::AHashMap, Spanned, SyntaxContext, DUMMY_SP},
         ecma::{
             ast::*,
             utils::{private_ident, ExprFactory},
         },
         plugin::errors::HANDLER,
     };
+
+    use super::helpers::to_mapped_src;
 
     /// Returns a binding identifier for the default export.
     ///
@@ -403,8 +405,11 @@ pub mod ast {
     }
 
     /// Converts an import declaration to a `Dep`.
-    pub fn import_as_dep(import_decl: &ImportDecl) -> Option<Dep> {
-        let src = import_decl.src.value.to_string();
+    pub fn import_as_dep(
+        import_decl: &ImportDecl,
+        paths: &Option<AHashMap<String, String>>,
+    ) -> Option<Dep> {
+        let src = to_mapped_src(&import_decl.src.value.to_string(), paths);
         let members = import_decl
             .specifiers
             .iter()
@@ -604,12 +609,16 @@ pub mod ast {
     }
 
     /// Converts an export named declaration to an `Exp`.
-    pub fn export_named_as_exp(export_named: &NamedExport) -> Option<(Exp, Vec<ExpBinding>)> {
+    pub fn export_named_as_exp(
+        export_named: &NamedExport,
+        paths: &Option<AHashMap<String, String>>,
+    ) -> Option<(Exp, Vec<ExpBinding>)> {
         let mut exp_bindings: Vec<ExpBinding> = Vec::new();
 
         // If namespace export, it always has one specifier
         if let Some(specifier) = export_named.specifiers.get(0) {
             if specifier.is_namespace() {
+                let src = export_named.src.as_ref().unwrap().clone().value.to_string();
                 let ns = specifier.as_namespace().unwrap();
                 let ident = match &ns.name {
                     ModuleExportName::Ident(ident) => ident.clone(),
@@ -619,10 +628,7 @@ pub mod ast {
                 };
 
                 return Some((
-                    Exp::ReExportAll(ReExportAllExp::alias(
-                        export_named.src.as_ref().unwrap().clone().value.to_string(),
-                        ident,
-                    )),
+                    Exp::ReExportAll(ReExportAllExp::alias(to_mapped_src(&src, paths), ident)),
                     exp_bindings,
                 ));
             }
@@ -706,8 +712,9 @@ pub mod ast {
                     Exp::Base(BaseExp::new(members))
                 } else {
                     // Named re-export
+                    let src = export_named.src.as_ref().unwrap().clone().value.to_string();
                     Exp::ReExportNamed(ReExportNamedExp {
-                        src: export_named.src.as_ref().unwrap().clone().value.to_string(),
+                        src: to_mapped_src(&src, paths),
                         members,
                     })
                 },
@@ -717,10 +724,12 @@ pub mod ast {
     }
 
     /// Converts an export all declaration to an `Exp`.
-    pub fn export_all_as_exp(export_all: &ExportAll) -> Exp {
-        Exp::ReExportAll(ReExportAllExp::new(
-            export_all.src.as_ref().clone().value.to_string(),
-        ))
+    pub fn export_all_as_exp(
+        export_all: &ExportAll,
+        paths: &Option<AHashMap<String, String>>,
+    ) -> Exp {
+        let src = export_all.src.as_ref().clone().value.to_string();
+        Exp::ReExportAll(ReExportAllExp::new(to_mapped_src(&src, paths)))
     }
 }
 
@@ -1001,5 +1010,17 @@ pub mod presets {
             kind: VarDeclKind::Const,
             ..Default::default()
         }))
+    }
+}
+
+pub mod helpers {
+    use swc_core::common::collections::AHashMap;
+
+    pub fn to_mapped_src(src: &String, paths: &Option<AHashMap<String, String>>) -> String {
+        if let Some(paths) = paths {
+            paths.get(src).unwrap_or(src).to_string()
+        } else {
+            src.to_string()
+        }
     }
 }

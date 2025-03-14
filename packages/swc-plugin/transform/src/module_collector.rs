@@ -1,7 +1,7 @@
 use std::mem;
 
 use swc_core::{
-    common::{util::take::Take, Spanned, SyntaxContext},
+    common::{collections::AHashMap, util::take::Take, Spanned, SyntaxContext},
     ecma::{
         ast::*,
         utils::ExprFactory,
@@ -12,7 +12,7 @@ use swc_core::{
 
 use crate::{
     models::{Dep, Exp, ExpBinding},
-    utils::{ast::*, presets::*},
+    utils::{ast::*, helpers::to_mapped_src, presets::*},
 };
 
 pub struct ModuleCollector<'a> {
@@ -24,15 +24,22 @@ pub struct ModuleCollector<'a> {
     pub exp_bindings: Vec<ExpBinding>,
     /// Context identifier
     pub ctx_ident: &'a Ident,
+    /// Paths
+    pub paths: &'a Option<AHashMap<String, String>>,
     /// Unresolved context
     pub unresolved_ctxt: SyntaxContext,
 }
 
 impl<'a> ModuleCollector<'a> {
-    pub fn new(unresolved_ctxt: SyntaxContext, ctx_ident: &'a Ident) -> Self {
+    pub fn new(
+        unresolved_ctxt: SyntaxContext,
+        ctx_ident: &'a Ident,
+        paths: &'a Option<AHashMap<String, String>>,
+    ) -> Self {
         Self {
             unresolved_ctxt,
             ctx_ident,
+            paths,
             deps: Vec::new(),
             exps: Vec::new(),
             exp_bindings: Vec::new(),
@@ -74,7 +81,7 @@ impl<'a> VisitMut for ModuleCollector<'a> {
                         // import * as foo from './foo';
                         // ```
                         ModuleDecl::Import(import_decl) => {
-                            if let Some(dep) = import_as_dep(import_decl) {
+                            if let Some(dep) = import_as_dep(import_decl, self.paths) {
                                 self.deps.push(dep);
                             }
                         }
@@ -144,7 +151,9 @@ impl<'a> VisitMut for ModuleCollector<'a> {
                                 ..
                             },
                         ) => {
-                            if let Some((exp, exp_bindings)) = export_named_as_exp(export_named) {
+                            if let Some((exp, exp_bindings)) =
+                                export_named_as_exp(export_named, self.paths)
+                            {
                                 match exp {
                                     Exp::Base(_) => {
                                         self.exp_bindings.extend(exp_bindings);
@@ -167,7 +176,7 @@ impl<'a> VisitMut for ModuleCollector<'a> {
                                 with: None,
                                 ..
                             },
-                        ) => self.exps.push(export_all_as_exp(export_all)),
+                        ) => self.exps.push(export_all_as_exp(export_all, self.paths)),
                         _ => {}
                     }
                 }
@@ -191,7 +200,11 @@ impl<'a> VisitMut for ModuleCollector<'a> {
                         let src = lit_to_string(lit);
                         let idx = self.deps.len();
                         self.deps.push(Dep::runtime(expr.clone()));
-                        *expr = require_call(self.ctx_ident, Lit::Str(src.into()), idx);
+                        *expr = require_call(
+                            self.ctx_ident,
+                            Lit::Str(to_mapped_src(&src, self.paths).into()),
+                            idx,
+                        );
                     }
                     _ => HANDLER.with(|handler| {
                         handler
@@ -216,7 +229,11 @@ impl<'a> VisitMut for ModuleCollector<'a> {
                         let src = lit_to_string(lit);
                         let idx = self.deps.len();
                         self.deps.push(Dep::runtime(expr.clone()));
-                        *expr = import_call(self.ctx_ident, Lit::Str(src.into()), idx);
+                        *expr = import_call(
+                            self.ctx_ident,
+                            Lit::Str(to_mapped_src(&src, self.paths).into()),
+                            idx,
+                        );
                     }
                     _ => HANDLER.with(|handler| {
                         handler
@@ -307,6 +324,7 @@ impl<'a> VisitMut for ModuleCollector<'a> {
 pub fn create_collector<'a>(
     unresolved_ctxt: SyntaxContext,
     ctx_ident: &'a Ident,
+    paths: &'a Option<AHashMap<String, String>>,
 ) -> ModuleCollector<'a> {
-    ModuleCollector::new(unresolved_ctxt, ctx_ident)
+    ModuleCollector::new(unresolved_ctxt, ctx_ident, paths)
 }

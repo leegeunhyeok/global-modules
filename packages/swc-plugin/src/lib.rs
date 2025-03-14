@@ -1,6 +1,6 @@
 use serde::Deserialize;
 use swc_core::{
-    common::SyntaxContext,
+    common::{collections::AHashMap, SyntaxContext},
     ecma::ast::Program,
     plugin::{plugin_transform, proxies::TransformPluginProgramMetadata},
 };
@@ -11,6 +11,7 @@ use swc_global_modules::global_modules;
 struct GlobalModuleConfig {
     id: String,
     runtime: bool,
+    paths: Option<AHashMap<String, String>>,
 }
 
 #[plugin_transform]
@@ -28,6 +29,7 @@ pub fn global_modules_plugin(
     program.apply(&mut global_modules(
         config.id,
         config.runtime,
+        config.paths,
         SyntaxContext::empty().apply_mark(metadata.unresolved_mark),
     ))
 }
