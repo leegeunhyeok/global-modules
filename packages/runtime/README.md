@@ -37,42 +37,45 @@ import foo from './foo';
 import bar from './bar';
 import { baz } from './baz';
 
-const __ctx = global.__modules.register('1');
+global.__modules.define(function (__context) {
+  const { default: foo } = __context.require('./foo', 0);
+  const { default: bar } = __context.require('./bar', 1);
+  const { baz } = __context.require('./baz', 2);
 
-function something() {
-  return foo.value + bar.value + baz;
-}
+  function something() {
+    return foo.value + bar.value + baz;
+  }
 
-__x = something;
-__ctx.exports(function () {
-  return {
-    something: __x,
-  };
+  __x = something;
+  __ctx.exports(function () {
+    return {
+      something: __x,
+    };
+  });
 });
 var __x;
 
 export { __x as something };
 ```
 
-Reference other module's exports using `global.__modules.require()`.
+Reference other module's exports using `context.require()` or `global.__modules.require()`.
 
 ```ts
 // 2. Runtime phase
-var __ctx = global.__modules.getContext('1');
-__ctx.reset();
-
-var { default: foo } = global.__modules.require('1000'); // `./foo` module's id
-var { default: bar } = global.__modules.require('1001'); // `./bar` module's id
-var { baz } = global.__modules.require('1002'); // `./baz` module's id
-
-function something() {
-  return foo.value + bar.value + baz;
-}
-__x = something;
-__ctx.exports(function () {
-  return {
-    something: __x,
-  };
+global.__modules.define(function(__context) {
+  const { default: foo } = __context.require('1000', 0); // `./foo` module's id
+  const { default: bar } = __context.require('1001', 1); // `./bar` module's id
+  const { baz } = __context.require('1002', 2); // `./baz` module's id
+  
+  function something() {
+    return foo.value + bar.value + baz;
+  }
+  __x = something;
+  __ctx.exports(function () {
+    return {
+      something: __x,
+    };
+  });
 });
 var __x;
 ```

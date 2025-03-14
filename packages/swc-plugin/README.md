@@ -64,24 +64,26 @@ export function Component() {
 ```ts
 import React, { useState, useCallback } from 'react';
 import { Component } from './Container';
-const __deps = {
-  react: () => ({
+const __deps = [
+  // `react`
+  () => ({
     default: React,
     useState,
     useCallback,
   }),
-  './Container': () => ({
+  // `./Container`
+  () => ({
     Component,
   }),
-};
+];
 global.__modules.define(
   function (__context) {
     const {
       default: React,
       useState,
       useCallback,
-    } = __context.require('react');
-    const { Component } = __context.require('./Container');
+    } = __context.require('react', 0);
+    const { Component } = __context.require('./Container', 1);
     function Component() {
       // ...
     }
@@ -107,8 +109,8 @@ var __x;
 
 ```ts
 global.__modules.define(function (__context) {
-  const { default: React, useState, useCallback } = __context.require('react');
-  const { Component } = __context.require('./Container');
+  const { default: React, useState, useCallback } = __context.require('react', 0);
+  const { Component } = __context.require('./Container', 1);
   function Component() {
     // ...
   }
