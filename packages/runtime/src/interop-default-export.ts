@@ -1,4 +1,4 @@
-import type { Exports, Module } from './types';
+import type { Exports } from './types';
 
 export function interopDefaultExport<T extends { exports: Exports }>(
   module: T,

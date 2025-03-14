@@ -6,6 +6,7 @@ import type {
   Module,
   ModuleContext,
   ModuleExports,
+  ModuleFactory,
   ModuleId,
 } from './types';
 import * as utils from './utils';
@@ -20,7 +21,53 @@ export function createGlobalModule(): GlobalModule {
     utils.copyProps(exports, definitions());
   }
 
-  function require(id: ModuleId): Exports {
+  function define(
+    moduleFactory: ModuleFactory,
+    id: ModuleId,
+    dependencies: Record<string, unknown> | null = null,
+  ): void {
+    const module = {} as Module;
+
+    module.id = id;
+    module.context = createContext(dependencies);
+    module.factory = moduleFactory;
+
+    // Register the module after the module is evaluated.
+    module.factory(module.context);
+    moduleRegistry.set(id, module);
+  }
+
+  function apply(id: ModuleId, dependencyMap?: Record<string, string>): void {
+    const module = getModule(id);
+
+    if (dependencyMap != null) {
+      // Override the require function with the provided dependency id map.
+      module.context.require = require.bind(dependencyMap);
+    }
+
+    module.factory(module.context);
+  }
+
+  let re = 0;
+  function require(
+    this: null | Record<string, (() => Exports) | string>,
+    id: ModuleId,
+  ): Exports {
+    if (this !== null) {
+      const dependency = this[id];
+
+      if (typeof dependency === 'function') {
+        // Bundle phase (dependency getter)
+        return dependency();
+      }
+
+      if (typeof dependency === 'string') {
+        // Runtime phase (`apply` called with dependency id map)
+        // Remap the dependency id to the provided module id.
+        id = dependency;
+      }
+    }
+
     const module = getModule(id).context.module;
 
     return module.exports.__esModule || isExports(module.exports)
@@ -47,7 +94,9 @@ export function createGlobalModule(): GlobalModule {
     return nsExports;
   }
 
-  function createContext(): ModuleContext {
+  function createContext(
+    dependencies: Record<string, unknown> | null,
+  ): ModuleContext {
     const module = { exports: createExports() };
 
     return {
@@ -63,31 +112,17 @@ export function createGlobalModule(): GlobalModule {
         }) as ModuleExports,
         { ns: toNamespaceExports },
       ),
-      reset: () => void (module.exports = createExports()),
+      require: require.bind(dependencies),
     };
-  }
-
-  function register(id: ModuleId): ModuleContext {
-    const module = {} as Module;
-
-    module.id = id;
-    module.context = createContext();
-    moduleRegistry.set(id, module);
-
-    return module.context;
-  }
-
-  function getContext(id: ModuleId): ModuleContext {
-    return getModule(id).context;
-  }
-
-  function getRegistry(): Map<ModuleId, Module> {
-    return moduleRegistry;
   }
 
   function clear(): void {
     moduleRegistry.clear();
   }
 
-  return { register, getContext, getRegistry, require, clear };
+  function getRegistry(): Map<ModuleId, Module> {
+    return moduleRegistry;
+  }
+
+  return { define, apply, require, clear, getRegistry };
 }
