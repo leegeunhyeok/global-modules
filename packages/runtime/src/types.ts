@@ -35,7 +35,7 @@ export interface GlobalModule {
   define: (
     moduleFactory: ModuleFactory,
     id: ModuleId,
-    dependencies?: Record<string, unknown> | null,
+    dependencies?: (() => unknown)[] | null,
   ) => void;
   /**
    * Re-evaluate the module with the provided dependency id map.

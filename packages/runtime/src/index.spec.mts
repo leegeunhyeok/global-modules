@@ -108,22 +108,29 @@ describe('@global-modules/runtime', () => {
     it('should reference the provided dependency', () => {
       context.evaluate(`
         __modules.define((context) => {
-          const mod = context.require('react');
-          print(mod);
-        }, 'mod-0', {
-          'react': () => ({
+          const mod1 = context.require('react', 0);
+          const mod2 = context.require('react-dom', 1);
+          print(mod1, mod2);
+        }, 'mod-0', [
+          () => ({
             default: 'React',
             useState: 'hook#useState',
             useEffect: 'hook#useEffect',
           }),
-        });
+          () => ({ default: 'ReactDOM' }),
+        ]);
       `);
 
-      expect(mockedPrint).toBeCalledWith({
-        default: 'React',
-        useState: 'hook#useState',
-        useEffect: 'hook#useEffect',
-      });
+      expect(mockedPrint).toBeCalledWith(
+        {
+          default: 'React',
+          useState: 'hook#useState',
+          useEffect: 'hook#useEffect',
+        },
+        {
+          default: 'ReactDOM',
+        },
+      );
     });
   });
 
@@ -140,27 +147,46 @@ describe('@global-modules/runtime', () => {
     it('should reference the module that provided id', () => {
       context.evaluate(`
         __modules.define((context) => {
-          const mod = context.require('./foo');
-          print('require foo', mod);
-        }, 'mod', {
-          './foo': () => ({ default: 'foo' }),
-        });
+          const mod1 = context.require('./foo', 0);
+          const mod2 = context.require('./bar', 1);
+          print('require foo', mod1, mod2);
+        }, 'mod', [
+          () => ({ default: 'foo' }),
+          () => ({ default: 'bar' }),
+        ]);
       `);
 
-      expect(mockedPrint).toBeCalledWith('require foo', { default: 'foo' });
+      expect(mockedPrint).toBeCalledWith(
+        'require foo',
+        { default: 'foo' },
+        { default: 'bar' },
+      );
 
       context.evaluate(`
         __modules.define((context) => {
           context.exports(() => ({ default: 'defined foo', foo: 'foo' }));
         }, 'foo-id');
-        __modules.apply('mod', { './foo': 'foo-id' });
+        __modules.define((context) => {
+          context.exports(() => ({ default: 'defined bar', bar: 'bar' }));
+        }, 'bar-id');
+        __modules.apply('mod', {
+          './foo': 'foo-id',
+          './bar': 'bar-id',
+        });
       `);
 
       // `context.require('./foo')` should reference the re-mapped module (`foo-id`).
-      expect(mockedPrint).toBeCalledWith('require foo', {
-        default: 'defined foo',
-        foo: 'foo',
-      });
+      expect(mockedPrint).toBeCalledWith(
+        'require foo',
+        {
+          default: 'defined foo',
+          foo: 'foo',
+        },
+        {
+          default: 'defined bar',
+          bar: 'bar',
+        },
+      );
     });
   });
 

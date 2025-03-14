@@ -24,7 +24,7 @@ export function createGlobalModule(): GlobalModule {
   function define(
     moduleFactory: ModuleFactory,
     id: ModuleId,
-    dependencies: Record<string, unknown> | null = null,
+    dependencies: (() => unknown)[] | null = null,
   ): void {
     const module = {} as Module;
 
@@ -54,22 +54,20 @@ export function createGlobalModule(): GlobalModule {
   }
 
   function require(
-    this: null | Record<string, (() => Exports) | string>,
+    this: null | Record<string, string> | (() => Exports)[],
     id: ModuleId,
+    dependencyIndex?: number /* @internal */,
   ): Exports {
-    if (this !== null) {
-      const dependency = this[id];
+    if (Array.isArray(this) && typeof dependencyIndex === 'number') {
+      // Bundle phase
+      // Get module exports from the dependency getter.
+      return this[dependencyIndex]();
+    }
 
-      if (typeof dependency === 'function') {
-        // Bundle phase (dependency getter)
-        return dependency();
-      }
-
-      if (typeof dependency === 'string') {
-        // Runtime phase (`apply` called with dependency id map)
-        // Remap the dependency id to the provided module id.
-        id = dependency;
-      }
+    if (this !== null && typeof this[id] === 'string') {
+      // Runtime phase (`apply` called with dependency id map)
+      // Remap the dependency id to the provided module id.
+      id = this[id];
     }
 
     const module = getModule(id).context.module;
@@ -99,7 +97,7 @@ export function createGlobalModule(): GlobalModule {
   }
 
   function createContext(
-    dependencies: Record<string, unknown> | null,
+    dependencies: (() => unknown)[] | null,
   ): ModuleContext {
     const module = { exports: createExports() };
     const boundRequire = require.bind(dependencies) as ModuleContext['require'];
