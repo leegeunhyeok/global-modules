@@ -24,8 +24,16 @@ export interface ModuleExports {
   (definitions: () => Exports): void;
   ns: (exports: Exports) => Exports;
 }
-export type ModuleRequire = (id: ModuleId) => Exports;
-export type ModuleImport = (id: ModuleId) => Promise<Exports>;
+export type ModuleRequire = (
+  id: ModuleId,
+  dependencyIndex?: number /* @internal */,
+) => Exports;
+
+export type ModuleImport = (
+  id: ModuleId,
+  dependencyIndex?: number /* @internal */,
+) => Promise<Exports>;
+
 export type Exports = Record<string, unknown>;
 
 export interface GlobalModule {

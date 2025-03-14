@@ -23,7 +23,9 @@ const copyProps = <T extends object>(
   return destination;
 };
 
-const toImport = (require: ModuleContext['require']) => (source: string) =>
-  Promise.resolve(require(source));
+const toImport =
+  (require: ModuleContext['require']) =>
+  (source: string, dependencyIndex?: number /* @internal */) =>
+    Promise.resolve(require(source, dependencyIndex));
 
 export { hasOwnProp, defProp, copyProps, toImport };

@@ -56,7 +56,7 @@ export function createGlobalModule(): GlobalModule {
   function require(
     this: null | Record<string, string> | (() => Exports)[],
     id: ModuleId,
-    dependencyIndex?: number /* @internal */,
+    dependencyIndex?: number,
   ): Exports {
     if (Array.isArray(this) && typeof dependencyIndex === 'number') {
       // Bundle phase
