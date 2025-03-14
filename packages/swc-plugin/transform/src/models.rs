@@ -33,8 +33,8 @@ impl Dep {
     }
 
     /// Creates a new runtime dependency
-    pub fn runtime(src: String, expr: Expr) -> Self {
-        Dep::Runtime(RuntimeDep { src, expr })
+    pub fn runtime(expr: Expr) -> Self {
+        Dep::Runtime(RuntimeDep { expr })
     }
 }
 
@@ -75,8 +75,6 @@ impl DepMember {
 
 #[derive(Debug)]
 pub struct RuntimeDep {
-    /// Source
-    pub src: String,
     /// Original expression
     ///
     /// ```js

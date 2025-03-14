@@ -190,7 +190,7 @@ impl<'a> VisitMut for ModuleCollector<'a> {
                     Expr::Lit(lit) => {
                         let src = lit_to_string(lit);
                         let idx = self.deps.len();
-                        self.deps.push(Dep::runtime(src.clone(), expr.clone()));
+                        self.deps.push(Dep::runtime(expr.clone()));
                         *expr = require_call(self.ctx_ident, Lit::Str(src.into()), idx);
                     }
                     _ => HANDLER.with(|handler| {
@@ -215,7 +215,7 @@ impl<'a> VisitMut for ModuleCollector<'a> {
                     Expr::Lit(lit) => {
                         let src = lit_to_string(lit);
                         let idx = self.deps.len();
-                        self.deps.push(Dep::runtime(src.clone(), expr.clone()));
+                        self.deps.push(Dep::runtime(expr.clone()));
                         *expr = import_call(self.ctx_ident, Lit::Str(src.into()), idx);
                     }
                     _ => HANDLER.with(|handler| {

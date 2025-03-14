@@ -151,7 +151,7 @@ impl<'a> ModuleBuilder<'a> {
                         .into(),
                     )
                 }
-                Dep::Runtime(RuntimeDep { expr, .. }) => {
+                Dep::Runtime(RuntimeDep { expr }) => {
                     self.dep_getters
                         .push(DepGetter::Expr(arrow_with_paren_expr(expr)));
                 }
