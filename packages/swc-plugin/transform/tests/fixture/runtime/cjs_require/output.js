@@ -1,25 +1,26 @@
-var __ctx = global.__modules.getContext("1000");
-__ctx.reset();
-const foo = global.__modules.require('./foo');
-if (__DEV__) {
-    global.__modules.require('inner-1');
-}
-function a() {
-    function b() {
-        function c() {
-            global.__modules.require('inner-2');
+var __deps;
+global.__modules.define(function(__context) {
+    const foo = __context.require("./foo");
+    if (__DEV__) {
+        __context.require("inner-1");
+    }
+    function a() {
+        function b() {
+            function c() {
+                __context.require("inner-2");
+            }
         }
     }
-}
-class Foo {
-    constructor(){
-        global.__modules.require('inner-2');
+    class Foo {
+        constructor(){
+            __context.require("inner-2");
+        }
     }
-}
-function a(require) {
-    require('a');
-}
-function b() {
-    const require = function() {};
-    require('b');
-}
+    function a(require) {
+        require('a');
+    }
+    function b() {
+        const require = function() {};
+        require('b');
+    }
+}, "1000", __deps);

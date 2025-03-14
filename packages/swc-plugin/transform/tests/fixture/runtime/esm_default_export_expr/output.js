@@ -1,9 +1,11 @@
-var __ctx = global.__modules.getContext("1000");
-__ctx.reset();
-__x = 'default';
-__ctx.exports(function() {
-    return {
-        "default": __x
-    };
-});
+var __deps;
+global.__modules.define(function(__context) {
+    const __default = 'default';
+    __x = __default;
+    __context.exports(function() {
+        return {
+            "default": __x
+        };
+    });
+}, "1000", __deps);
 var __x;
