@@ -113,7 +113,7 @@ impl<'a> ModuleBuilder<'a> {
     }
 
     /// Appends a dependency property to the dependency properties map.
-    fn insert_dep_getter(&mut self, src: String, getter: DepGetter) {
+    fn collect_dep_getter(&mut self, src: String, getter: DepGetter) {
         match self.dep_getters.entry(src) {
             Entry::Occupied(mut entry) => match (entry.get_mut(), getter) {
                 (DepGetter::Props(prev_props), DepGetter::Props(new_props)) => {
@@ -146,7 +146,7 @@ impl<'a> ModuleBuilder<'a> {
                     .map(|member| member.into_obj_pat_prop())
                     .collect::<Vec<ObjectPatProp>>();
 
-                self.insert_dep_getter(src.clone(), DepGetter::Props(require_props.clone()));
+                self.collect_dep_getter(src.clone(), DepGetter::Props(require_props.clone()));
                 self.stmts.push(
                     VarDecl {
                         kind: VarDeclKind::Const,
@@ -165,7 +165,7 @@ impl<'a> ModuleBuilder<'a> {
                 )
             }
             Dep::Runtime(RuntimeDep { src, expr }) => {
-                self.insert_dep_getter(src, DepGetter::Expr(arrow_with_paren_expr(expr)));
+                self.collect_dep_getter(src, DepGetter::Expr(arrow_with_paren_expr(expr)));
             }
         });
     }
@@ -192,7 +192,7 @@ impl<'a> ModuleBuilder<'a> {
                 self.imports.push(imp_stmt);
                 self.stmts.push(req_stmt);
                 self.exp_props.extend(exp_prop);
-                self.insert_dep_getter(src, DepGetter::Expr(getter_expr));
+                self.collect_dep_getter(src, DepGetter::Expr(getter_expr));
             }
             Exp::ReExportAll(re_export_all) => {
                 let mod_ident = mod_ident();
@@ -206,7 +206,7 @@ impl<'a> ModuleBuilder<'a> {
                 self.imports.push(imp_stmt);
                 self.stmts.push(req_stmt);
                 self.exp_props.push(exp_prop);
-                self.insert_dep_getter(src, DepGetter::Expr(getter_expr));
+                self.collect_dep_getter(src, DepGetter::Expr(getter_expr));
             }
         });
     }
