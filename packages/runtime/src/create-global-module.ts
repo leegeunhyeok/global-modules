@@ -42,7 +42,12 @@ export function createGlobalModule(): GlobalModule {
 
     if (dependencyMap != null) {
       // Override the require function with the provided dependency id map.
-      module.context.require = require.bind(dependencyMap);
+      const boundRequire = require.bind(
+        dependencyMap,
+      ) as ModuleContext['require'];
+
+      module.context.require = boundRequire;
+      module.context.import = utils.toImport(boundRequire);
     }
 
     module.factory(module.context);
@@ -113,7 +118,7 @@ export function createGlobalModule(): GlobalModule {
         { ns: toNamespaceExports },
       ),
       require: boundRequire,
-      import: (source: string) => Promise.resolve(boundRequire(source)),
+      import: utils.toImport(boundRequire),
     };
   }
 
