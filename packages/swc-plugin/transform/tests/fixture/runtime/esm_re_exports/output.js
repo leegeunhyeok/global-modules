@@ -1,4 +1,3 @@
-var __deps;
 global.__modules.define(function(__context) {
     const __mod = __context.require("./mod-1");
     const __mod1 = __context.require("./mod-2");
@@ -14,4 +13,4 @@ global.__modules.define(function(__context) {
             default: __mod3.default
         };
     });
-}, "1000", __deps);
+}, "1000");

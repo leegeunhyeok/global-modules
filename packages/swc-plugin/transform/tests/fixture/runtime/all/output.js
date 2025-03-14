@@ -1,4 +1,3 @@
-var __deps;
 global.__modules.define(function(__context) {
     const { default: React, useState, useCallback } = __context.require("react");
     const { foo } = __context.require("./foo");
@@ -50,5 +49,5 @@ global.__modules.define(function(__context) {
             rx5: __mod4.default
         };
     });
-}, "1000", __deps);
+}, "1000");
 var __x, __x1, __x2, __x3, __x4, __x5, __x6, __x7, __x8;

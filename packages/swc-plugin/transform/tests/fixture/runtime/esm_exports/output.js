@@ -1,4 +1,3 @@
-var __deps;
 global.__modules.define(function(__context) {
     const foo = 'foo';
     const bar = 'bar';
@@ -17,5 +16,5 @@ global.__modules.define(function(__context) {
             "func": __x5
         };
     });
-}, "1000", __deps);
+}, "1000");
 var __x, __x1, __x2, __x3, __x4, __x5;

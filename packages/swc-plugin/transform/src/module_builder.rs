@@ -240,9 +240,16 @@ impl<'a> ModuleBuilder<'a> {
     /// Returns a list of statements that can be used to source type: 'module'
     pub fn build_module(self, id: &String, runtime: bool) -> Vec<ModuleItem> {
         let deps_decl = if runtime {
-            to_empty_deps_decl(&self.deps_ident)
+            None
         } else {
-            to_deps_decl(&self.deps_ident, self.dep_getters)
+            Some(
+                if self.dep_getters.is_empty() {
+                    to_empty_deps_decl(&self.deps_ident)
+                } else {
+                    to_deps_decl(&self.deps_ident, self.dep_getters)
+                }
+                .into(),
+            )
         };
 
         let exports_call = if self.exp_props.is_empty() {
@@ -251,20 +258,41 @@ impl<'a> ModuleBuilder<'a> {
             Some(exports_call(&self.ctx_ident, self.exp_props).into_stmt())
         };
 
-        let stmts = vec![
-            deps_decl.into(),
-            define_call(
-                id,
-                &self.ctx_ident,
-                &self.deps_ident,
-                self.stmts
-                    .into_iter()
-                    .chain(self.binding_stmt.into_iter())
-                    .chain(exports_call.into_iter())
-                    .collect(),
+        let exp_var_decl = if self.exp_decls.len() > 0 {
+            Some(
+                Decl::Var(Box::new(VarDecl {
+                    decls: self.exp_decls,
+                    kind: VarDeclKind::Var,
+                    declare: false,
+                    span: DUMMY_SP,
+                    ctxt: SyntaxContext::default(),
+                }))
+                .into(),
             )
-            .into_stmt(),
-        ];
+        } else {
+            None
+        };
+
+        let stmts = deps_decl
+            .into_iter()
+            .chain(std::iter::once(
+                define_call(
+                    id,
+                    self.stmts
+                        .into_iter()
+                        .chain(self.binding_stmt.into_iter())
+                        .chain(exports_call.into_iter())
+                        .collect(),
+                    &self.ctx_ident,
+                    if runtime {
+                        None
+                    } else {
+                        Some(&self.deps_ident)
+                    },
+                )
+                .into_stmt(),
+            ))
+            .collect::<Vec<Stmt>>();
 
         let imports = if runtime { vec![] } else { self.imports };
         let exports = if runtime {
@@ -287,32 +315,23 @@ impl<'a> ModuleBuilder<'a> {
             .into_iter()
             .chain(stmts.into_iter().map(|stmt| stmt.into()))
             .chain(exports)
-            .chain(
-                if self.exp_decls.len() > 0 {
-                    Some(
-                        Decl::Var(Box::new(VarDecl {
-                            decls: self.exp_decls,
-                            kind: VarDeclKind::Var,
-                            declare: false,
-                            span: DUMMY_SP,
-                            ctxt: SyntaxContext::default(),
-                        }))
-                        .into(),
-                    )
-                } else {
-                    None
-                }
-                .into_iter(),
-            )
+            .chain(exp_var_decl.into_iter())
             .collect()
     }
 
     /// Returns a list of statements that can be used to source type: 'script'
     pub fn build_script(self, id: &String, runtime: bool) -> Vec<Stmt> {
         let deps_decl = if runtime {
-            to_empty_deps_decl(&self.deps_ident)
+            None
         } else {
-            to_deps_decl(&self.deps_ident, self.dep_getters)
+            Some(
+                if self.dep_getters.is_empty() {
+                    to_empty_deps_decl(&self.deps_ident)
+                } else {
+                    to_deps_decl(&self.deps_ident, self.dep_getters)
+                }
+                .into(),
+            )
         };
 
         let exports_call = if self.exp_props.is_empty() {
@@ -321,40 +340,41 @@ impl<'a> ModuleBuilder<'a> {
             Some(exports_call(&self.ctx_ident, self.exp_props).into_stmt())
         };
 
-        let stmts = vec![
-            deps_decl.into(),
-            define_call(
-                id,
-                &self.ctx_ident,
-                &self.deps_ident,
-                self.stmts
-                    .into_iter()
-                    .chain(self.binding_stmt.into_iter())
-                    .chain(exports_call.into_iter())
-                    .collect(),
+        let exp_var_decl = if self.exp_decls.len() > 0 {
+            Some(
+                Decl::Var(Box::new(VarDecl {
+                    decls: self.exp_decls,
+                    kind: VarDeclKind::Var,
+                    declare: false,
+                    span: DUMMY_SP,
+                    ctxt: SyntaxContext::default(),
+                }))
+                .into(),
             )
-            .into_stmt(),
-        ];
+        } else {
+            None
+        };
 
-        stmts
+        deps_decl
             .into_iter()
-            .chain(
-                if self.exp_decls.len() > 0 {
-                    Some(
-                        Decl::Var(Box::new(VarDecl {
-                            decls: self.exp_decls,
-                            kind: VarDeclKind::Var,
-                            declare: false,
-                            span: DUMMY_SP,
-                            ctxt: SyntaxContext::default(),
-                        }))
-                        .into(),
-                    )
-                } else {
-                    None
-                }
-                .into_iter(),
-            )
+            .chain(std::iter::once(
+                define_call(
+                    id,
+                    self.stmts
+                        .into_iter()
+                        .chain(self.binding_stmt.into_iter())
+                        .chain(exports_call.into_iter())
+                        .collect(),
+                    &self.ctx_ident,
+                    if runtime {
+                        None
+                    } else {
+                        Some(&self.deps_ident)
+                    },
+                )
+                .into_stmt(),
+            ))
+            .chain(exp_var_decl.into_iter())
             .collect()
     }
 }

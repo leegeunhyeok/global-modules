@@ -1,4 +1,3 @@
-var __deps;
 global.__modules.define(function(__context) {
     exports.foo = __context.module.exports.foo = 'foo';
     exports.bar = __context.module.exports.bar = 'bar';
@@ -29,4 +28,4 @@ global.__modules.define(function(__context) {
         exports1.bb = 'bb';
         exports1.cc = 'cc';
     }
-}, "1000", __deps);
+}, "1000");

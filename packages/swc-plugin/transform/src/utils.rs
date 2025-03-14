@@ -837,30 +837,32 @@ pub mod presets {
     /// ```
     pub fn define_call(
         id: &String,
-        ctx_ident: &Ident,
-        deps_ident: &Ident,
         stmts: Vec<Stmt>,
+        ctx_ident: &Ident,
+        deps_ident: Option<&Ident>,
     ) -> Expr {
-        member_expr!(Default::default(), DUMMY_SP, global.__modules.define).as_call(
-            DUMMY_SP,
-            vec![
-                Expr::Fn(FnExpr {
-                    ident: None,
-                    function: Box::new(Function {
-                        params: vec![ctx_ident.clone().into()],
-                        body: Some(BlockStmt {
-                            stmts,
-                            ..Default::default()
-                        }),
+        let mut args = vec![
+            Expr::Fn(FnExpr {
+                ident: None,
+                function: Box::new(Function {
+                    params: vec![ctx_ident.clone().into()],
+                    body: Some(BlockStmt {
+                        stmts,
                         ..Default::default()
                     }),
                     ..Default::default()
-                })
-                .into(),
-                str_lit(id).as_arg(),
-                deps_ident.clone().as_arg(),
-            ],
-        )
+                }),
+                ..Default::default()
+            })
+            .into(),
+            str_lit(id).as_arg(),
+        ];
+
+        if let Some(deps_ident) = deps_ident {
+            args.push(deps_ident.clone().as_arg());
+        }
+
+        member_expr!(Default::default(), DUMMY_SP, global.__modules.define).as_call(DUMMY_SP, args)
     }
 
     /// Returns a named export statement based on given export specifiers.
@@ -933,27 +935,29 @@ pub mod presets {
     /// };
     /// ```
     pub fn to_deps_decl(dep_ident: &Ident, dep_getters: AHashMap<String, DepGetter>) -> Decl {
+        let dep_props = dep_getters
+            .iter()
+            .map(|(src, getter)| match getter {
+                DepGetter::Props(props) => {
+                    PropOrSpread::Prop(Box::new(Prop::KeyValue(KeyValueProp {
+                        key: PropName::Str(src.clone().into()),
+                        value: Box::new(to_dep_getter_expr(props)),
+                    })))
+                }
+                DepGetter::Expr(expr) => {
+                    PropOrSpread::Prop(Box::new(Prop::KeyValue(KeyValueProp {
+                        key: PropName::Str(src.clone().into()),
+                        value: Box::new(expr.clone()),
+                    })))
+                }
+            })
+            .collect();
+
         Decl::Var(Box::new(VarDecl {
             decls: vec![var_declarator(
                 dep_ident.clone().into(),
                 Some(Box::new(Expr::Object(ObjectLit {
-                    props: dep_getters
-                        .iter()
-                        .map(|(src, getter)| match getter {
-                            DepGetter::Props(props) => {
-                                PropOrSpread::Prop(Box::new(Prop::KeyValue(KeyValueProp {
-                                    key: PropName::Str(src.clone().into()),
-                                    value: Box::new(to_dep_getter_expr(props)),
-                                })))
-                            }
-                            DepGetter::Expr(expr) => {
-                                PropOrSpread::Prop(Box::new(Prop::KeyValue(KeyValueProp {
-                                    key: PropName::Str(src.clone().into()),
-                                    value: Box::new(expr.clone()),
-                                })))
-                            }
-                        })
-                        .collect(),
+                    props: dep_props,
                     ..Default::default()
                 }))),
             )],
@@ -966,11 +970,15 @@ pub mod presets {
     ///
     /// ```js
     /// // Code
-    /// const dep_ident = {};
+    /// const dep_ident = null;
     /// ```
     pub fn to_empty_deps_decl(dep_ident: &Ident) -> Decl {
         Decl::Var(Box::new(VarDecl {
-            decls: vec![var_declarator(dep_ident.clone().into(), None)],
+            decls: vec![var_declarator(
+                dep_ident.clone().into(),
+                Some(Box::new(Expr::Lit(Lit::Null(Null { span: DUMMY_SP })))),
+            )],
+            kind: VarDeclKind::Const,
             ..Default::default()
         }))
     }

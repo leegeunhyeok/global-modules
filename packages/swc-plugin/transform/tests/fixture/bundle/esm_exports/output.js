@@ -1,4 +1,4 @@
-const __deps = {};
+const __deps = null;
 global.__modules.define(function(__context) {
     const foo = 'foo';
     const bar = 'bar';

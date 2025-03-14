@@ -1,4 +1,3 @@
-var __deps;
 global.__modules.define(function(__context) {
     const foo = __context.require("./foo");
     if (__DEV__) {
@@ -23,4 +22,4 @@ global.__modules.define(function(__context) {
         const require = function() {};
         require('b');
     }
-}, "1000", __deps);
+}, "1000");

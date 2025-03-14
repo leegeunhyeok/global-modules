@@ -1,4 +1,3 @@
-var __deps;
 global.__modules.define(function(__context) {
     const __default = 'default';
     __x = __default;
@@ -7,5 +6,5 @@ global.__modules.define(function(__context) {
             "default": __x
         };
     });
-}, "1000", __deps);
+}, "1000");
 var __x;

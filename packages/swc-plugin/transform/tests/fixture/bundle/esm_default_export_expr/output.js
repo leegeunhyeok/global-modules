@@ -1,4 +1,4 @@
-const __deps = {};
+const __deps = null;
 global.__modules.define(function(__context) {
     const __default = 'default';
     __x = __default;
