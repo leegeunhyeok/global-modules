@@ -8,47 +8,49 @@ import { foo } from './foo';
 import { bar as bar2 } from './bar';
 import * as baz from './baz';
 import * as foo2 from './foo';
-const __deps = {
-    "react": ()=>({
+const __deps = [
+    ()=>({
             default: React,
             useState,
             useCallback
         }),
-    "./cjs-1": ()=>require('./cjs-1'),
-    "./bar": ()=>({
+    ()=>({
+            foo
+        }),
+    ()=>({
             bar: bar2
         }),
-    "./re-exp-3": ()=>__mod2,
-    "./re-exp-4": ()=>__mod3,
-    "./esm": ()=>import('./esm'),
-    "./re-exp-5": ()=>__mod4,
-    "./baz": ()=>({
+    ()=>({
             baz
         }),
-    "./cjs-3": ()=>require('./cjs-3'),
-    "./foo": ()=>({
-            foo,
+    ()=>({
             foo2
         }),
-    "./Component": ()=>import('./Component'),
-    "./cjs-2": ()=>require('./cjs-2'),
-    "./re-exp": ()=>__mod,
-    "./re-exp-2": ()=>__mod1
-};
+    ()=>import('./Component'),
+    ()=>require('./cjs-1'),
+    ()=>require('./cjs-2'),
+    ()=>import('./esm'),
+    ()=>require('./cjs-3'),
+    ()=>__mod,
+    ()=>__mod1,
+    ()=>__mod2,
+    ()=>__mod3,
+    ()=>__mod4
+];
 global.__modules.define(function(__context) {
-    const { default: React, useState, useCallback } = __context.require("react");
-    const { foo } = __context.require("./foo");
-    const { bar: bar2 } = __context.require("./bar");
-    const { baz } = __context.require("./baz");
-    const { foo2 } = __context.require("./foo");
-    const __mod = __context.require("./re-exp");
-    const __mod1 = __context.require("./re-exp-2");
-    const __mod2 = __context.require("./re-exp-3");
-    const __mod3 = __context.require("./re-exp-4");
-    const __mod4 = __context.require("./re-exp-5");
-    React.lazy(()=>__context.import("./Component"));
+    const { default: React, useState, useCallback } = __context.require("react", 0);
+    const { foo } = __context.require("./foo", 1);
+    const { bar: bar2 } = __context.require("./bar", 2);
+    const { baz } = __context.require("./baz", 3);
+    const { foo2 } = __context.require("./foo", 4);
+    const __mod = __context.require("./re-exp", 7);
+    const __mod1 = __context.require("./re-exp-2", 8);
+    const __mod2 = __context.require("./re-exp-3", 9);
+    const __mod3 = __context.require("./re-exp-4", 10);
+    const __mod4 = __context.require("./re-exp-5", 11);
+    React.lazy(()=>__context.import("./Component", 5));
     if (__DEV__) {
-        __context.require("./cjs-1");
+        __context.require("./cjs-1", 6);
     }
     const value = 'val';
     module.exports = __context.module.exports = 'cjs';
@@ -61,10 +63,10 @@ global.__modules.define(function(__context) {
     }
     function func() {}
     function __default() {
-        __context.require("./cjs-2");
+        __context.require("./cjs-2", 7);
         const inner = async ()=>{
-            await __context.import("./esm");
-            __context.require("./cjs-3");
+            await __context.import("./esm", 8);
+            __context.require("./cjs-3", 9);
         };
     }
     __x = variable, __x1 = Class, __x2 = func, __x3 = __default, __x4 = value, __x5 = foo, __x6 = foo2, __x7 = baz, __x8 = baz;

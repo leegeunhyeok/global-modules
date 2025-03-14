@@ -2,17 +2,17 @@ import * as __mod from "./mod-1";
 import * as __mod1 from "./mod-2";
 import * as __mod2 from "./mod-3";
 import * as __mod3 from "./mod-4";
-const __deps = {
-    "./mod-1": ()=>__mod,
-    "./mod-2": ()=>__mod1,
-    "./mod-3": ()=>__mod2,
-    "./mod-4": ()=>__mod3
-};
+const __deps = [
+    ()=>__mod,
+    ()=>__mod1,
+    ()=>__mod2,
+    ()=>__mod3
+];
 global.__modules.define(function(__context) {
-    const __mod = __context.require("./mod-1");
-    const __mod1 = __context.require("./mod-2");
-    const __mod2 = __context.require("./mod-3");
-    const __mod3 = __context.require("./mod-4");
+    const __mod = __context.require("./mod-1", 0);
+    const __mod1 = __context.require("./mod-2", 1);
+    const __mod2 = __context.require("./mod-3", 2);
+    const __mod3 = __context.require("./mod-4", 3);
     __context.exports(function() {
         return {
             ...__context.exports.ns(__mod),

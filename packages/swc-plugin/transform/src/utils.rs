@@ -137,11 +137,17 @@ pub mod ast {
     /// 'foo'
     /// ```
     pub fn str_lit(str: &String) -> Lit {
-        Lit::Str(Str {
-            value: str.as_str().into(),
-            raw: None,
-            span: DUMMY_SP,
-        })
+        Lit::from(str.as_str())
+    }
+
+    /// Returns a number literal expression.
+    ///
+    /// ```js
+    /// // Code
+    /// 123;
+    /// ```
+    pub fn num_lit(num: usize) -> Lit {
+        Lit::from(num as f64)
     }
 
     /// Returns a string from the given literal.
@@ -720,7 +726,7 @@ pub mod ast {
 
 pub mod presets {
     use swc_core::{
-        common::{collections::AHashMap, DUMMY_SP},
+        common::DUMMY_SP,
         ecma::{
             ast::*,
             utils::{member_expr, quote_ident, ExprFactory},
@@ -737,11 +743,11 @@ pub mod presets {
     /// // Code
     /// ctx_ident.require(src);
     /// ```
-    pub fn require_call(ctx_ident: &Ident, src: Lit) -> Expr {
+    pub fn require_call(ctx_ident: &Ident, src: Lit, idx: usize) -> Expr {
         ctx_ident
             .clone()
             .make_member(quote_ident!("require"))
-            .as_call(DUMMY_SP, vec![src.as_arg()])
+            .as_call(DUMMY_SP, vec![src.as_arg(), num_lit(idx).as_arg()])
     }
 
     /// Returns a global module's import call expression.
@@ -750,13 +756,13 @@ pub mod presets {
     ///
     /// ```js
     /// // Code
-    /// ctx_ident.import(src);
+    /// ctx_ident.import(src, idx);
     /// ```
-    pub fn import_call(ctx_ident: &Ident, src: Lit) -> Expr {
+    pub fn import_call(ctx_ident: &Ident, src: Lit, idx: usize) -> Expr {
         ctx_ident
             .clone()
             .make_member(quote_ident!("import"))
-            .as_call(DUMMY_SP, vec![src.as_arg()])
+            .as_call(DUMMY_SP, vec![src.as_arg(), num_lit(idx).as_arg()])
     }
 
     /// Converts to require statement
@@ -764,8 +770,8 @@ pub mod presets {
     /// ```js
     /// const mod_ident = ctx_ident.require('src');
     /// ```
-    pub fn to_require_stmt(ctx_ident: &Ident, mod_ident: Ident, src: String) -> Stmt {
-        require_call(ctx_ident, src.into())
+    pub fn to_require_stmt(ctx_ident: &Ident, mod_ident: Ident, src: String, idx: usize) -> Stmt {
+        require_call(ctx_ident, src.into(), idx)
             .into_var_decl(VarDeclKind::Const, mod_ident.into())
             .into()
     }
@@ -943,36 +949,35 @@ pub mod presets {
     ///
     /// ```js
     /// // Code
-    /// const dep_ident = {
-    ///   "src_1": () => ({ foo }),
-    ///   "src_2": () => ({ bar }),
-    ///   "src_3": () => ({ baz }),
-    /// };
+    /// const dep_ident = [
+    ///   () => ({ foo }),
+    ///   () => ({ bar }),
+    ///   () => ({ baz }),
+    ///   () => expr,
+    ///   () => expr,
+    ///   () => expr,
+    /// ];
     /// ```
-    pub fn to_deps_decl(dep_ident: &Ident, dep_getters: AHashMap<String, DepGetter>) -> Decl {
-        let dep_props = dep_getters
+    pub fn to_deps_decl(dep_ident: &Ident, dep_getters: Vec<DepGetter>) -> Decl {
+        let dep_elems = dep_getters
             .iter()
-            .map(|(src, getter)| match getter {
-                DepGetter::Props(props) => {
-                    PropOrSpread::Prop(Box::new(Prop::KeyValue(KeyValueProp {
-                        key: PropName::Str(src.clone().into()),
-                        value: Box::new(to_dep_getter_expr(props)),
-                    })))
-                }
-                DepGetter::Expr(expr) => {
-                    PropOrSpread::Prop(Box::new(Prop::KeyValue(KeyValueProp {
-                        key: PropName::Str(src.clone().into()),
-                        value: Box::new(expr.clone()),
-                    })))
-                }
+            .map(|getter| match getter {
+                DepGetter::Props(props) => Some(ExprOrSpread {
+                    spread: None,
+                    expr: Box::new(to_dep_getter_expr(props)),
+                }),
+                DepGetter::Expr(expr) => Some(ExprOrSpread {
+                    spread: None,
+                    expr: Box::new(expr.clone()),
+                }),
             })
             .collect();
 
         Decl::Var(Box::new(VarDecl {
             decls: vec![var_declarator(
                 dep_ident.clone().into(),
-                Some(Box::new(Expr::Object(ObjectLit {
-                    props: dep_props,
+                Some(Box::new(Expr::Array(ArrayLit {
+                    elems: dep_elems,
                     ..Default::default()
                 }))),
             )],

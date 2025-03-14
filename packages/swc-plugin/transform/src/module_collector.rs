@@ -189,8 +189,9 @@ impl<'a> VisitMut for ModuleCollector<'a> {
                     // The first argument of the `require` function must be a string type only.
                     Expr::Lit(lit) => {
                         let src = lit_to_string(lit);
+                        let idx = self.deps.len();
                         self.deps.push(Dep::runtime(src.clone(), expr.clone()));
-                        *expr = require_call(self.ctx_ident, Lit::Str(src.into()));
+                        *expr = require_call(self.ctx_ident, Lit::Str(src.into()), idx);
                     }
                     _ => HANDLER.with(|handler| {
                         handler
@@ -213,8 +214,9 @@ impl<'a> VisitMut for ModuleCollector<'a> {
                     // The first argument of the `import` function must be a string type only.
                     Expr::Lit(lit) => {
                         let src = lit_to_string(lit);
+                        let idx = self.deps.len();
                         self.deps.push(Dep::runtime(src.clone(), expr.clone()));
-                        *expr = import_call(self.ctx_ident, Lit::Str(src.into()));
+                        *expr = import_call(self.ctx_ident, Lit::Str(src.into()), idx);
                     }
                     _ => HANDLER.with(|handler| {
                         handler

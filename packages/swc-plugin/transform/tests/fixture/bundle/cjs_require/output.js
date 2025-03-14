@@ -1,23 +1,24 @@
-const __deps = {
-  "inner-2": ()=>require('inner-2'),
-  "inner-1": ()=>require('inner-1'),
-  "./foo": ()=>require('./foo')
-};
+const __deps = [
+  ()=>require('./foo'),
+  ()=>require('inner-1'),
+  ()=>require('inner-2'),
+  ()=>require('inner-2')
+];
 global.__modules.define(function(__context) {
-  const foo = __context.require("./foo");
+  const foo = __context.require("./foo", 0);
   if (__DEV__) {
-      __context.require("inner-1");
+      __context.require("inner-1", 1);
   }
   function a() {
       function b() {
           function c() {
-              __context.require("inner-2");
+              __context.require("inner-2", 2);
           }
       }
   }
   class Foo {
       constructor(){
-          __context.require("inner-2");
+          __context.require("inner-2", 3);
       }
   }
   function a(require1) {
