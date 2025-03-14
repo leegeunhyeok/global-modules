@@ -29,7 +29,7 @@ pub struct ModuleBuilder<'a> {
     /// // <- Binding statement
     /// // Exports call expression
     /// ```
-    binding_stmt: Stmt,
+    binding_stmt: Option<Stmt>,
     /// Dependency getters
     ///
     /// ```js
@@ -87,7 +87,7 @@ impl<'a> ModuleBuilder<'a> {
             imports: Vec::new(),
             exports: Vec::new(),
             stmts: Vec::new(),
-            binding_stmt: Stmt::default(),
+            binding_stmt: None,
             dep_getters: AHashMap::default(),
             exp_props: Vec::new(),
             exp_decls: Vec::new(),
@@ -219,15 +219,22 @@ impl<'a> ModuleBuilder<'a> {
     /// __x = foo, __x1 = bar, __x2 = baz;
     /// ```
     fn collect_bindings(&mut self, collector: &mut ModuleCollector) {
-        self.binding_stmt = Expr::Seq(SeqExpr {
-            exprs: collector
-                .take_bindings()
-                .into_iter()
-                .map(|binding| Box::new(binding.to_assign_expr()))
-                .collect::<Vec<Box<Expr>>>(),
-            ..Default::default()
-        })
-        .into_stmt();
+        let bindings = collector.take_bindings();
+
+        if bindings.is_empty() {
+            return;
+        }
+
+        self.binding_stmt = Some(
+            Expr::Seq(SeqExpr {
+                exprs: bindings
+                    .into_iter()
+                    .map(|binding| Box::new(binding.to_assign_expr()))
+                    .collect::<Vec<Box<Expr>>>(),
+                ..Default::default()
+            })
+            .into_stmt(),
+        );
     }
 
     /// Returns a list of statements that can be used to source type: 'module'
@@ -252,7 +259,7 @@ impl<'a> ModuleBuilder<'a> {
                 &self.deps_ident,
                 self.stmts
                     .into_iter()
-                    .chain(std::iter::once(self.binding_stmt))
+                    .chain(self.binding_stmt.into_iter())
                     .chain(exports_call.into_iter())
                     .collect(),
             )
@@ -322,7 +329,7 @@ impl<'a> ModuleBuilder<'a> {
                 &self.deps_ident,
                 self.stmts
                     .into_iter()
-                    .chain(std::iter::once(self.binding_stmt))
+                    .chain(self.binding_stmt.into_iter())
                     .chain(exports_call.into_iter())
                     .collect(),
             )
