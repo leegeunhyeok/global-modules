@@ -238,6 +238,12 @@ impl<'a> ModuleBuilder<'a> {
             to_deps_decl(&self.deps_ident, self.dep_getters)
         };
 
+        let exports_call = if self.exp_props.is_empty() {
+            None
+        } else {
+            Some(exports_call(&self.ctx_ident, self.exp_props).into_stmt())
+        };
+
         let stmts = vec![
             deps_decl.into(),
             define_call(
@@ -246,10 +252,8 @@ impl<'a> ModuleBuilder<'a> {
                 &self.deps_ident,
                 self.stmts
                     .into_iter()
-                    .chain(vec![
-                        self.binding_stmt,
-                        exports_call(&self.ctx_ident, self.exp_props).into_stmt(),
-                    ])
+                    .chain(std::iter::once(self.binding_stmt))
+                    .chain(exports_call.into_iter())
                     .collect(),
             )
             .into_stmt(),
@@ -304,6 +308,12 @@ impl<'a> ModuleBuilder<'a> {
             to_deps_decl(&self.deps_ident, self.dep_getters)
         };
 
+        let exports_call = if self.exp_props.is_empty() {
+            None
+        } else {
+            Some(exports_call(&self.ctx_ident, self.exp_props).into_stmt())
+        };
+
         let stmts = vec![
             deps_decl.into(),
             define_call(
@@ -312,10 +322,8 @@ impl<'a> ModuleBuilder<'a> {
                 &self.deps_ident,
                 self.stmts
                     .into_iter()
-                    .chain(vec![
-                        self.binding_stmt,
-                        exports_call(&self.ctx_ident, self.exp_props).into_stmt(),
-                    ])
+                    .chain(std::iter::once(self.binding_stmt))
+                    .chain(exports_call.into_iter())
                     .collect(),
             )
             .into_stmt(),
