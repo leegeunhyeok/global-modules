@@ -26,7 +26,7 @@ export function createGlobalModule(): GlobalModule {
     id: ModuleId,
     dependencies: (() => unknown)[] | null = null,
   ): void {
-    const module = {} as Module;
+    const module = moduleRegistry.has(id) ? getModule(id) : {} as Module;
 
     module.id = id;
     module.context = createContext(dependencies);
