@@ -9,30 +9,25 @@ flowchart
     Setup --> |global.__modules| Registry
 
     subgraph Registry["Global Module Registry"]
-    Reg["register()"]
-    Get["getContext()"]
+    Def["define()"]
     Req["require()"]
+    Apl["apply()"]
     end
 
-    Reg -- Returns --> Context
-    Get -- Returns --> Context
+    Def -- Register --> Context
     Req -- Returns --> Exports["module.exports"]
+    Apl -- Re-evaulate --> Factory["module.factory"]
 
     Exports -.-> Context
+    Factory -.-> Context
 ```
 
 Global module registry is a map of module id to module.
 
-The `register()` method, which will return a context object if the module is not already registered. (If the module is already registered, it will throw an error.)
+The `define()` method, which will register a module context. (If the module is already registered, it will override exist context)
 
 ```js
-const context = global.__modules.register('id');
-```
-
-The `getContext()` method, which will return the context object if the module is registered. (If the module is not registered, it will throw an error.)
-
-```js
-const context = global.__modules.getContext('id');
+global.__modules.define(factory, 'id', deps);
 ```
 
 The `require()` method, which will return the exports object in the module context. (If the module is not registered, it will throw an error.)
@@ -41,13 +36,19 @@ The `require()` method, which will return the exports object in the module conte
 const exports = global.__modules.require('id');
 ```
 
+The `apply()` method, which will re-evaulate the specific module's factory.
+If the module's dependencies are updated, you can use this method to re-evaulate the module.
+
+```js
+global.__modules.apply('id', depsMap);
+```
+
 ## Module Context
 
 ```mermaid
 flowchart
     subgraph Context["Module Context"]
     Exp["exports()"]
-    Rst["reset()"]
     Mod["module"]
 
         subgraph Module["module"]
@@ -55,7 +56,6 @@ flowchart
         end
 
     Exp -- Update --> Mod
-    Rst -- Reset --> Mod
     Mod -.-> Module
     end
 ```
@@ -90,10 +90,6 @@ The context has two methods:
       };
     });
     ```
-- `reset()` - This is the function that you use to reset the exports object of the module.
-  ```js
-  context.reset();
-  ```
 
 and context has a property:
 
@@ -101,13 +97,10 @@ and context has a property:
 - `module.exports` - This is the exports object of the module. you can access exported values defined by `exports(definitions)`.
 
   ```js
-  context.exports(function () {
-    return {
-      foo: 1,
-      bar: 2,
-    };
-  });
+  // CommonJS
+  context.module.exports.foo = 1;
+  context.module.exports.bar = 2;
 
-  context.module.exports.foo; // 1
-  context.module.exports.bar; // 2
+  // or export the module itself
+  context.module.exports = 'default';
   ```
