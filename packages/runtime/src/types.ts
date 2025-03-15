@@ -50,6 +50,10 @@ export interface GlobalModule {
    */
   apply: (id: ModuleId, dependencyMap?: Record<string, string>) => void;
   /**
+   * Get module from global registry.
+   */
+  getModule: (id: ModuleId) => Module;
+  /**
    * Get global module registry.
    */
   getRegistry: () => Map<ModuleId, Module>;

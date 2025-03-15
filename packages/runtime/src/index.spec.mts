@@ -190,6 +190,31 @@ describe('@global-modules/runtime', () => {
     });
   });
 
+  describe('when store the metadata to the module', () => {
+    const mockedPrint = vi.fn();
+    let context: SandboxContext;
+
+    beforeAll(() => {
+      mockedPrint.mockReset();
+      context = createSandboxContext({ print: mockedPrint });
+      context.setup();
+    });
+
+    it('should store the metadata to the module', () => {
+      context.evaluate(`
+        __modules.define(() => {}, 'mod-0');
+        __modules.getModule('mod-0').meta = { value: 'foo' };
+      `);
+
+      context.evaluate(`
+        const module = __modules.getModule('mod-0');
+        print(module.meta);
+      `);
+
+      expect(mockedPrint).toBeCalledWith({ value: 'foo' });
+    });
+  });
+
   describe('CommonJS', () => {
     const mockedPrint = vi.fn();
     let context: SandboxContext;

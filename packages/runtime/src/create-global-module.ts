@@ -128,5 +128,5 @@ export function createGlobalModule(): GlobalModule {
     return moduleRegistry;
   }
 
-  return { define, apply, require, clear, getRegistry };
+  return { define, apply, require, clear, getModule, getRegistry };
 }
