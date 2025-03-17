@@ -145,3 +145,7 @@ var __x;
 ````
 
 </details>
+
+## License
+
+[MIT](./LICENSE)

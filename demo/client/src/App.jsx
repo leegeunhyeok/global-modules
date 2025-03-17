@@ -6,13 +6,15 @@ function App() {
     console.log('App mounted');
   }, []);
 
+  console.log('App rendered !!');
+
   return (
     <div className="App">
       <header className="App-header">
         <p>Counter state should be preserved across HMRs.</p>
         <Counter />
         <p>
-          Edit <code>src/*</code> and save to reload.
+          Edit<code>src/*</code> and save to reload.
           <br />
         </p>
         <p>
@@ -30,5 +32,9 @@ function App() {
     </div>
   );
 }
+
+App.__tag = new Date().toUTCString();
+
+console.log('App loaded @@ 5');
 
 export default App;

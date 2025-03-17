@@ -24,7 +24,7 @@ flowchart
 
 Global module registry is a map of module id to module.
 
-The `define()` method, which will register a module context. (If the module is already registered, it will override exist context)
+The `define()` method, register a module context. (If the module is already registered, it will override existing context)
 
 ```js
 global.__modules.define(factory, 'id', deps);

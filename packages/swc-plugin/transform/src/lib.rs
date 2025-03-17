@@ -13,7 +13,12 @@ pub fn global_modules(
     paths: Option<AHashMap<String, String>>,
     unresolved_ctxt: SyntaxContext,
 ) -> impl VisitMut + Pass {
-    visit_mut_pass(GlobalModuleTransformer::new(id, runtime, paths, unresolved_ctxt))
+    visit_mut_pass(GlobalModuleTransformer::new(
+        id,
+        runtime,
+        paths,
+        unresolved_ctxt,
+    ))
 }
 
 mod models;

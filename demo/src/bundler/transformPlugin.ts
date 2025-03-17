@@ -1,9 +1,8 @@
 import * as path from 'node:path';
 import * as fs from 'node:fs';
-import { Phase } from '@global-modules/swc-plugin';
 import { Plugin } from 'esbuild';
 import { transform } from './transform';
-import { registerHotModule } from './hmr';
+import { registerHotModule } from './templates';
 
 export interface TransformPluginOptions {
   resolveId: (id: string) => number;
@@ -24,13 +23,13 @@ export function createTransformPlugin(options: TransformPluginOptions): Plugin {
           // At the initial build, the bundling process should be
           // delegated to the bundler(eg. esbuild) using the `Phase.Bundle`.
           //
-          // - Phase.Bundle
+          // - `false` Bundle phase
           //   - Keep import & export statements.
           //   - Register module references using the Global Module API
-          // - Phase.Runtime
+          // - `true`: Runtime phase
           //   - Remove import & export statements.
           //   - Reference the module through the Global Module API.
-          phase: Phase.Bundle,
+          runtime: false,
         });
 
         return { loader: 'js', contents: registerHotModule(code, moduleId) };

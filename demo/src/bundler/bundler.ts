@@ -10,11 +10,12 @@ import * as watcher from './watcher';
 import { createTransformPlugin } from './transformPlugin';
 import { WebSocketDelegate } from '../server/ws';
 import { transform, transformJsxRuntime } from './transform';
-import { Phase } from '@global-modules/swc-plugin';
 import { CLIENT_SOURCE_BASE, CLIENT_SOURCE_ENTRY } from '../shared';
 import { metafilePlugin } from './metafilePlugin';
 import { loadSource } from '../utils/loadSource';
 import { wrapWithIIFE } from '../utils/wrapWithIIFE';
+import { applyModule } from './templates';
+import { createGraphLoaderPlugin } from './graphLoaderPlugin';
 const esModuleLexer = require('es-module-lexer');
 
 interface BundlerConfig {
@@ -28,6 +29,7 @@ export class Bundler {
   private logger: pino.BaseLogger | null = null;
   private cachedBuildResult: esbuild.BuildResult | null = null;
   private graph: DependencyGraph;
+  private jsxDevRuntimeModuleId: number | null = null;
 
   public static getInstance() {
     if (Bundler.instance === null) {
@@ -37,7 +39,7 @@ export class Bundler {
   }
 
   private constructor() {
-    this.graph = new DependencyGraph({ root: CLIENT_SOURCE_BASE });
+    this.graph = new DependencyGraph({});
   }
 
   private async build() {
@@ -45,17 +47,23 @@ export class Bundler {
       entryPoints: [CLIENT_SOURCE_ENTRY],
       bundle: true,
       sourcemap: true,
+      metafile: true,
       write: false,
       inject: [path.join(__dirname, 'runtime/index.js')],
       banner: {
         js: await this.getPreludeScript(),
       },
       plugins: [
+        createGraphLoaderPlugin({ graph: this.graph }),
         createTransformPlugin({
           resolveId: (id) => {
             const module = this.graph.hasModule(id)
               ? this.graph.getModule(id)
               : this.graph.addModule(id, { dependencies: [] });
+
+            if (id.endsWith('react/jsx-dev-runtime.js')) {
+              this.jsxDevRuntimeModuleId = module.id;
+            }
 
             return module.id;
           },
@@ -104,15 +112,14 @@ export class Bundler {
             source: result.request,
           }));
 
-          if (event.type === 'create') {
-            affectedModule = await this.graph.addModule(event.path, {
-              dependencies,
-            });
-          } else {
-            affectedModule = await this.graph.updateModule(event.path, {
-              dependencies,
-            });
-          }
+          const graphMethod =
+            event.type === 'create'
+              ? this.graph.addModule
+              : this.graph.updateModule;
+
+          affectedModule = graphMethod.bind(this.graph)(event.path, {
+            dependencies,
+          });
 
           break;
         }
@@ -131,65 +138,80 @@ export class Bundler {
   }
 
   private async transformAffectedModules(baseModule: Module) {
+    const jsxDevRuntimeModuleId = this.jsxDevRuntimeModuleId;
+
     if (this.delegate == null) {
       console.warn('Websocket delegate is not initialized');
       return;
     }
 
-    let invalid = false;
+    if (jsxDevRuntimeModuleId == null) {
+      console.warn('JSX dev runtime module id is not set');
+      return;
+    }
 
     const inverseDependencies = this.graph.inverseDependenciesOf(baseModule.id);
 
     const t0 = performance.now();
-    const transformedCodeList = await Promise.all(
-      [baseModule, ...inverseDependencies].map(async (module) => {
-        const code = await fs.promises.readFile(
-          path.resolve(CLIENT_SOURCE_BASE, module.path),
-          {
-            encoding: 'utf-8',
-          },
-        );
 
-        const moduleId = module.id.toString();
-        const transformedCode = await transform(
-          code,
-          path.basename(module.path),
-          {
-            id: moduleId,
-            phase: Phase.Runtime,
-            paths: module.dependencies.reduce(
-              (prev, dependency) => ({
-                ...prev,
-                [dependency.source]: dependency.id.toString(),
-              }),
-              {},
-            ),
-          },
-        ).then(transformJsxRuntime);
+    const moduleId = baseModule.id.toString();
+    const originCode = await fs.promises.readFile(
+      path.resolve(CLIENT_SOURCE_BASE, baseModule.path),
+      {
+        encoding: 'utf-8',
+      },
+    );
+    const transformedCode = await transform(
+      originCode,
+      path.basename(module.path),
+      {
+        id: moduleId,
+        runtime: true,
+        paths: Object.fromEntries(
+          baseModule.dependencies.map((dependency) => [
+            dependency.source,
+            dependency.id.toString(),
+          ]),
+        ),
+      },
+    )
+      .then((code) =>
+        transformJsxRuntime(code, jsxDevRuntimeModuleId.toString()),
+      )
+      .then(wrapWithIIFE);
 
-        return wrapWithIIFE(transformedCode);
-      }),
+    const t1 = performance.now();
+
+    const code = [
+      transformedCode,
+      ...inverseDependencies.map((module) =>
+        applyModule(
+          module.id.toString(),
+          Object.fromEntries(
+            module.dependencies.map((dependency) => [
+              dependency.source,
+              dependency.id.toString(),
+            ]),
+          ),
+        ),
+      ),
+    ].join('\n');
+
+    fs.writeFileSync(
+      './graph.json',
+      JSON.stringify(this.graph, null, 2),
+      'utf-8',
     );
 
-    if (invalid) {
-      console.log('[HMR] Invalid modules (will be reloaded)');
+    console.log(`[HMR] Module transformed in ${Math.floor(t1 - t0)}ms`);
 
-      this.delegate.send(JSON.stringify({ type: 'reload' }));
-    } else {
-      const t1 = performance.now();
-      const code = transformedCodeList.join('\n\n');
-      console.log(
-        `[HMR] ${transformedCodeList.length} module(s) transformed in ${Math.floor(t1 - t0)}ms`,
-      );
-
-      this.delegate.send(
-        JSON.stringify({
-          type: 'update',
-          id: baseModule.id,
-          body: code,
-        }),
-      );
-    }
+    this.delegate.send(
+      JSON.stringify({
+        type: 'update',
+        id: baseModule.id,
+        body: code,
+      }),
+    );
   }
 
   async initialize(config: BundlerConfig) {
