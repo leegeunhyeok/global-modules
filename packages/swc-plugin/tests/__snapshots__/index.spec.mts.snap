@@ -42,7 +42,7 @@ exports[`@global-modules/swc-plugin > Bundle phase > [CJS] Basics 1`] = `
       copyProps(exports, definitions());
     }
     function define(moduleFactory, id, dependencies = null) {
-      const module = {};
+      const module = moduleRegistry.has(id) ? getModule(id) : {};
       module.id = id;
       module.context = createContext(dependencies);
       module.factory = moduleFactory;
@@ -108,7 +108,7 @@ exports[`@global-modules/swc-plugin > Bundle phase > [CJS] Basics 1`] = `
     function getRegistry() {
       return moduleRegistry;
     }
-    return { define, apply, require: require2, clear, getRegistry };
+    return { define, apply, require: require2, clear, getModule, getRegistry };
   }
 
   // src/get-global-context.ts
@@ -221,7 +221,7 @@ exports[`@global-modules/swc-plugin > Bundle phase > [ESM] Basics 1`] = `
       copyProps(exports, definitions());
     }
     function define(moduleFactory, id, dependencies = null) {
-      const module = {};
+      const module = moduleRegistry.has(id) ? getModule(id) : {};
       module.id = id;
       module.context = createContext(dependencies);
       module.factory = moduleFactory;
@@ -287,7 +287,7 @@ exports[`@global-modules/swc-plugin > Bundle phase > [ESM] Basics 1`] = `
     function getRegistry() {
       return moduleRegistry;
     }
-    return { define, apply, require: require2, clear, getRegistry };
+    return { define, apply, require: require2, clear, getModule, getRegistry };
   }
 
   // src/get-global-context.ts
@@ -396,7 +396,7 @@ exports[`@global-modules/swc-plugin > Bundle phase > [ESM] Export with declarati
       copyProps(exports, definitions());
     }
     function define(moduleFactory, id, dependencies = null) {
-      const module = {};
+      const module = moduleRegistry.has(id) ? getModule(id) : {};
       module.id = id;
       module.context = createContext(dependencies);
       module.factory = moduleFactory;
@@ -462,7 +462,7 @@ exports[`@global-modules/swc-plugin > Bundle phase > [ESM] Export with declarati
     function getRegistry() {
       return moduleRegistry;
     }
-    return { define, apply, require: require2, clear, getRegistry };
+    return { define, apply, require: require2, clear, getModule, getRegistry };
   }
 
   // src/get-global-context.ts
@@ -552,7 +552,7 @@ exports[`@global-modules/swc-plugin > Runtime phase > [CJS] Basics 1`] = `
       copyProps(exports, definitions());
     }
     function define(moduleFactory, id, dependencies = null) {
-      const module = {};
+      const module = moduleRegistry.has(id) ? getModule(id) : {};
       module.id = id;
       module.context = createContext(dependencies);
       module.factory = moduleFactory;
@@ -618,7 +618,7 @@ exports[`@global-modules/swc-plugin > Runtime phase > [CJS] Basics 1`] = `
     function getRegistry() {
       return moduleRegistry;
     }
-    return { define, apply, require: require2, clear, getRegistry };
+    return { define, apply, require: require2, clear, getModule, getRegistry };
   }
 
   // src/get-global-context.ts
@@ -730,7 +730,7 @@ exports[`@global-modules/swc-plugin > Runtime phase > [ESM] Basics 1`] = `
       copyProps(exports, definitions());
     }
     function define(moduleFactory, id, dependencies = null) {
-      const module = {};
+      const module = moduleRegistry.has(id) ? getModule(id) : {};
       module.id = id;
       module.context = createContext(dependencies);
       module.factory = moduleFactory;
@@ -796,7 +796,7 @@ exports[`@global-modules/swc-plugin > Runtime phase > [ESM] Basics 1`] = `
     function getRegistry() {
       return moduleRegistry;
     }
-    return { define, apply, require: require2, clear, getRegistry };
+    return { define, apply, require: require2, clear, getModule, getRegistry };
   }
 
   // src/get-global-context.ts
@@ -922,7 +922,7 @@ exports[`@global-modules/swc-plugin > Runtime phase > [ESM] Export with declarat
       copyProps(exports, definitions());
     }
     function define(moduleFactory, id, dependencies = null) {
-      const module = {};
+      const module = moduleRegistry.has(id) ? getModule(id) : {};
       module.id = id;
       module.context = createContext(dependencies);
       module.factory = moduleFactory;
@@ -988,7 +988,7 @@ exports[`@global-modules/swc-plugin > Runtime phase > [ESM] Export with declarat
     function getRegistry() {
       return moduleRegistry;
     }
-    return { define, apply, require: require2, clear, getRegistry };
+    return { define, apply, require: require2, clear, getModule, getRegistry };
   }
 
   // src/get-global-context.ts
