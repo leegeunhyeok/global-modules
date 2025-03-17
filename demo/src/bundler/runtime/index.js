@@ -59,14 +59,20 @@ class HMRClient {
   }
 
   handleReload() {
-    window.location.reload();
+    //
+    // window.location.reload();
   }
 
   handleModuleUpdate(id, body) {
-    const targetModule = global.__modules.getContext(id.toString());
-    targetModule.hot.disposeCallbacks.forEach((callback) => callback());
+    const module = global.__modules.getModule(id.toString());
+
+    if (module.meta == null) {
+      throw new Error(`Module ${id} has no meta data`);
+    }
+
+    module.meta.hot.disposeCallbacks.forEach((callback) => callback());
     _eval(body);
-    targetModule.hot.acceptCallbacks.forEach((callback) => callback({ body }));
+    module.meta.hot.acceptCallbacks.forEach((callback) => callback({ body }));
   }
 }
 
@@ -97,7 +103,5 @@ const reactRefresh = {
 };
 
 window.$$reactRefresh$$ = reactRefresh;
-// Import the jsx runtime code after the `window.$$reactRefresh$$` is initialized.
-window.$$jsxDevRuntime$$ = require('react/jsx-dev-runtime');
 
 new HMRClient().connect();

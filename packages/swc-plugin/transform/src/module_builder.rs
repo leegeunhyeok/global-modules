@@ -1,0 +1,384 @@
+use crate::{
+    models::{Dep, DepGetter, Exp, RuntimeDep},
+    module_collector::ModuleCollector,
+    utils::ast::*,
+    utils::presets::*,
+};
+use swc_core::{
+    common::{SyntaxContext, DUMMY_SP},
+    ecma::{ast::*, utils::ExprFactory},
+};
+
+pub struct ModuleBuilder<'a> {
+    /// Context identifier
+    ctx_ident: &'a Ident,
+    /// Dependencies identifier
+    deps_ident: &'a Ident,
+    /// Imports statements
+    imports: Vec<ModuleItem>,
+    /// Exports statements
+    exports: Vec<ModuleItem>,
+    /// Statements
+    stmts: Vec<Stmt>,
+    /// Binding statement
+    ///
+    /// ```js
+    /// // Actual module statements
+    /// // <- Binding statement
+    /// // Exports call expression
+    /// ```
+    binding_stmt: Option<Stmt>,
+    /// Dependency getters
+    ///
+    /// ```js
+    /// const __deps = [
+    ///   () => expr,
+    ///   () => expr,
+    /// ];
+    /// ```
+    pub dep_getters: Vec<DepGetter>,
+    /// Export properties
+    ///
+    /// ```js
+    /// // Vector of `PropOrSpread`
+    /// // key: foo, value: __x
+    /// // key: bar, value: __x1
+    /// // key: baz, value: __x2
+    ///
+    /// // Will be transformed into
+    /// context.exports({
+    ///   "foo": __x,
+    ///   "bar": __x1,
+    ///   "baz": __x2,
+    /// });
+    /// ```
+    pub exp_props: Vec<PropOrSpread>,
+    /// Export var declarators
+    ///
+    /// ```js
+    /// // Vector of `VarDeclarator`
+    /// // "foo", "bar", "baz"
+    ///
+    /// // Will be transformed into
+    /// var foo, bar, baz;
+    /// ```
+    pub exp_decls: Vec<VarDeclarator>,
+    /// Export specifiers
+    ///
+    /// ```js
+    /// // Vector of `ExportSpecifier`
+    /// // name: "foo", ident: __x
+    /// // name: "bar", ident: __x1
+    /// // name: "default", ident: __x2
+    ///
+    /// // Will be transformed into
+    /// export { foo as __x, bar as __x1, default as __x2 };
+    /// ```
+    pub exp_specs: Vec<ExportSpecifier>,
+}
+
+impl<'a> ModuleBuilder<'a> {
+    pub fn new(ctx_ident: &'a Ident, deps_ident: &'a Ident) -> Self {
+        Self {
+            ctx_ident,
+            deps_ident,
+            imports: Vec::new(),
+            exports: Vec::new(),
+            stmts: Vec::new(),
+            binding_stmt: None,
+            dep_getters: Vec::new(),
+            exp_props: Vec::new(),
+            exp_decls: Vec::new(),
+            exp_specs: Vec::new(),
+        }
+    }
+
+    /// Collects ASTs from the collector and module body.
+    pub fn collect_module_body(&mut self, collector: &mut ModuleCollector, body: Vec<ModuleItem>) {
+        self.collect(collector);
+        body.into_iter().for_each(|item| match item {
+            ModuleItem::ModuleDecl(ModuleDecl::Import(_)) => self.imports.push(item),
+            ModuleItem::ModuleDecl(_) => self.exports.push(item),
+            ModuleItem::Stmt(stmt) if !stmt.is_empty() => self.stmts.push(stmt),
+            _ => {}
+        });
+    }
+
+    /// Collects ASTs from the collector and script body.
+    pub fn collect_script_body(&mut self, collector: &mut ModuleCollector, body: Vec<Stmt>) {
+        self.collect(collector);
+        self.stmts.extend(body);
+    }
+
+    /// Collects ASTs from the collected dependencies, exports, and bindings
+    fn collect(&mut self, collector: &mut ModuleCollector) {
+        self.collect_deps(collector);
+        self.collect_exps(collector);
+        self.collect_bindings(collector);
+    }
+
+    /// Collects ASTs from the collected dependencies
+    fn collect_deps(&mut self, collector: &mut ModuleCollector) {
+        collector
+            .take_deps()
+            .into_iter()
+            .enumerate()
+            .for_each(|(idx, dep)| match dep {
+                Dep::Base(base_dep) => {
+                    let src = base_dep.src;
+                    let require_props = base_dep
+                        .members
+                        .into_iter()
+                        .map(|member| member.into_obj_pat_prop())
+                        .collect::<Vec<ObjectPatProp>>();
+
+                    self.dep_getters
+                        .push(DepGetter::Props(require_props.clone()));
+                    self.stmts.push(
+                        VarDecl {
+                            kind: VarDeclKind::Const,
+                            decls: vec![var_declarator(
+                                Pat::Object(ObjectPat {
+                                    props: require_props,
+                                    optional: false,
+                                    type_ann: None,
+                                    span: DUMMY_SP,
+                                }),
+                                Some(Box::new(require_call(collector.ctx_ident, src.into(), idx))),
+                            )],
+                            ..Default::default()
+                        }
+                        .into(),
+                    )
+                }
+                Dep::Runtime(RuntimeDep { expr }) => {
+                    self.dep_getters
+                        .push(DepGetter::Expr(arrow_with_paren_expr(expr)));
+                }
+            });
+    }
+
+    /// Collects ASTs from the collected exports
+    fn collect_exps(&mut self, collector: &mut ModuleCollector) {
+        // Use base index to calculate the index of the dependency count,
+        // because `collect_deps` function called before `collect_exps` in `collect` function.
+        let base_idx = collector.deps.len();
+
+        collector
+            .take_exps()
+            .into_iter()
+            .enumerate()
+            .for_each(|(idx, exp)| match exp {
+                Exp::Base(exp) => {
+                    let (decls, props, specs) = exp.into_asts();
+
+                    self.exp_decls.extend(decls);
+                    self.exp_props.extend(props);
+                    self.exp_specs.extend(specs);
+                }
+                Exp::ReExportNamed(re_export_named) => {
+                    let mod_ident = mod_ident();
+                    let src = re_export_named.src.clone();
+                    let imp_stmt = to_import_namespace_stmt(mod_ident.clone(), src.clone());
+                    let getter_expr = arrow_with_paren_expr(mod_ident.clone().into());
+                    let req_stmt = to_require_stmt(
+                        &collector.ctx_ident,
+                        mod_ident.clone(),
+                        src.clone(),
+                        base_idx + idx,
+                    );
+                    let exp_prop = re_export_named.to_exp_props(mod_ident);
+
+                    self.imports.push(imp_stmt);
+                    self.stmts.push(req_stmt);
+                    self.exp_props.extend(exp_prop);
+                    self.dep_getters.push(DepGetter::Expr(getter_expr));
+                }
+                Exp::ReExportAll(re_export_all) => {
+                    let mod_ident = mod_ident();
+                    let src = re_export_all.src.clone();
+                    let imp_stmt = to_import_all_stmt(mod_ident.clone(), src.clone());
+                    let getter_expr = arrow_with_paren_expr(mod_ident.clone().into());
+                    let req_stmt = to_require_stmt(
+                        &collector.ctx_ident,
+                        mod_ident.clone(),
+                        src.clone(),
+                        base_idx + idx,
+                    );
+                    let exp_prop = re_export_all.to_exp_props(collector.ctx_ident, mod_ident);
+
+                    self.imports.push(imp_stmt);
+                    self.stmts.push(req_stmt);
+                    self.exp_props.push(exp_prop);
+                    self.dep_getters.push(DepGetter::Expr(getter_expr));
+                }
+            });
+    }
+
+    /// Collects bindings from the collector and
+    /// creates a statement that assigns them to the each binding
+    ///
+    /// ```js
+    /// // binding_stmt
+    /// __x = foo, __x1 = bar, __x2 = baz;
+    /// ```
+    fn collect_bindings(&mut self, collector: &mut ModuleCollector) {
+        let bindings = collector.take_bindings();
+
+        if bindings.is_empty() {
+            return;
+        }
+
+        self.binding_stmt = Some(
+            Expr::Seq(SeqExpr {
+                exprs: bindings
+                    .into_iter()
+                    .map(|binding| Box::new(binding.to_assign_expr()))
+                    .collect::<Vec<Box<Expr>>>(),
+                ..Default::default()
+            })
+            .into_stmt(),
+        );
+    }
+
+    /// Returns a list of statements that can be used to source type: 'module'
+    pub fn build_module(self, id: &String, runtime: bool) -> Vec<ModuleItem> {
+        let deps_decl = if runtime {
+            None
+        } else {
+            Some(
+                if self.dep_getters.is_empty() {
+                    to_empty_deps_decl(&self.deps_ident)
+                } else {
+                    to_deps_decl(&self.deps_ident, self.dep_getters)
+                }
+                .into(),
+            )
+        };
+
+        let exports_call = if self.exp_props.is_empty() {
+            None
+        } else {
+            Some(exports_call(&self.ctx_ident, self.exp_props).into_stmt())
+        };
+
+        let exp_var_decl = if self.exp_decls.len() > 0 {
+            Some(
+                Decl::Var(Box::new(VarDecl {
+                    decls: self.exp_decls,
+                    kind: VarDeclKind::Var,
+                    declare: false,
+                    span: DUMMY_SP,
+                    ctxt: SyntaxContext::default(),
+                }))
+                .into(),
+            )
+        } else {
+            None
+        };
+
+        let stmts = deps_decl
+            .into_iter()
+            .chain(std::iter::once(
+                define_call(
+                    id,
+                    self.stmts
+                        .into_iter()
+                        .chain(self.binding_stmt.into_iter())
+                        .chain(exports_call.into_iter())
+                        .collect(),
+                    &self.ctx_ident,
+                    if runtime {
+                        None
+                    } else {
+                        Some(&self.deps_ident)
+                    },
+                )
+                .into_stmt(),
+            ))
+            .collect::<Vec<Stmt>>();
+
+        let imports = if runtime { vec![] } else { self.imports };
+        let exports = if runtime {
+            vec![]
+        } else {
+            self.exports
+                .into_iter()
+                .chain(
+                    if self.exp_specs.len() > 0 {
+                        Some(to_named_exps(self.exp_specs))
+                    } else {
+                        None
+                    }
+                    .into_iter(),
+                )
+                .collect()
+        };
+
+        imports
+            .into_iter()
+            .chain(stmts.into_iter().map(|stmt| stmt.into()))
+            .chain(exports)
+            .chain(exp_var_decl.into_iter())
+            .collect()
+    }
+
+    /// Returns a list of statements that can be used to source type: 'script'
+    pub fn build_script(self, id: &String, runtime: bool) -> Vec<Stmt> {
+        let deps_decl = if runtime {
+            None
+        } else {
+            Some(
+                if self.dep_getters.is_empty() {
+                    to_empty_deps_decl(&self.deps_ident)
+                } else {
+                    to_deps_decl(&self.deps_ident, self.dep_getters)
+                }
+                .into(),
+            )
+        };
+
+        let exports_call = if self.exp_props.is_empty() {
+            None
+        } else {
+            Some(exports_call(&self.ctx_ident, self.exp_props).into_stmt())
+        };
+
+        let exp_var_decl = if self.exp_decls.len() > 0 {
+            Some(
+                Decl::Var(Box::new(VarDecl {
+                    decls: self.exp_decls,
+                    kind: VarDeclKind::Var,
+                    declare: false,
+                    span: DUMMY_SP,
+                    ctxt: SyntaxContext::default(),
+                }))
+                .into(),
+            )
+        } else {
+            None
+        };
+
+        deps_decl
+            .into_iter()
+            .chain(std::iter::once(
+                define_call(
+                    id,
+                    self.stmts
+                        .into_iter()
+                        .chain(self.binding_stmt.into_iter())
+                        .chain(exports_call.into_iter())
+                        .collect(),
+                    &self.ctx_ident,
+                    if runtime {
+                        None
+                    } else {
+                        Some(&self.deps_ident)
+                    },
+                )
+                .into_stmt(),
+            ))
+            .chain(exp_var_decl.into_iter())
+            .collect()
+    }
+}

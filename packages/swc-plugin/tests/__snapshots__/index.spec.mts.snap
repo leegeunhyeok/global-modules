@@ -33,6 +33,7 @@ exports[`@global-modules/swc-plugin > Bundle phase > [CJS] Basics 1`] = `
     }
     return destination;
   };
+  var toImport = (require2) => (source, dependencyIndex) => Promise.resolve(require2(source, dependencyIndex));
 
   // src/create-global-module.ts
   function createGlobalModule() {
@@ -40,7 +41,32 @@ exports[`@global-modules/swc-plugin > Bundle phase > [CJS] Basics 1`] = `
     function __exports(exports, definitions) {
       copyProps(exports, definitions());
     }
-    function require2(id) {
+    function define(moduleFactory, id, dependencies = null) {
+      const module = moduleRegistry.has(id) ? getModule(id) : {};
+      module.id = id;
+      module.context = createContext(dependencies);
+      module.factory = moduleFactory;
+      module.factory(module.context);
+      moduleRegistry.set(id, module);
+    }
+    function apply(id, dependencyMap) {
+      const module = getModule(id);
+      if (dependencyMap != null) {
+        const boundRequire = require2.bind(
+          dependencyMap
+        );
+        module.context.require = boundRequire;
+        module.context.import = toImport(boundRequire);
+      }
+      module.factory(module.context);
+    }
+    function require2(id, dependencyIndex) {
+      if (Array.isArray(this) && typeof dependencyIndex === "number") {
+        return this[dependencyIndex]();
+      }
+      if (this !== null && typeof this[id] === "string") {
+        id = this[id];
+      }
       const module = getModule(id).context.module;
       return module.exports.__esModule || isExports(module.exports) ? module.exports : interopDefaultExport(module);
     }
@@ -56,8 +82,9 @@ exports[`@global-modules/swc-plugin > Bundle phase > [CJS] Basics 1`] = `
       copyProps(nsExports, exports, "default");
       return nsExports;
     }
-    function createContext() {
+    function createContext(dependencies) {
       const module = { exports: createExports() };
+      const boundRequire = require2.bind(dependencies);
       return {
         // Exports object
         module,
@@ -71,26 +98,17 @@ exports[`@global-modules/swc-plugin > Bundle phase > [CJS] Basics 1`] = `
           },
           { ns: toNamespaceExports }
         ),
-        reset: () => void (module.exports = createExports())
+        require: boundRequire,
+        import: toImport(boundRequire)
       };
-    }
-    function register(id) {
-      const module = {};
-      module.id = id;
-      module.context = createContext();
-      moduleRegistry.set(id, module);
-      return module.context;
-    }
-    function getContext(id) {
-      return getModule(id).context;
-    }
-    function getRegistry() {
-      return moduleRegistry;
     }
     function clear() {
       moduleRegistry.clear();
     }
-    return { register, getContext, getRegistry, require: require2, clear };
+    function getRegistry() {
+      return moduleRegistry;
+    }
+    return { define, apply, require: require2, clear, getModule, getRegistry };
   }
 
   // src/get-global-context.ts
@@ -123,32 +141,34 @@ exports[`@global-modules/swc-plugin > Bundle phase > [CJS] Basics 1`] = `
   // foo-linker:foo
   var require_foo = __commonJS({
     "foo-linker:foo"(exports, module) {
-      var __ctx = global.__modules.register("0");
-      var foo = "foo";
-      var bar = "bar";
-      var value = "baz";
-      if (true) {
-        module.exports = __ctx.module.exports = {
-          foo,
-          bar,
-          baz: value
-        };
-      }
-      module.exports[/* @__PURE__ */ function() {
-        return "qux";
-      }()] = __ctx.module.exports[/* @__PURE__ */ function() {
-        return "qux";
-      }()] = "qux";
-      function invalidCommonJS(module1) {
-        var require2 = function() {
-        };
-        module1.exports.invalid = "invalid";
-        module1.exports = "default";
-        require2("./some-module");
-      }
-      invalidCommonJS({
-        exports: {}
-      });
+      var __deps = null;
+      global.__modules.define(function(__context) {
+        var foo = "foo";
+        var bar = "bar";
+        var value = "baz";
+        if (true) {
+          module.exports = __context.module.exports = {
+            foo,
+            bar,
+            baz: value
+          };
+        }
+        module.exports[/* @__PURE__ */ function() {
+          return "qux";
+        }()] = __context.module.exports[/* @__PURE__ */ function() {
+          return "qux";
+        }()] = "qux";
+        function invalidCommonJS(module1) {
+          var require2 = function() {
+          };
+          module1.exports.invalid = "invalid";
+          module1.exports = "default";
+          require2("./some-module");
+        }
+        invalidCommonJS({
+          exports: {}
+        });
+      }, "0", __deps);
     }
   });
 
@@ -192,6 +212,7 @@ exports[`@global-modules/swc-plugin > Bundle phase > [ESM] Basics 1`] = `
     }
     return destination;
   };
+  var toImport = (require2) => (source, dependencyIndex) => Promise.resolve(require2(source, dependencyIndex));
 
   // src/create-global-module.ts
   function createGlobalModule() {
@@ -199,7 +220,32 @@ exports[`@global-modules/swc-plugin > Bundle phase > [ESM] Basics 1`] = `
     function __exports(exports, definitions) {
       copyProps(exports, definitions());
     }
-    function require2(id) {
+    function define(moduleFactory, id, dependencies = null) {
+      const module = moduleRegistry.has(id) ? getModule(id) : {};
+      module.id = id;
+      module.context = createContext(dependencies);
+      module.factory = moduleFactory;
+      module.factory(module.context);
+      moduleRegistry.set(id, module);
+    }
+    function apply(id, dependencyMap) {
+      const module = getModule(id);
+      if (dependencyMap != null) {
+        const boundRequire = require2.bind(
+          dependencyMap
+        );
+        module.context.require = boundRequire;
+        module.context.import = toImport(boundRequire);
+      }
+      module.factory(module.context);
+    }
+    function require2(id, dependencyIndex) {
+      if (Array.isArray(this) && typeof dependencyIndex === "number") {
+        return this[dependencyIndex]();
+      }
+      if (this !== null && typeof this[id] === "string") {
+        id = this[id];
+      }
       const module = getModule(id).context.module;
       return module.exports.__esModule || isExports(module.exports) ? module.exports : interopDefaultExport(module);
     }
@@ -215,8 +261,9 @@ exports[`@global-modules/swc-plugin > Bundle phase > [ESM] Basics 1`] = `
       copyProps(nsExports, exports, "default");
       return nsExports;
     }
-    function createContext() {
+    function createContext(dependencies) {
       const module = { exports: createExports() };
+      const boundRequire = require2.bind(dependencies);
       return {
         // Exports object
         module,
@@ -230,26 +277,17 @@ exports[`@global-modules/swc-plugin > Bundle phase > [ESM] Basics 1`] = `
           },
           { ns: toNamespaceExports }
         ),
-        reset: () => void (module.exports = createExports())
+        require: boundRequire,
+        import: toImport(boundRequire)
       };
-    }
-    function register(id) {
-      const module = {};
-      module.id = id;
-      module.context = createContext();
-      moduleRegistry.set(id, module);
-      return module.context;
-    }
-    function getContext(id) {
-      return getModule(id).context;
-    }
-    function getRegistry() {
-      return moduleRegistry;
     }
     function clear() {
       moduleRegistry.clear();
     }
-    return { register, getContext, getRegistry, require: require2, clear };
+    function getRegistry() {
+      return moduleRegistry;
+    }
+    return { define, apply, require: require2, clear, getModule, getRegistry };
   }
 
   // src/get-global-context.ts
@@ -283,28 +321,32 @@ exports[`@global-modules/swc-plugin > Bundle phase > [ESM] Basics 1`] = `
   // foo-linker:foo
   var foo_exports = {};
   __export(foo_exports, {
-    bar: () => bar,
-    baz: () => value,
-    default: () => foo_default,
+    bar: () => __x2,
+    baz: () => __x3,
+    default: () => __x,
     foo: () => __x1
   });
-  var __ctx = global.__modules.register("0");
-  var foo = "foo";
-  var bar = "bar";
-  var value = "baz";
-  var foo = "foo";
-  __x1 = foo;
-  __ctx.exports(function() {
-    return {
-      "default": __x,
-      "foo": __x1,
-      "bar": bar,
-      "baz": value
-    };
-  });
+  var __deps = null;
+  global.__modules.define(function(__context) {
+    var foo = "foo";
+    var bar = "bar";
+    var value = "baz";
+    var __default = 1;
+    var foo = "foo";
+    __x = __default, __x1 = foo, __x2 = bar, __x3 = value;
+    __context.exports(function() {
+      return {
+        "default": __x,
+        "foo": __x1,
+        "bar": __x2,
+        "baz": __x3
+      };
+    });
+  }, "0", __deps);
   var __x;
   var __x1;
-  var foo_default = __x = 1;
+  var __x2;
+  var __x3;
 
   // <stdin>
   bridge(foo_exports);
@@ -345,6 +387,7 @@ exports[`@global-modules/swc-plugin > Bundle phase > [ESM] Export with declarati
     }
     return destination;
   };
+  var toImport = (require2) => (source, dependencyIndex) => Promise.resolve(require2(source, dependencyIndex));
 
   // src/create-global-module.ts
   function createGlobalModule() {
@@ -352,7 +395,32 @@ exports[`@global-modules/swc-plugin > Bundle phase > [ESM] Export with declarati
     function __exports(exports, definitions) {
       copyProps(exports, definitions());
     }
-    function require2(id) {
+    function define(moduleFactory, id, dependencies = null) {
+      const module = moduleRegistry.has(id) ? getModule(id) : {};
+      module.id = id;
+      module.context = createContext(dependencies);
+      module.factory = moduleFactory;
+      module.factory(module.context);
+      moduleRegistry.set(id, module);
+    }
+    function apply(id, dependencyMap) {
+      const module = getModule(id);
+      if (dependencyMap != null) {
+        const boundRequire = require2.bind(
+          dependencyMap
+        );
+        module.context.require = boundRequire;
+        module.context.import = toImport(boundRequire);
+      }
+      module.factory(module.context);
+    }
+    function require2(id, dependencyIndex) {
+      if (Array.isArray(this) && typeof dependencyIndex === "number") {
+        return this[dependencyIndex]();
+      }
+      if (this !== null && typeof this[id] === "string") {
+        id = this[id];
+      }
       const module = getModule(id).context.module;
       return module.exports.__esModule || isExports(module.exports) ? module.exports : interopDefaultExport(module);
     }
@@ -368,8 +436,9 @@ exports[`@global-modules/swc-plugin > Bundle phase > [ESM] Export with declarati
       copyProps(nsExports, exports, "default");
       return nsExports;
     }
-    function createContext() {
+    function createContext(dependencies) {
       const module = { exports: createExports() };
+      const boundRequire = require2.bind(dependencies);
       return {
         // Exports object
         module,
@@ -383,26 +452,17 @@ exports[`@global-modules/swc-plugin > Bundle phase > [ESM] Export with declarati
           },
           { ns: toNamespaceExports }
         ),
-        reset: () => void (module.exports = createExports())
+        require: boundRequire,
+        import: toImport(boundRequire)
       };
-    }
-    function register(id) {
-      const module = {};
-      module.id = id;
-      module.context = createContext();
-      moduleRegistry.set(id, module);
-      return module.context;
-    }
-    function getContext(id) {
-      return getModule(id).context;
-    }
-    function getRegistry() {
-      return moduleRegistry;
     }
     function clear() {
       moduleRegistry.clear();
     }
-    return { register, getContext, getRegistry, require: require2, clear };
+    function getRegistry() {
+      return moduleRegistry;
+    }
+    return { define, apply, require: require2, clear, getModule, getRegistry };
   }
 
   // src/get-global-context.ts
@@ -428,18 +488,20 @@ exports[`@global-modules/swc-plugin > Bundle phase > [ESM] Export with declarati
 
 (() => {
   // foo-linker:foo
-  var __ctx = global.__modules.register("0");
-  var obj = {
-    value: 0
-  };
-  var newObj = obj;
-  newObj.key = "key";
-  __x = newObj;
-  __ctx.exports(function() {
-    return {
-      "newObj": __x
+  var __deps = null;
+  global.__modules.define(function(__context) {
+    var obj = {
+      value: 0
     };
-  });
+    var newObj = obj;
+    newObj.key = "key";
+    __x = newObj;
+    __context.exports(function() {
+      return {
+        "newObj": __x
+      };
+    });
+  }, "0", __deps);
   var __x;
 
   // <stdin>
@@ -481,6 +543,7 @@ exports[`@global-modules/swc-plugin > Runtime phase > [CJS] Basics 1`] = `
     }
     return destination;
   };
+  var toImport = (require2) => (source, dependencyIndex) => Promise.resolve(require2(source, dependencyIndex));
 
   // src/create-global-module.ts
   function createGlobalModule() {
@@ -488,7 +551,32 @@ exports[`@global-modules/swc-plugin > Runtime phase > [CJS] Basics 1`] = `
     function __exports(exports, definitions) {
       copyProps(exports, definitions());
     }
-    function require2(id) {
+    function define(moduleFactory, id, dependencies = null) {
+      const module = moduleRegistry.has(id) ? getModule(id) : {};
+      module.id = id;
+      module.context = createContext(dependencies);
+      module.factory = moduleFactory;
+      module.factory(module.context);
+      moduleRegistry.set(id, module);
+    }
+    function apply(id, dependencyMap) {
+      const module = getModule(id);
+      if (dependencyMap != null) {
+        const boundRequire = require2.bind(
+          dependencyMap
+        );
+        module.context.require = boundRequire;
+        module.context.import = toImport(boundRequire);
+      }
+      module.factory(module.context);
+    }
+    function require2(id, dependencyIndex) {
+      if (Array.isArray(this) && typeof dependencyIndex === "number") {
+        return this[dependencyIndex]();
+      }
+      if (this !== null && typeof this[id] === "string") {
+        id = this[id];
+      }
       const module = getModule(id).context.module;
       return module.exports.__esModule || isExports(module.exports) ? module.exports : interopDefaultExport(module);
     }
@@ -504,8 +592,9 @@ exports[`@global-modules/swc-plugin > Runtime phase > [CJS] Basics 1`] = `
       copyProps(nsExports, exports, "default");
       return nsExports;
     }
-    function createContext() {
+    function createContext(dependencies) {
       const module = { exports: createExports() };
+      const boundRequire = require2.bind(dependencies);
       return {
         // Exports object
         module,
@@ -519,26 +608,17 @@ exports[`@global-modules/swc-plugin > Runtime phase > [CJS] Basics 1`] = `
           },
           { ns: toNamespaceExports }
         ),
-        reset: () => void (module.exports = createExports())
+        require: boundRequire,
+        import: toImport(boundRequire)
       };
-    }
-    function register(id) {
-      const module = {};
-      module.id = id;
-      module.context = createContext();
-      moduleRegistry.set(id, module);
-      return module.context;
-    }
-    function getContext(id) {
-      return getModule(id).context;
-    }
-    function getRegistry() {
-      return moduleRegistry;
     }
     function clear() {
       moduleRegistry.clear();
     }
-    return { register, getContext, getRegistry, require: require2, clear };
+    function getRegistry() {
+      return moduleRegistry;
+    }
+    return { define, apply, require: require2, clear, getModule, getRegistry };
   }
 
   // src/get-global-context.ts
@@ -562,7 +642,6 @@ exports[`@global-modules/swc-plugin > Runtime phase > [CJS] Basics 1`] = `
   });
 })();
 
-global.__modules.register('0');
 (() => {
   var __getOwnPropNames = Object.getOwnPropertyNames;
   var __commonJS = (cb, mod2) => function __require() {
@@ -571,38 +650,40 @@ global.__modules.register('0');
 
   // foo-linker:foo
   var require_foo = __commonJS({
-    "foo-linker:foo"() {
-      var __ctx = global.__modules.getContext("0");
-      __ctx.reset();
-      var foo = "foo";
-      var bar = "bar";
-      var value = "baz";
-      if (true) {
-        __ctx.module.exports = {
-          foo,
-          bar,
-          baz: value
-        };
-      }
-      __ctx.module.exports[/* @__PURE__ */ function() {
-        return "qux";
-      }()] = "qux";
-      function invalidCommonJS(module2) {
-        var require2 = function() {
-        };
-        module2.exports.invalid = "invalid";
-        module2.exports = "default";
-        require2("./some-module");
-      }
-      invalidCommonJS({
-        exports: {}
-      });
+    "foo-linker:foo"(exports, module) {
+      global.__modules.define(function(__context) {
+        var foo = "foo";
+        var bar = "bar";
+        var value = "baz";
+        if (true) {
+          module.exports = __context.module.exports = {
+            foo,
+            bar,
+            baz: value
+          };
+        }
+        module.exports[/* @__PURE__ */ function() {
+          return "qux";
+        }()] = __context.module.exports[/* @__PURE__ */ function() {
+          return "qux";
+        }()] = "qux";
+        function invalidCommonJS(module1) {
+          var require2 = function() {
+          };
+          module1.exports.invalid = "invalid";
+          module1.exports = "default";
+          require2("./some-module");
+        }
+        invalidCommonJS({
+          exports: {}
+        });
+      }, "0");
     }
   });
 
   // <stdin>
   var mod = require_foo();
-  bridge(global.__modules.getContext("0").module.exports);
+  bridge(global.__modules.require("0"));
 })();
 "
 `;
@@ -640,6 +721,7 @@ exports[`@global-modules/swc-plugin > Runtime phase > [ESM] Basics 1`] = `
     }
     return destination;
   };
+  var toImport = (require2) => (source, dependencyIndex) => Promise.resolve(require2(source, dependencyIndex));
 
   // src/create-global-module.ts
   function createGlobalModule() {
@@ -647,7 +729,32 @@ exports[`@global-modules/swc-plugin > Runtime phase > [ESM] Basics 1`] = `
     function __exports(exports, definitions) {
       copyProps(exports, definitions());
     }
-    function require2(id) {
+    function define(moduleFactory, id, dependencies = null) {
+      const module = moduleRegistry.has(id) ? getModule(id) : {};
+      module.id = id;
+      module.context = createContext(dependencies);
+      module.factory = moduleFactory;
+      module.factory(module.context);
+      moduleRegistry.set(id, module);
+    }
+    function apply(id, dependencyMap) {
+      const module = getModule(id);
+      if (dependencyMap != null) {
+        const boundRequire = require2.bind(
+          dependencyMap
+        );
+        module.context.require = boundRequire;
+        module.context.import = toImport(boundRequire);
+      }
+      module.factory(module.context);
+    }
+    function require2(id, dependencyIndex) {
+      if (Array.isArray(this) && typeof dependencyIndex === "number") {
+        return this[dependencyIndex]();
+      }
+      if (this !== null && typeof this[id] === "string") {
+        id = this[id];
+      }
       const module = getModule(id).context.module;
       return module.exports.__esModule || isExports(module.exports) ? module.exports : interopDefaultExport(module);
     }
@@ -663,8 +770,9 @@ exports[`@global-modules/swc-plugin > Runtime phase > [ESM] Basics 1`] = `
       copyProps(nsExports, exports, "default");
       return nsExports;
     }
-    function createContext() {
+    function createContext(dependencies) {
       const module = { exports: createExports() };
+      const boundRequire = require2.bind(dependencies);
       return {
         // Exports object
         module,
@@ -678,26 +786,17 @@ exports[`@global-modules/swc-plugin > Runtime phase > [ESM] Basics 1`] = `
           },
           { ns: toNamespaceExports }
         ),
-        reset: () => void (module.exports = createExports())
+        require: boundRequire,
+        import: toImport(boundRequire)
       };
-    }
-    function register(id) {
-      const module = {};
-      module.id = id;
-      module.context = createContext();
-      moduleRegistry.set(id, module);
-      return module.context;
-    }
-    function getContext(id) {
-      return getModule(id).context;
-    }
-    function getRegistry() {
-      return moduleRegistry;
     }
     function clear() {
       moduleRegistry.clear();
     }
-    return { register, getContext, getRegistry, require: require2, clear };
+    function getRegistry() {
+      return moduleRegistry;
+    }
+    return { define, apply, require: require2, clear, getModule, getRegistry };
   }
 
   // src/get-global-context.ts
@@ -721,7 +820,6 @@ exports[`@global-modules/swc-plugin > Runtime phase > [ESM] Basics 1`] = `
   });
 })();
 
-global.__modules.register('0');
 (() => {
   var __create = Object.create;
   var __defProp = Object.defineProperty;
@@ -752,30 +850,32 @@ global.__modules.register('0');
   // foo-linker:foo
   var require_foo = __commonJS({
     "foo-linker:foo"() {
-      var __ctx = global.__modules.getContext("0");
-      __ctx.reset();
-      var foo = "foo";
-      var bar = "bar";
-      var value = "baz";
-      __x = 1;
-      var foo = "foo";
-      __x1 = foo;
-      __ctx.exports(function() {
-        return {
-          "default": __x,
-          "foo": __x1,
-          "bar": bar,
-          "baz": value
-        };
-      });
+      global.__modules.define(function(__context) {
+        var foo = "foo";
+        var bar = "bar";
+        var value = "baz";
+        var __default = 1;
+        var foo = "foo";
+        __x = __default, __x1 = foo, __x2 = bar, __x3 = value;
+        __context.exports(function() {
+          return {
+            "default": __x,
+            "foo": __x1,
+            "bar": __x2,
+            "baz": __x3
+          };
+        });
+      }, "0");
       var __x;
       var __x1;
+      var __x2;
+      var __x3;
     }
   });
 
   // <stdin>
   var mod = __toESM(require_foo());
-  bridge(global.__modules.getContext("0").module.exports);
+  bridge(global.__modules.require("0"));
 })();
 "
 `;
@@ -813,6 +913,7 @@ exports[`@global-modules/swc-plugin > Runtime phase > [ESM] Export with declarat
     }
     return destination;
   };
+  var toImport = (require2) => (source, dependencyIndex) => Promise.resolve(require2(source, dependencyIndex));
 
   // src/create-global-module.ts
   function createGlobalModule() {
@@ -820,7 +921,32 @@ exports[`@global-modules/swc-plugin > Runtime phase > [ESM] Export with declarat
     function __exports(exports, definitions) {
       copyProps(exports, definitions());
     }
-    function require2(id) {
+    function define(moduleFactory, id, dependencies = null) {
+      const module = moduleRegistry.has(id) ? getModule(id) : {};
+      module.id = id;
+      module.context = createContext(dependencies);
+      module.factory = moduleFactory;
+      module.factory(module.context);
+      moduleRegistry.set(id, module);
+    }
+    function apply(id, dependencyMap) {
+      const module = getModule(id);
+      if (dependencyMap != null) {
+        const boundRequire = require2.bind(
+          dependencyMap
+        );
+        module.context.require = boundRequire;
+        module.context.import = toImport(boundRequire);
+      }
+      module.factory(module.context);
+    }
+    function require2(id, dependencyIndex) {
+      if (Array.isArray(this) && typeof dependencyIndex === "number") {
+        return this[dependencyIndex]();
+      }
+      if (this !== null && typeof this[id] === "string") {
+        id = this[id];
+      }
       const module = getModule(id).context.module;
       return module.exports.__esModule || isExports(module.exports) ? module.exports : interopDefaultExport(module);
     }
@@ -836,8 +962,9 @@ exports[`@global-modules/swc-plugin > Runtime phase > [ESM] Export with declarat
       copyProps(nsExports, exports, "default");
       return nsExports;
     }
-    function createContext() {
+    function createContext(dependencies) {
       const module = { exports: createExports() };
+      const boundRequire = require2.bind(dependencies);
       return {
         // Exports object
         module,
@@ -851,26 +978,17 @@ exports[`@global-modules/swc-plugin > Runtime phase > [ESM] Export with declarat
           },
           { ns: toNamespaceExports }
         ),
-        reset: () => void (module.exports = createExports())
+        require: boundRequire,
+        import: toImport(boundRequire)
       };
-    }
-    function register(id) {
-      const module = {};
-      module.id = id;
-      module.context = createContext();
-      moduleRegistry.set(id, module);
-      return module.context;
-    }
-    function getContext(id) {
-      return getModule(id).context;
-    }
-    function getRegistry() {
-      return moduleRegistry;
     }
     function clear() {
       moduleRegistry.clear();
     }
-    return { register, getContext, getRegistry, require: require2, clear };
+    function getRegistry() {
+      return moduleRegistry;
+    }
+    return { define, apply, require: require2, clear, getModule, getRegistry };
   }
 
   // src/get-global-context.ts
@@ -894,7 +1012,6 @@ exports[`@global-modules/swc-plugin > Runtime phase > [ESM] Export with declarat
   });
 })();
 
-global.__modules.register('0');
 (() => {
   var __create = Object.create;
   var __defProp = Object.defineProperty;
@@ -925,26 +1042,26 @@ global.__modules.register('0');
   // foo-linker:foo
   var require_foo = __commonJS({
     "foo-linker:foo"() {
-      var __ctx = global.__modules.getContext("0");
-      __ctx.reset();
-      var obj = {
-        value: 0
-      };
-      var newObj = obj;
-      newObj.key = "key";
-      __x = newObj;
-      __ctx.exports(function() {
-        return {
-          "newObj": __x
+      global.__modules.define(function(__context) {
+        var obj = {
+          value: 0
         };
-      });
+        var newObj = obj;
+        newObj.key = "key";
+        __x = newObj;
+        __context.exports(function() {
+          return {
+            "newObj": __x
+          };
+        });
+      }, "0");
       var __x;
     }
   });
 
   // <stdin>
   var mod = __toESM(require_foo());
-  bridge(global.__modules.getContext("0").module.exports);
+  bridge(global.__modules.require("0"));
 })();
 "
 `;

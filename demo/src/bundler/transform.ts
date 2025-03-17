@@ -1,7 +1,4 @@
-import globalModulePlugin, {
-  Phase,
-  PluginConfig,
-} from '@global-modules/swc-plugin';
+import globalModulePlugin, { PluginConfig } from '@global-modules/swc-plugin';
 import * as swc from '@swc/core';
 
 const esModuleLexer = require('es-module-lexer');
@@ -28,12 +25,12 @@ export async function transform(
           refresh: {
             refreshReg: 'window.$$reactRefresh$$.register',
             refreshSig: 'window.$$reactRefresh$$.getSignature',
-          } as unknown,
+          },
         },
       },
       // External helpers are not allowed in the runtime phase
-      // because helpers will be injected with import statements by the swc.
-      externalHelpers: globalModuleConfig.phase === Phase.Bundle,
+      // because '@swc/helpers' will be injected by the swc with import statements after the plugin transformation.
+      externalHelpers: globalModuleConfig.runtime === false,
       experimental: {
         plugins: [[globalModulePlugin, globalModuleConfig]],
       },
@@ -50,7 +47,10 @@ export async function transform(
  *
  * This function transforms the jsx runtime code to use the global context instead of `import` statements.
  */
-export async function transformJsxRuntime(source: string) {
+export async function transformJsxRuntime(
+  source: string,
+  jsxRuntimeId: string,
+) {
   const [imports] = esModuleLexer.parse(source);
 
   if (imports.length !== 1) {
@@ -83,7 +83,7 @@ export async function transformJsxRuntime(source: string) {
   }
   return [
     // `$$jsxDevRuntime$$`: See `runtime/index.js`
-    `var { ${members.join(', ')} } = window.$$jsxDevRuntime$$;`,
+    `var { ${members.join(', ')} } = global.__modules.require(${JSON.stringify(jsxRuntimeId)});`,
     source.replace(statement, ''),
   ].join('\n');
 }

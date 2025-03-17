@@ -52,9 +52,11 @@ describe('@global-modules/runtime', () => {
 
     it('should define module registry into global context', () => {
       const globalRegistry = context.getGlobalModule();
-      expect(typeof globalRegistry.register).toEqual('function');
-      expect(typeof globalRegistry.getContext).toEqual('function');
+      expect(typeof globalRegistry.define).toEqual('function');
+      expect(typeof globalRegistry.apply).toEqual('function');
+      expect(typeof globalRegistry.require).toEqual('function');
       expect(typeof globalRegistry.clear).toEqual('function');
+      expect(typeof globalRegistry.getRegistry).toEqual('function');
     });
   });
 
@@ -70,7 +72,7 @@ describe('@global-modules/runtime', () => {
     });
   });
 
-  describe('when register module', () => {
+  describe('when define the module', () => {
     let context: SandboxContext;
 
     beforeAll(() => {
@@ -79,35 +81,137 @@ describe('@global-modules/runtime', () => {
     });
 
     it('should return the module context', () => {
-      expect(context.evaluate(`__modules.register('0');`)).toBeTruthy();
-    });
-
-    describe('when attempting to retrieve a registered module', () => {
-      it('should return the module context', () => {
-        expect(context.evaluate(`__modules.getContext('0');`)).toBeTruthy();
-      });
+      context.evaluate(`__modules.define(() => {}, 'mod-0');`);
+      expect(context.evaluate(`__modules.require('mod-0');`)).toBeTruthy();
     });
 
     describe('when attempting to retrieve a unregistered module', () => {
       it('should throw an error', () => {
         expect(
           (): RuntimeResult =>
-            context.evaluate(`__modules.getContext('1234');`),
+            context.evaluate(`__modules.require('mod-unregistered');`),
         ).toThrowError();
       });
     });
   });
 
-  describe('getRegistry', () => {
+  describe('when define the module with dependency', () => {
+    const mockedPrint = vi.fn();
     let context: SandboxContext;
 
     beforeAll(() => {
-      context = createSandboxContext();
+      mockedPrint.mockReset();
+      context = createSandboxContext({ print: mockedPrint });
       context.setup();
     });
 
-    it('should return the global module registry', () => {
-      expect(context.getGlobalModule().getRegistry()).toBeTruthy();
+    it('should reference the provided dependency', () => {
+      context.evaluate(`
+        __modules.define((context) => {
+          const mod1 = context.require('react', 0);
+          const mod2 = context.require('react-dom', 1);
+          print(mod1, mod2);
+        }, 'mod-0', [
+          () => ({
+            default: 'React',
+            useState: 'hook#useState',
+            useEffect: 'hook#useEffect',
+          }),
+          () => ({ default: 'ReactDOM' }),
+        ]);
+      `);
+
+      expect(mockedPrint).toBeCalledWith(
+        {
+          default: 'React',
+          useState: 'hook#useState',
+          useEffect: 'hook#useEffect',
+        },
+        {
+          default: 'ReactDOM',
+        },
+      );
+    });
+  });
+
+  describe('when apply the module with dependency id map', () => {
+    const mockedPrint = vi.fn();
+    let context: SandboxContext;
+
+    beforeAll(() => {
+      mockedPrint.mockReset();
+      context = createSandboxContext({ print: mockedPrint });
+      context.setup();
+    });
+
+    it('should reference the module that provided id', () => {
+      context.evaluate(`
+        __modules.define((context) => {
+          const mod1 = context.require('./foo', 0);
+          const mod2 = context.require('./bar', 1);
+          print('require foo', mod1, mod2);
+        }, 'mod', [
+          () => ({ default: 'foo' }),
+          () => ({ default: 'bar' }),
+        ]);
+      `);
+
+      expect(mockedPrint).toBeCalledWith(
+        'require foo',
+        { default: 'foo' },
+        { default: 'bar' },
+      );
+
+      context.evaluate(`
+        __modules.define((context) => {
+          context.exports(() => ({ default: 'defined foo', foo: 'foo' }));
+        }, 'foo-id');
+        __modules.define((context) => {
+          context.exports(() => ({ default: 'defined bar', bar: 'bar' }));
+        }, 'bar-id');
+        __modules.apply('mod', {
+          './foo': 'foo-id',
+          './bar': 'bar-id',
+        });
+      `);
+
+      // `context.require('./foo')` should reference the re-mapped module (`foo-id`).
+      expect(mockedPrint).toBeCalledWith(
+        'require foo',
+        {
+          default: 'defined foo',
+          foo: 'foo',
+        },
+        {
+          default: 'defined bar',
+          bar: 'bar',
+        },
+      );
+    });
+  });
+
+  describe('when store the metadata to the module', () => {
+    const mockedPrint = vi.fn();
+    let context: SandboxContext;
+
+    beforeAll(() => {
+      mockedPrint.mockReset();
+      context = createSandboxContext({ print: mockedPrint });
+      context.setup();
+    });
+
+    it('should store the metadata to the module', () => {
+      context.evaluate(`
+        __modules.define(() => {}, 'mod-0');
+        __modules.getModule('mod-0').meta = { value: 'foo' };
+      `);
+
+      context.evaluate(`
+        const module = __modules.getModule('mod-0');
+        print(module.meta);
+      `);
+
+      expect(mockedPrint).toBeCalledWith({ value: 'foo' });
     });
   });
 
@@ -123,33 +227,35 @@ describe('@global-modules/runtime', () => {
 
     it('module.exports = <expr>;', () => {
       context.evaluate(`
-        var __ctx = __modules.register('1');
-        __ctx.module.exports = 100;
+        __modules.define((context) => {
+          context.module.exports = 100;
+        }, 'cjs-1');
       `);
 
       context.evaluate(`
-        var __ctx = __modules.register('2');
-        var mod = global.__modules.require('1');
-        print(mod);
+        __modules.define((context) => {
+          const mod = context.require('cjs-1');
+          print(mod);
+        }, 'cjs-2');
       `);
 
-      expect(mockedPrint).toBeCalledWith({
-        default: 100,
-      });
+      expect(mockedPrint).toBeCalledWith({ default: 100 });
     });
 
     it('module.exports.named = <expr>;', () => {
       context.evaluate(`
-        var __ctx = __modules.register('1');
-        __ctx.module.exports.foo = 1;
-        __ctx.module.exports.bar = 2;
-        __ctx.module.exports.baz = 3;
+        __modules.define((context) => {
+          context.module.exports.foo = 1;
+          context.module.exports.bar = 2;
+          context.module.exports.baz = 3;
+        }, 'cjs-1');
       `);
 
       context.evaluate(`
-        var __ctx = __modules.register('2');
-        var mod = global.__modules.require('1');
-        print(mod);
+        __modules.define((context) => {
+          const mod = context.require('cjs-1');
+          print(mod);
+        }, 'cjs-2');
       `);
 
       expect(mockedPrint).toBeCalledWith({
@@ -161,18 +267,20 @@ describe('@global-modules/runtime', () => {
 
     it('Object.assign(module.exports, {});', () => {
       context.evaluate(`
-        var __ctx = __modules.register('1');
-        Object.assign(__ctx.module.exports, {
-          foo: 4,
-          bar: 5,
-          baz: 6,
-        });
+        __modules.define((context) => {
+          Object.assign(context.module.exports, {
+            foo: 4,
+            bar: 5,
+            baz: 6,
+          });
+        }, 'cjs-1');
       `);
 
       context.evaluate(`
-        var __ctx = __modules.register('2');
-        var mod = global.__modules.require('1');
-        print(mod);
+        __modules.define((context) => {
+          const mod = context.require('cjs-1');
+          print(mod);
+        }, 'cjs-2');
       `);
 
       expect(mockedPrint).toBeCalledWith({
@@ -184,16 +292,18 @@ describe('@global-modules/runtime', () => {
 
     it('Update the existing module', () => {
       context.evaluate(`
-        var __ctx = __modules.register('1');
-        __ctx.module.exports.foo = 1;
-        __ctx.module.exports.bar = 2;
-        __ctx.module.exports.baz = 3;
+        __modules.define((context) => {
+          context.module.exports.foo = 1;
+          context.module.exports.bar = 2;
+          context.module.exports.baz = 3;
+        }, 'cjs-1');
       `);
 
       context.evaluate(`
-        var __ctx = __modules.register('2');
-        var mod = global.__modules.require('1');
-        print(mod);
+        __modules.define((context) => {
+          const mod = context.require('cjs-1');
+          print(mod);
+        }, 'cjs-2');
       `);
 
       expect(mockedPrint).toBeCalledWith({
@@ -204,16 +314,10 @@ describe('@global-modules/runtime', () => {
 
       // Update
       context.evaluate(`
-        var __ctx = __modules.getContext('1');
-        __ctx.reset();
-        __ctx.module.exports.value = 100;
-      `);
-
-      context.evaluate(`
-        var __ctx = __modules.getContext('2');
-        var mod = global.__modules.require('1');
-        __ctx.reset();
-        print(mod);
+        __modules.define((context) => {
+          context.module.exports.value = 100;
+        }, 'cjs-1');
+        __modules.apply('cjs-2');
       `);
 
       expect(mockedPrint).toBeCalledWith({
@@ -229,19 +333,21 @@ describe('@global-modules/runtime', () => {
 
     it('ESModule interop', () => {
       context.evaluate(`
-        var __ctx = __modules.register('1');
-        __ctx.module.exports = {
-          default: 100,
-        };
-        Object.defineProperty(__ctx.module.exports, '__esModule', {
-          value: true,
-        });
+        __modules.define((context) => {
+          context.module.exports = {
+            default: 100,
+          };
+          Object.defineProperty(context.module.exports, '__esModule', {
+            value: true,
+          });
+        }, 'cjs-1');
       `);
 
       context.evaluate(`
-        var __ctx = __modules.register('2');
-        var mod = global.__modules.require('1');
-        print(mod);
+        __modules.define((context) => {
+          const mod = context.require('cjs-1');
+          print(mod);
+        }, 'cjs-2');
       `);
 
       expect(mockedPrint).toBeCalledWith({
@@ -262,20 +368,20 @@ describe('@global-modules/runtime', () => {
 
     it('Default export', () => {
       context.evaluate(`
-        var __ctx = __modules.register('1');
-        var __x = 100;
-        __ctx.exports(function () {
-          return {
+        __modules.define((context) => {
+          __x = 100;
+          context.exports(() => ({
             default: __x,
-          };
-        });
+          }));
+        }, 'esm-1');
         var __x;
       `);
 
       context.evaluate(`
-        var __ctx = __modules.register('2');
-        var mod = global.__modules.require('1');
-        print(mod);
+        __modules.define((context) => {
+          const mod = context.require('esm-1');
+          print(mod);
+        }, 'esm-2');
       `);
 
       expect(mockedPrint).toBeCalledWith({
@@ -285,24 +391,24 @@ describe('@global-modules/runtime', () => {
 
     it('Named exports', () => {
       context.evaluate(`
-        var __ctx = __modules.register('1');
-        __x = 1;
-        __x1 = 2;
-        __x2 = 3;
-        __ctx.exports(function () {
-          return {
+        __modules.define((context) => {
+          __x = 1;
+          __x1 = 2;
+          __x2 = 3;
+          context.exports(() => ({
             foo: __x,
             bar: __x1,
             baz: __x2,
-          };
-        });
+          }));
+        }, 'esm-1');
         var __x, __x1, __x2;
       `);
 
       context.evaluate(`
-        var __ctx = __modules.register('2');
-        var mod = global.__modules.require('1');
-        print(mod);
+        __modules.define((context) => {
+          const mod = context.require('esm-1');
+          print(mod);
+        }, 'esm-2');
       `);
 
       expect(mockedPrint).toBeCalledWith({
@@ -314,36 +420,35 @@ describe('@global-modules/runtime', () => {
 
     it('Re-export (named)', () => {
       context.evaluate(`
-        var __ctx = __modules.register('1');
-        __x = 1;
-        __x1 = 2;
-        __x2 = 3;
-        __ctx.exports(function () {
-          return {
+        __modules.define((context) => {
+          __x = 1;
+          __x1 = 2;
+          __x2 = 3;
+          context.exports(() => ({
             foo: __x,
             bar: __x1,
             baz: __x2,
-          };
-        });
+          }));
+        }, 'esm-1');
         var __x, __x1, __x2;
       `);
 
       context.evaluate(`
-        var __ctx = __modules.register('2');
-        var mod = global.__modules.require('1');
-        __ctx.exports(function () {
-          return {
+        __modules.define((context) => {
+          const mod = context.require('esm-1');
+          context.exports(() => ({
             a: mod.foo,
             b: mod.bar,
             c: mod.baz,
-          };
-        });
+          }));
+        }, 'esm-2');
       `);
 
       context.evaluate(`
-        var __ctx = __modules.register('3');
-        var mod = global.__modules.require('2');
-        print(mod);
+        __modules.define((context) => {
+          const mod = context.require('esm-2');
+          print(mod);
+        }, 'esm-3');
       `);
 
       expect(mockedPrint).toBeCalledWith({
@@ -355,37 +460,36 @@ describe('@global-modules/runtime', () => {
 
     it('Re-export (all)', () => {
       context.evaluate(`
-        var __ctx = __modules.register('1');
-        __x = 1;
-        __x1 = 2;
-        __x2 = 3;
-        __x3 = 4;
-        __ctx.exports(function () {
-          return {
+        __modules.define((context) => {
+          __x = 1;
+          __x1 = 2;
+          __x2 = 3;
+          __x3 = 4;
+          context.exports(() => ({
             foo: __x,
             bar: __x1,
             baz: __x2,
             default: __x3,
-          };
-        });
+          }));
+        }, 'esm-1');
         var __x, __x1, __x2, __x3;
       `);
 
       context.evaluate(`
-        var __ctx = __modules.register('2');
-        var mod = global.__modules.require('1');
-        print('require 1', mod);
-        __ctx.exports(function () {
-          return {
-            ...__ctx.exports.ns(mod),
-          };
-        });
+        __modules.define((context) => {
+          const mod = context.require('esm-1');
+          print('require 1', mod);
+          context.exports(() => ({
+            ...context.exports.ns(mod),
+          }));
+        }, 'esm-2');
       `);
 
       context.evaluate(`
-        var __ctx = __modules.register('3');
-        var mod = global.__modules.require('2');
-        print('require 2', mod);
+        __modules.define((context) => {
+          const mod = context.require('esm-2');
+          print('require 2', mod);
+        }, 'esm-3');
       `);
 
       expect(mockedPrint).toBeCalledWith('require 1', {
@@ -404,24 +508,24 @@ describe('@global-modules/runtime', () => {
 
     it('Update the existing module', () => {
       context.evaluate(`
-        var __ctx = __modules.register('1');
-        __x = 1;
-        __x1 = 2;
-        __x2 = 3;
-        __ctx.exports(function () {
-          return {
+        __modules.define((context) => {
+          __x = 1;
+          __x1 = 2;
+          __x2 = 3;
+          context.exports(() => ({
             foo: __x,
             bar: __x1,
             baz: __x2,
-          };
-        });
+          }));
+        }, 'esm-1');
         var __x, __x1, __x2;
       `);
 
       context.evaluate(`
-        var __ctx = __modules.register('2');
-        var mod = global.__modules.require('1');
-        print(mod);
+        __modules.define((context) => {
+          const mod = context.require('esm-1');
+          print(mod);
+        }, 'esm-2');
       `);
 
       expect(mockedPrint).toBeCalledWith({
@@ -432,22 +536,14 @@ describe('@global-modules/runtime', () => {
 
       // Update
       context.evaluate(`
-        var __ctx = __modules.getContext('1');
-        __ctx.reset();
-        __x = 100;
-        __ctx.exports(function () {
-          return {
+        __modules.define((context) => {
+          __x = 100;
+          context.exports(() => ({
             value: __x,
-          };
-        });
+          }));
+        }, 'esm-1');
         var __x;
-      `);
-
-      context.evaluate(`
-        var __ctx = __modules.getContext('2');
-        __ctx.reset();
-        var mod = global.__modules.require('1');
-        print(mod);
+        __modules.apply('esm-2');
       `);
 
       expect(mockedPrint).toBeCalledWith({

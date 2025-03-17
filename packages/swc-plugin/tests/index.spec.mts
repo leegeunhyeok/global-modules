@@ -1,5 +1,4 @@
 import { vi, describe, it, expect } from 'vitest';
-import { Phase } from '../types.js';
 import { bundle, bundleWithFoo } from './utils/bundle.js';
 import { evaluateOnSandbox } from './utils/sandbox.js';
 import { tests } from './module-tests.mjs';
@@ -24,7 +23,7 @@ describe('@global-modules/swc-plugin', () => {
           export { bar, value as baz };
           `,
         },
-        { phase: Phase.Bundle },
+        { runtime: false },
       );
 
       const bridge = vi.fn();
@@ -54,7 +53,7 @@ describe('@global-modules/swc-plugin', () => {
           newObj.key = 'key';
           `,
         },
-        { phase: Phase.Bundle },
+        { runtime: false },
       );
 
       const bridge = vi.fn();
@@ -96,7 +95,7 @@ describe('@global-modules/swc-plugin', () => {
           invalidCommonJS({ exports: {} });
           `,
         },
-        { phase: Phase.Bundle },
+        { runtime: false },
       );
 
       const bridge = vi.fn();
@@ -120,7 +119,7 @@ describe('@global-modules/swc-plugin', () => {
           entry: `
           import * as mod from './foo';
 
-          bridge(global.__modules.getContext('0').module.exports);
+          bridge(global.__modules.require('0'));
           `,
           foo: `
           const foo = 'foo';
@@ -132,7 +131,7 @@ describe('@global-modules/swc-plugin', () => {
           export { bar, value as baz };
           `,
         },
-        { phase: Phase.Runtime },
+        { runtime: true },
       );
 
       const bridge = vi.fn();
@@ -153,7 +152,7 @@ describe('@global-modules/swc-plugin', () => {
           entry: `
           import * as mod from './foo';
 
-          bridge(global.__modules.getContext('0').module.exports);
+          bridge(global.__modules.require('0'));
           `,
           foo: `
           const obj = { value: 0 };
@@ -162,7 +161,7 @@ describe('@global-modules/swc-plugin', () => {
           newObj.key = 'key';
           `,
         },
-        { phase: Phase.Runtime },
+        { runtime: true },
       );
 
       const bridge = vi.fn();
@@ -178,7 +177,7 @@ describe('@global-modules/swc-plugin', () => {
           entry: `
           const mod = require('./foo');
 
-          bridge(global.__modules.getContext('0').module.exports);
+          bridge(global.__modules.require('0'));
           `,
           foo: `
           const foo = 'foo';
@@ -204,7 +203,7 @@ describe('@global-modules/swc-plugin', () => {
           invalidCommonJS({ exports: {} });
           `,
         },
-        { phase: Phase.Runtime },
+        { runtime: true },
       );
 
       const bridge = vi.fn();
@@ -216,6 +215,7 @@ describe('@global-modules/swc-plugin', () => {
         bar: 'bar',
         baz: 'baz',
         qux: 'qux',
+        default: expect.anything(),
       });
       expect(bridge).not.toBeCalledWith({ invalid: 'invalid' });
     });
@@ -225,7 +225,7 @@ describe('@global-modules/swc-plugin', () => {
     const index = tests.indexOf(input);
 
     it(`Case #${index}`, async () => {
-      const bundleCode = await bundle(input, { index, phase: Phase.Bundle });
+      const bundleCode = await bundle(input, { index, runtime: false });
 
       const resultBridgeObject = {
         input: {

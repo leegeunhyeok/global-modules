@@ -6,32 +6,53 @@ export type ModuleId = string;
 export interface Module {
   id: ModuleId;
   context: ModuleContext;
+  factory: ModuleFactory;
 }
+
+export type ModuleFactory = (context: ModuleContext) => void;
 
 export interface ModuleContext {
   exports: ModuleExports;
   module: {
     exports: Exports;
   };
-  reset: () => void;
+  require: ModuleRequire;
+  import: ModuleImport;
 }
 
 export interface ModuleExports {
   (definitions: () => Exports): void;
   ns: (exports: Exports) => Exports;
 }
-export type ModuleRequire = (id: ModuleId) => Exports;
+export type ModuleRequire = (
+  id: ModuleId,
+  dependencyIndex?: number /* @internal */,
+) => Exports;
+
+export type ModuleImport = (
+  id: ModuleId,
+  dependencyIndex?: number /* @internal */,
+) => Promise<Exports>;
+
 export type Exports = Record<string, unknown>;
 
 export interface GlobalModule {
   /**
-   * Register new module to the global registry.
+   * Define a new module to the global registry.
    */
-  register: (id: ModuleId) => ModuleContext;
+  define: (
+    moduleFactory: ModuleFactory,
+    id: ModuleId,
+    dependencies?: (() => unknown)[] | null,
+  ) => void;
   /**
-   * Get module context from global registry.
+   * Re-evaluate the module with the provided dependency id map.
    */
-  getContext: (id: ModuleId) => ModuleContext;
+  apply: (id: ModuleId, dependencyMap?: Record<string, string>) => void;
+  /**
+   * Get module from global registry.
+   */
+  getModule: (id: ModuleId) => Module;
   /**
    * Get global module registry.
    */

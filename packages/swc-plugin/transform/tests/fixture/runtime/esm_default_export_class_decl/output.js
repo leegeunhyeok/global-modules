@@ -1,10 +1,11 @@
-var __ctx = global.__modules.getContext("1000");
-__ctx.reset();
-__x = class {
-};
-__ctx.exports(function() {
-    return {
-        "default": __x
-    };
-});
+global.__modules.define(function(__context) {
+    class __default {
+    }
+    __x = __default;
+    __context.exports(function() {
+        return {
+            "default": __x
+        };
+    });
+}, "1000");
 var __x;

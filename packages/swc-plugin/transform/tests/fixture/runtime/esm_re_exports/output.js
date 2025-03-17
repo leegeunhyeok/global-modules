@@ -1,16 +1,16 @@
-var __ctx = global.__modules.getContext("1000");
-__ctx.reset();
-var __mod = global.__modules.require("./mod-1");
-var __mod1 = global.__modules.require("./mod-2");
-var __mod2 = global.__modules.require("./mod-3");
-var __mod3 = global.__modules.require("./mod-4");
-__ctx.exports(function() {
-    return {
-        ...__ctx.exports.ns(__mod),
-        "mod2": __ctx.exports.ns(__mod1),
-        "foo": __mod2.foo,
-        "bar": __mod2.bar,
-        "baz": __mod2.baz,
-        "default": __mod3.default
-    };
-});
+global.__modules.define(function(__context) {
+  const __mod = __context.require("./mod-1", 0);
+  const __mod1 = __context.require("./mod-2", 1);
+  const __mod2 = __context.require("./mod-3", 2);
+  const __mod3 = __context.require("./mod-4", 3);
+  __context.exports(function() {
+      return {
+          ...__context.exports.ns(__mod),
+          "mod2": __context.exports.ns(__mod1),
+          foo: __mod2.foo,
+          bar: __mod2.bar,
+          baz: __mod2.baz,
+          default: __mod3.default
+      };
+  });
+}, "1000");

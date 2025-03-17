@@ -9,20 +9,20 @@ use transformer::GlobalModuleTransformer;
 
 pub fn global_modules(
     id: String,
-    phase: f64,
+    runtime: bool,
     paths: Option<AHashMap<String, String>>,
     unresolved_ctxt: SyntaxContext,
 ) -> impl VisitMut + Pass {
     visit_mut_pass(GlobalModuleTransformer::new(
         id,
-        (phase as u32).into(),
+        runtime,
         paths,
         unresolved_ctxt,
     ))
 }
 
-mod delegate;
 mod models;
-mod phase;
+mod module_builder;
+mod module_collector;
 mod transformer;
 mod utils;

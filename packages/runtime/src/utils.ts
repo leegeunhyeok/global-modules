@@ -1,3 +1,5 @@
+import type { ModuleContext } from './types';
+
 const hasOwnProp = Object.prototype.hasOwnProperty;
 const defProp = Object.defineProperty;
 const copyProps = <T extends object>(
@@ -21,4 +23,9 @@ const copyProps = <T extends object>(
   return destination;
 };
 
-export { hasOwnProp, defProp, copyProps };
+const toImport =
+  (require: ModuleContext['require']) =>
+  (source: string, dependencyIndex?: number /* @internal */) =>
+    Promise.resolve(require(source, dependencyIndex));
+
+export { hasOwnProp, defProp, copyProps, toImport };

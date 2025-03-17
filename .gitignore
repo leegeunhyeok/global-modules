@@ -34,6 +34,7 @@ swc_plugin_global_modules.wasm
 .DS_Store
 
 demo/metafile.json
+demo/graph.json
 
 # Test
 .temp/
