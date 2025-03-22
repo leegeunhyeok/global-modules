@@ -10,7 +10,7 @@ use swc_global_modules::global_modules;
 #[serde(rename_all = "camelCase")]
 struct GlobalModuleConfig {
     id: String,
-    phase: f64,
+    runtime: bool,
     paths: Option<AHashMap<String, String>>,
 }
 
@@ -28,7 +28,7 @@ pub fn global_modules_plugin(
 
     program.apply(&mut global_modules(
         config.id,
-        config.phase,
+        config.runtime,
         config.paths,
         SyntaxContext::empty().apply_mark(metadata.unresolved_mark),
     ))

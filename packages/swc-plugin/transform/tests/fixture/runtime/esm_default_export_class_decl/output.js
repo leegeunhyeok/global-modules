@@ -1,8 +1,8 @@
-var __ctx = global.__modules.getContext("1000");
-__ctx.reset();
-__x = class {
-};
-__ctx.exports(function() {
+const __context = global.__modules.context("1000");
+class __default {
+}
+__x = __default;
+__context.exports(function() {
     return {
         "default": __x
     };

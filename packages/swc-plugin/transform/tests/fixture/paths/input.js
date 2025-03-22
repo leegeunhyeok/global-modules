@@ -1,41 +1,54 @@
-import React, { useState, useCallback } from 'react';
-import { foo } from './foo';
-import { bar as bar2 } from './bar';
-import * as baz from './baz';
-import * as foo2 from './foo';
-
-React.lazy(() => import('./Component'));
-
+const __context = global.__modules.context("1000");
+const { default: React, useState, useCallback } = global.__modules.require("1000");
+const { foo } = global.__modules.require("1001");
+const { bar: bar2 } = global.__modules.require("1002");
+const { baz } = global.__modules.require("1003");
+const { foo2 } = global.__modules.require("1001");
+const __mod = global.__modules.require("1009");
+const __mod1 = global.__modules.require("1011");
+const __mod2 = global.__modules.require("1012");
+const __mod3 = global.__modules.require("1013");
+const __mod4 = global.__modules.require("1014");
+React.lazy(()=>global.__modules.import("1004"));
 if (__DEV__) {
-  require('./cjs-1');
+    global.__modules.require("1005");
 }
-
 const value = 'val';
-
-module.exports = 'cjs';
-module.exports.foo = 2;
-Object.assign(module.exports, {
-  bar: 1,
+module.exports = __context.module.exports = 'cjs';
+module.exports.foo = __context.module.exports.foo = 2;
+Object.assign(module.exports = __context.module.exports, {
+    bar: 1
 });
-
-export const variable = 1;
-export class Class {}
-export function func() {}
-export default function () {
-  require('./cjs-2');
-
-  const inner = async () => {
-    await import('./esm');
-    require('./cjs-3');
-  };
+const variable = 1;
+class Class {
 }
-
-export { value as value2 };
-export { foo, foo2 };
-export { baz, baz as baz2 };
-
-export * from './re-exp';
-export * as rx from './re-exp-2';
-export { rx2 } from './re-exp-3';
-export { rx3 as rx4 } from './re-exp-4';
-export { default as rx5 } from './re-exp-5';
+function func() {}
+function __default() {
+    global.__modules.require("1006");
+    const inner = async ()=>{
+        await global.__modules.import("1008");
+        global.__modules.require("1007");
+    };
+}
+__x = variable, __x1 = Class, __x2 = func, __x3 = __default, __x4 = value, __x5 = foo, __x6 = foo2, __x7 = baz, __x8 = baz;
+__context.exports(function() {
+    return {
+        "variable": __x,
+        "Class": __x1,
+        "func": __x2,
+        "default": __x3,
+        "value2": __x4,
+        "foo": __x5,
+        "foo2": __x6,
+        "baz": __x7,
+        "baz2": __x8,
+        ...__context.exports.ns(__mod),
+        "rx": __context.exports.ns(__mod1),
+        rx0: __mod2.rx0,
+        rx1: __mod2.rx1,
+        rx2: __mod2.rx2,
+        rx4: __mod3.rx3,
+        rx5: __mod4.default
+    };
+});
+var __x, __x1, __x2, __x3, __x4, __x5, __x6, __x7, __x8;

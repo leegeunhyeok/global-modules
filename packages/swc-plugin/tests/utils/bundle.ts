@@ -4,7 +4,6 @@ import path from 'node:path';
 import { createRequire } from 'node:module';
 import * as swc from '@swc/core';
 import * as esbuild from 'esbuild';
-import { Phase } from '../../types';
 
 const require = createRequire(import.meta.url);
 const runtimePath = require.resolve('@global-modules/runtime');
@@ -19,7 +18,7 @@ export async function bundleWithFoo(
     entry: string;
     foo: string;
   },
-  { phase }: { phase: Phase },
+  { runtime }: { runtime: boolean },
 ) {
   const { code: fooCode } = await swc.transformSync(input.foo, {
     jsc: {
@@ -31,7 +30,7 @@ export async function bundleWithFoo(
               import.meta.dirname,
               '../../swc_plugin_global_modules.wasm',
             ),
-            { id: '0', phase },
+            { id: '0', runtime },
           ],
         ],
       },
@@ -49,12 +48,7 @@ export async function bundleWithFoo(
       loader: 'js',
     },
     banner: {
-      js: [
-        runtimeCode,
-        phase === Phase.Runtime ? `global.__modules.register('0');` : null,
-      ]
-        .filter(Boolean)
-        .join('\n'),
+      js: runtimeCode,
     },
     plugins: [
       {
@@ -82,7 +76,7 @@ export async function bundleWithFoo(
 
 export async function bundle(
   input: BundleInput,
-  { index, phase }: { index: number; phase: Phase },
+  { index, runtime }: { index: number; runtime: boolean },
 ) {
   let entryFileName = '';
   const tempDir = path.join(import.meta.dirname, `./.temp/${String(index)}`);
@@ -142,7 +136,7 @@ export async function bundle(
                         import.meta.dirname,
                         '../../swc_plugin_global_modules.wasm',
                       ),
-                      { id: String(currentId), phase },
+                      { id: String(currentId), runtime },
                     ],
                   ],
                 },
