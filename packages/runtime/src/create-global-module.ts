@@ -67,7 +67,7 @@ export function createGlobalModule(): GlobalModule {
     };
   }
 
-  function register(id: ModuleId): ModuleContext {
+  function context(id: ModuleId): ModuleContext {
     const module = {} as Module;
 
     module.id = id;
@@ -77,17 +77,19 @@ export function createGlobalModule(): GlobalModule {
     return module.context;
   }
 
-  function getContext(id: ModuleId): ModuleContext {
-    return getModule(id).context;
+  function clear(): void {
+    moduleRegistry.clear();
   }
 
   function getRegistry(): Map<ModuleId, Module> {
     return moduleRegistry;
   }
 
-  function clear(): void {
-    moduleRegistry.clear();
-  }
-
-  return { register, getContext, getRegistry, require, clear };
+  return {
+    context,
+    require,
+    import: (id) => Promise.resolve(require(id)),
+    getRegistry,
+    clear,
+  };
 }

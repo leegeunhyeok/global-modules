@@ -1,3 +1,5 @@
+import type { ModuleRequire } from './types';
+
 const hasOwnProp = Object.prototype.hasOwnProperty;
 const defProp = Object.defineProperty;
 const copyProps = <T extends object>(
@@ -21,4 +23,7 @@ const copyProps = <T extends object>(
   return destination;
 };
 
-export { hasOwnProp, defProp, copyProps };
+const toImport = (require: ModuleRequire) => (source: string) =>
+  Promise.resolve(require(source));
+
+export { hasOwnProp, defProp, copyProps, toImport };

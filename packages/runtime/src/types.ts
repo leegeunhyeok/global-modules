@@ -21,17 +21,15 @@ export interface ModuleExports {
   ns: (exports: Exports) => Exports;
 }
 export type ModuleRequire = (id: ModuleId) => Exports;
+export type ModuleImport = (id: ModuleId) => Promise<Exports>;
+
 export type Exports = Record<string, unknown>;
 
 export interface GlobalModule {
   /**
    * Register new module to the global registry.
    */
-  register: (id: ModuleId) => ModuleContext;
-  /**
-   * Get module context from global registry.
-   */
-  getContext: (id: ModuleId) => ModuleContext;
+  context: (id: ModuleId) => ModuleContext;
   /**
    * Get global module registry.
    */
@@ -39,7 +37,11 @@ export interface GlobalModule {
   /**
    * Get module exports from global registry.
    */
-  require: (id: ModuleId) => Exports;
+  require: ModuleRequire;
+  /**
+   * Get module exports from global registry (promise).
+   */
+  import: ModuleImport;
   /**
    * Clear all modules from the registry.
    */
