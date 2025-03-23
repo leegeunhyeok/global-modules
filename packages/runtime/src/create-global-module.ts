@@ -63,12 +63,11 @@ export function createGlobalModule(): GlobalModule {
         }) as ModuleExports,
         { ns: toNamespaceExports },
       ),
-      reset: () => void (module.exports = createExports()),
     };
   }
 
-  function context(id: ModuleId): ModuleContext {
-    const module = {} as Module;
+  function register(id: ModuleId): ModuleContext {
+    const module = moduleRegistry.get(id) ?? ({} as Module);
 
     module.id = id;
     module.context = createContext();
@@ -86,10 +85,11 @@ export function createGlobalModule(): GlobalModule {
   }
 
   return {
-    context,
+    register,
     require,
     import: (id) => Promise.resolve(require(id)),
     getRegistry,
+    getModule,
     clear,
   };
 }

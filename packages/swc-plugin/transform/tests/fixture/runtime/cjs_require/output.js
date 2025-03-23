@@ -1,4 +1,4 @@
-const __context = global.__modules.context("1000");
+const __context = global.__modules.register("1000");
 const foo = global.__modules.require("./foo");
 if (__DEV__) {
     global.__modules.require("inner-1");

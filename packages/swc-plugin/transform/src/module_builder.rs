@@ -211,7 +211,7 @@ impl<'a> ModuleBuilder<'a> {
         let mut exports = Vec::new();
         let mut stmts = vec![];
 
-        let context_decl = context_call(id).into_var_decl(
+        let context_decl = register_call(id).into_var_decl(
             VarDeclKind::Const,
             Pat::Ident(self.ctx_ident.clone().into()),
         );
@@ -284,7 +284,7 @@ impl<'a> ModuleBuilder<'a> {
             None
         };
 
-        let context_decl = context_call(id).into_var_decl(
+        let context_decl = register_call(id).into_var_decl(
             VarDeclKind::Const,
             Pat::Ident(self.ctx_ident.clone().into()),
         );

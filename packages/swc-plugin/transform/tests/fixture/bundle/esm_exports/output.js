@@ -1,4 +1,4 @@
-const __context = global.__modules.context("1000");
+const __context = global.__modules.register("1000");
 const foo = 'foo';
 const bar = 'bar';
 var lazy;

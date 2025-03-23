@@ -1,4 +1,4 @@
-const __context = global.__modules.context("1000");
+const __context = global.__modules.register("1000");
 const __mod = global.__modules.require("./mod-1");
 const __mod1 = global.__modules.require("./mod-2");
 const __mod2 = global.__modules.require("./mod-3");

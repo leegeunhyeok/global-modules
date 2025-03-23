@@ -13,7 +13,6 @@ export interface ModuleContext {
   module: {
     exports: Exports;
   };
-  reset: () => void;
 }
 
 export interface ModuleExports {
@@ -29,11 +28,7 @@ export interface GlobalModule {
   /**
    * Register new module to the global registry.
    */
-  context: (id: ModuleId) => ModuleContext;
-  /**
-   * Get global module registry.
-   */
-  getRegistry: () => Map<ModuleId, Module>;
+  register: (id: ModuleId) => ModuleContext;
   /**
    * Get module exports from global registry.
    */
@@ -42,6 +37,14 @@ export interface GlobalModule {
    * Get module exports from global registry (promise).
    */
   import: ModuleImport;
+  /**
+   * Get module from global registry.
+   */
+  getModule: (id: ModuleId) => Module;
+  /**
+   * Get global module registry.
+   */
+  getRegistry: () => Map<ModuleId, Module>;
   /**
    * Clear all modules from the registry.
    */

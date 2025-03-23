@@ -1,4 +1,4 @@
-const __context = global.__modules.context("1000");
+const __context = global.__modules.register("1000");
 const { default: React, useState, useCallback } = global.__modules.require("react");
 const { foo } = global.__modules.require("./foo");
 const { bar: bar2 } = global.__modules.require("./bar");

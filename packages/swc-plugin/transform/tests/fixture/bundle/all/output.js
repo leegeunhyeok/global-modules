@@ -8,7 +8,7 @@ import * as __mod1 from "./re-exp-2";
 import * as __mod2 from "./re-exp-3";
 import * as __mod3 from "./re-exp-4";
 import * as __mod4 from "./re-exp-5";
-const __context = global.__modules.context("1000");
+const __context = global.__modules.register("1000");
 React.lazy(()=>import('./Component'));
 if (__DEV__) {
     require('./cjs-1');

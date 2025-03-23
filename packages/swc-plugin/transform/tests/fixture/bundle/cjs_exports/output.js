@@ -1,4 +1,4 @@
-const __context = global.__modules.context("1000");
+const __context = global.__modules.register("1000");
 exports.foo = __context.module.exports.foo = 'foo';
 exports.bar = __context.module.exports.bar = 'bar';
 exports.baz = __context.module.exports.baz = 'baz';

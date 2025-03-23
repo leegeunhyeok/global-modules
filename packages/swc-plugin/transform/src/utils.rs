@@ -718,14 +718,14 @@ pub mod presets {
 
     use super::ast::*;
 
-    /// Returns a global module's context call expression.
+    /// Returns a global module's register call expression.
     ///
     /// ```js
     /// // Code
-    /// global.__modules.context(id);
+    /// global.__modules.register(id);
     /// ```
-    pub fn context_call(id: &String) -> Expr {
-        member_expr!(Default::default(), DUMMY_SP, global.__modules.context)
+    pub fn register_call(id: &String) -> Expr {
+        member_expr!(Default::default(), DUMMY_SP, global.__modules.register)
             .as_call(DUMMY_SP, vec![str_lit(id).as_arg()])
     }
 

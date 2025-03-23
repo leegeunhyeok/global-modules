@@ -70,7 +70,7 @@ export function Component() {
 ```ts
 import React, { useState, useCallback } from 'react';
 import { Component } from './Container';
-r __ctx = global.__modules.context('1');
+r __ctx = global.__modules.register('1');
 function Component() {
   // ...
 }
@@ -101,7 +101,7 @@ export { __x as Component };
  * }
  * ```
  */
-var __ctx = global.__modules.context('1');
+var __ctx = global.__modules.register('1');
 var {
   default: React,
   useState,

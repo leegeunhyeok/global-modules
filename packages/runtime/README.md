@@ -33,7 +33,7 @@ import foo from './foo';
 import bar from './bar';
 import { baz } from './baz';
 
-const __ctx = global.__modules.context('1');
+const __ctx = global.__modules.register('1');
 
 function something() {
   return foo.value + bar.value + baz;
@@ -54,7 +54,7 @@ Reference other module's exports using `global.__modules.require()`.
 
 ```ts
 // 2. Runtime phase
-var __ctx = global.__modules.context('1');
+var __ctx = global.__modules.register('1');
 
 var { default: foo } = global.__modules.require('1000'); // `./foo` module's id
 var { default: bar } = global.__modules.require('1001'); // `./bar` module's id
@@ -87,7 +87,7 @@ The `context()` method registers the module context or returns the existing modu
 type Context = (id: ModuleId) => ModuleContext;
 
 // Example
-const __ctx = global.__modules.context('1');
+const __ctx = global.__modules.register('1');
 ```
 
 ### require
@@ -102,16 +102,16 @@ type Require = (id: ModuleId) => Exports;
 const exports = global.__modules.require('module-id');
 ```
 
-### clear
+### import
 
-The `clear()` method clears all modules from the global module registry.
+The `import()` method returns the exports object of the module as a promise. if the module it not registered, it will throw an error.
 
 ```ts
 // Signature
-type Clear = () => void;
+type Import = (id: ModuleId) => Promise<Exports>;
 
 // Example
-global.__modules.clear();
+const exports = await global.__modules.import('module-id');
 ```
 
 ### getRegistry
@@ -124,6 +124,30 @@ type GetRegistry = () => Map<ModuleId, Module>;
 
 // Example
 const registry = global.__modules.getRegistry();
+```
+
+### getModule
+
+The `getModule()` method returns the module.
+
+```ts
+// Signature
+type GetModule = (id: ModuleId) => Module;
+
+// Example
+const module = global.__modules.getModule('module-id');
+```
+
+### clear
+
+The `clear()` method clears all modules from the global module registry.
+
+```ts
+// Signature
+type Clear = () => void;
+
+// Example
+global.__modules.clear();
 ```
 
 ## License
