@@ -1,5 +1,3 @@
-use std::iter;
-
 use crate::{
     models::{Dep, Exp},
     module_collector::ModuleCollector,
@@ -225,51 +223,64 @@ impl<'a> ModuleBuilder<'a> {
             _ => {}
         });
 
-        let extra_stmts = vec![self.binding_stmt, exports_call, exp_var_decl]
+        let extra_stmts = self
+            .binding_stmt
             .into_iter()
-            .filter_map(|stmt| match stmt {
-                Some(stmt) if !matches!(stmt, Stmt::Empty(_)) => Some(stmt.into()),
-                _ => None,
-            });
+            .chain(exports_call.into_iter())
+            .chain(exp_var_decl.into_iter())
+            .map(Into::into)
+            .collect::<Vec<ModuleItem>>();
 
         if runtime {
-            vec![context_decl.into()]
-                .into_iter()
-                .chain(self.req_calls)
-                .map(|stmt| stmt.into())
-                .chain(stmts)
-                .chain(extra_stmts)
-                .collect::<Vec<ModuleItem>>()
+            let size =
+                1 /* context_decl */ + self.req_calls.len() + stmts.len() + extra_stmts.len();
+            let mut items = Vec::with_capacity(size);
+
+            items.push(context_decl.into());
+            items.extend(self.req_calls.into_iter().map(|stmt| stmt.into()));
+            items.extend(stmts);
+            items.extend(extra_stmts);
+            items
         } else {
-            imports
-                .into_iter()
-                .chain(self.bind_imports)
-                .chain(iter::once(context_decl.into()))
-                .chain(stmts)
-                .chain(extra_stmts)
-                .chain(
-                    exports.into_iter().chain(
-                        if self.exp_specs.len() > 0 {
-                            Some(to_named_exps(self.exp_specs))
-                        } else {
-                            None
-                        }
-                        .into_iter(),
-                    ),
-                )
-                .collect::<Vec<ModuleItem>>()
+            let exp_specs_len = if self.exp_specs.len() > 0 { 1 } else { 0 };
+            let size = imports.len()
+                    + self.bind_imports.len()
+                    + 1 // context_decl
+                    + stmts.len()
+                    + extra_stmts.len()
+                    + exports.len()
+                    + exp_specs_len;
+
+            let mut items = Vec::with_capacity(size);
+
+            items.extend(imports);
+            items.extend(self.bind_imports);
+            items.push(context_decl.into());
+            items.extend(stmts);
+            items.extend(extra_stmts);
+            items.extend(exports);
+
+            if exp_specs_len > 0 {
+                items.push(to_named_exps(self.exp_specs));
+            }
+
+            items
         }
     }
 
     /// Returns a list of statements that can be used to source type: 'script'
     pub fn build_script(self, id: &String, orig_script: Vec<Stmt>) -> Vec<Stmt> {
+        let mut size = self.req_calls.len() + orig_script.len();
+
         let exports_call = if self.exp_props.is_empty() {
             None
         } else {
+            size += 1;
             Some(exports_call(&self.ctx_ident, self.exp_props).into_stmt())
         };
 
         let exp_var_decl = if self.exp_decls.len() > 0 {
+            size += 1;
             Some(
                 Decl::Var(Box::new(VarDecl {
                     decls: self.exp_decls,
@@ -284,18 +295,33 @@ impl<'a> ModuleBuilder<'a> {
             None
         };
 
+        if self.binding_stmt.is_some() {
+            size += 1;
+        }
+
         let context_decl = register_call(id).into_var_decl(
             VarDeclKind::Const,
             Pat::Ident(self.ctx_ident.clone().into()),
         );
 
-        vec![context_decl.into()]
-            .into_iter()
-            .chain(self.req_calls)
-            .chain(orig_script)
-            .chain(self.binding_stmt.into_iter())
-            .chain(exports_call.into_iter())
-            .chain(exp_var_decl.into_iter())
-            .collect()
+        let mut stmts = Vec::with_capacity(size + 1 /* context_decl */);
+
+        stmts.push(context_decl.into());
+        stmts.extend(self.req_calls);
+        stmts.extend(orig_script);
+
+        if let Some(binding_stmt) = self.binding_stmt {
+            stmts.push(binding_stmt);
+        }
+
+        if let Some(exports_call) = exports_call {
+            stmts.push(exports_call);
+        }
+
+        if let Some(exp_var_decl) = exp_var_decl {
+            stmts.push(exp_var_decl);
+        }
+
+        stmts
     }
 }

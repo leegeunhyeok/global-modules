@@ -70,19 +70,15 @@ exports[`@global-modules/swc-plugin > Bundle phase > [CJS] Basics 1`] = `
             __exports(module.exports, definitions);
           },
           { ns: toNamespaceExports }
-        ),
-        reset: () => void (module.exports = createExports())
+        )
       };
     }
     function register(id) {
-      const module = {};
+      const module = moduleRegistry.get(id) ?? {};
       module.id = id;
       module.context = createContext();
       moduleRegistry.set(id, module);
       return module.context;
-    }
-    function get(id) {
-      return getModule(id).context;
     }
     function clear() {
       moduleRegistry.clear();
@@ -92,10 +88,10 @@ exports[`@global-modules/swc-plugin > Bundle phase > [CJS] Basics 1`] = `
     }
     return {
       register,
-      get,
       require: require2,
       import: (id) => Promise.resolve(require2(id)),
       getRegistry,
+      getModule,
       clear
     };
   }
@@ -236,19 +232,15 @@ exports[`@global-modules/swc-plugin > Bundle phase > [ESM] Basics 1`] = `
             __exports(module.exports, definitions);
           },
           { ns: toNamespaceExports }
-        ),
-        reset: () => void (module.exports = createExports())
+        )
       };
     }
     function register(id) {
-      const module = {};
+      const module = moduleRegistry.get(id) ?? {};
       module.id = id;
       module.context = createContext();
       moduleRegistry.set(id, module);
       return module.context;
-    }
-    function get(id) {
-      return getModule(id).context;
     }
     function clear() {
       moduleRegistry.clear();
@@ -258,10 +250,10 @@ exports[`@global-modules/swc-plugin > Bundle phase > [ESM] Basics 1`] = `
     }
     return {
       register,
-      get,
       require: require2,
       import: (id) => Promise.resolve(require2(id)),
       getRegistry,
+      getModule,
       clear
     };
   }
@@ -398,19 +390,15 @@ exports[`@global-modules/swc-plugin > Bundle phase > [ESM] Export with declarati
             __exports(module.exports, definitions);
           },
           { ns: toNamespaceExports }
-        ),
-        reset: () => void (module.exports = createExports())
+        )
       };
     }
     function register(id) {
-      const module = {};
+      const module = moduleRegistry.get(id) ?? {};
       module.id = id;
       module.context = createContext();
       moduleRegistry.set(id, module);
       return module.context;
-    }
-    function get(id) {
-      return getModule(id).context;
     }
     function clear() {
       moduleRegistry.clear();
@@ -420,10 +408,10 @@ exports[`@global-modules/swc-plugin > Bundle phase > [ESM] Export with declarati
     }
     return {
       register,
-      get,
       require: require2,
       import: (id) => Promise.resolve(require2(id)),
       getRegistry,
+      getModule,
       clear
     };
   }
@@ -541,19 +529,15 @@ exports[`@global-modules/swc-plugin > Runtime phase > [CJS] Basics 1`] = `
             __exports(module.exports, definitions);
           },
           { ns: toNamespaceExports }
-        ),
-        reset: () => void (module.exports = createExports())
+        )
       };
     }
     function register(id) {
-      const module = {};
+      const module = moduleRegistry.get(id) ?? {};
       module.id = id;
       module.context = createContext();
       moduleRegistry.set(id, module);
       return module.context;
-    }
-    function get(id) {
-      return getModule(id).context;
     }
     function clear() {
       moduleRegistry.clear();
@@ -563,10 +547,10 @@ exports[`@global-modules/swc-plugin > Runtime phase > [CJS] Basics 1`] = `
     }
     return {
       register,
-      get,
       require: require2,
       import: (id) => Promise.resolve(require2(id)),
       getRegistry,
+      getModule,
       clear
     };
   }
@@ -707,19 +691,15 @@ exports[`@global-modules/swc-plugin > Runtime phase > [ESM] Basics 1`] = `
             __exports(module.exports, definitions);
           },
           { ns: toNamespaceExports }
-        ),
-        reset: () => void (module.exports = createExports())
+        )
       };
     }
     function register(id) {
-      const module = {};
+      const module = moduleRegistry.get(id) ?? {};
       module.id = id;
       module.context = createContext();
       moduleRegistry.set(id, module);
       return module.context;
-    }
-    function get(id) {
-      return getModule(id).context;
     }
     function clear() {
       moduleRegistry.clear();
@@ -729,10 +709,10 @@ exports[`@global-modules/swc-plugin > Runtime phase > [ESM] Basics 1`] = `
     }
     return {
       register,
-      get,
       require: require2,
       import: (id) => Promise.resolve(require2(id)),
       getRegistry,
+      getModule,
       clear
     };
   }
@@ -887,19 +867,15 @@ exports[`@global-modules/swc-plugin > Runtime phase > [ESM] Export with declarat
             __exports(module.exports, definitions);
           },
           { ns: toNamespaceExports }
-        ),
-        reset: () => void (module.exports = createExports())
+        )
       };
     }
     function register(id) {
-      const module = {};
+      const module = moduleRegistry.get(id) ?? {};
       module.id = id;
       module.context = createContext();
       moduleRegistry.set(id, module);
       return module.context;
-    }
-    function get(id) {
-      return getModule(id).context;
     }
     function clear() {
       moduleRegistry.clear();
@@ -909,10 +885,10 @@ exports[`@global-modules/swc-plugin > Runtime phase > [ESM] Export with declarat
     }
     return {
       register,
-      get,
       require: require2,
       import: (id) => Promise.resolve(require2(id)),
       getRegistry,
+      getModule,
       clear
     };
   }
