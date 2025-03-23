@@ -256,35 +256,35 @@ impl<'a> VisitMut for ModuleCollector<'a> {
                 },
             ) => match &assign_expr.left {
                 AssignTarget::Simple(SimpleAssignTarget::Member(member_expr)) => {
-                    let module_assign_expr =
-                        if is_cjs_exp_member(self.unresolved_ctxt, member_expr) {
-                            // `exports.foo = ...;`
+                    let module_assign_expr = if is_cjs_exp_member(self.unresolved_ctxt, member_expr)
+                    {
+                        // `exports.foo = ...;`
+                        Some(assign_cjs_module_expr(
+                            self.ctx_ident,
+                            *assign_expr.right.clone(),
+                            to_cjs_export_name(&member_expr.prop).into(),
+                        ))
+                    } else if is_cjs_mod_member(self.unresolved_ctxt, member_expr) {
+                        // `module.exports = ...;`
+                        Some(assign_cjs_module_expr(
+                            self.ctx_ident,
+                            *assign_expr.right.clone(),
+                            None,
+                        ))
+                    } else if let Some(leading_member) = member_expr.obj.as_member() {
+                        // `module.exports.foo = ...;`
+                        if is_cjs_mod_member(self.unresolved_ctxt, leading_member) {
                             Some(assign_cjs_module_expr(
                                 self.ctx_ident,
                                 *assign_expr.right.clone(),
                                 to_cjs_export_name(&member_expr.prop).into(),
                             ))
-                        } else if is_cjs_mod_member(self.unresolved_ctxt, member_expr) {
-                            // `module.exports = ...;`
-                            Some(assign_cjs_module_expr(
-                                self.ctx_ident,
-                                *assign_expr.right.clone(),
-                                None,
-                            ))
-                        } else if let Some(leading_member) = member_expr.obj.as_member() {
-                            // `module.exports.foo = ...;`
-                            if is_cjs_mod_member(self.unresolved_ctxt, leading_member) {
-                                Some(assign_cjs_module_expr(
-                                    self.ctx_ident,
-                                    *assign_expr.right.clone(),
-                                    to_cjs_export_name(&member_expr.prop).into(),
-                                ))
-                            } else {
-                                None
-                            }
                         } else {
                             None
-                        };
+                        }
+                    } else {
+                        None
+                    };
 
                     if let Some(module_assign_expr) = module_assign_expr {
                         // If it is a module exports assignment, replace the right-hand side with the new expression.
@@ -301,9 +301,7 @@ impl<'a> VisitMut for ModuleCollector<'a> {
             // Object.assign(module.exports, ...);
             // Object.assign(module.exports.foo, ...);
             // ```
-            Expr::Member(member_expr)
-                if is_cjs_mod_member(self.unresolved_ctxt, member_expr) =>
-            {
+            Expr::Member(member_expr) if is_cjs_mod_member(self.unresolved_ctxt, member_expr) => {
                 // Replace the member expression with the new expression.
                 //
                 // ```js
