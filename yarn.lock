@@ -3932,7 +3932,7 @@ __metadata:
     "@types/ws": "npm:^8"
     es-module-lexer: "npm:^1.6.0"
     esbuild: "npm:^0.24.0"
-    esbuild-dependency-graph: "npm:^1.0.0"
+    esbuild-dependency-graph: "npm:^1.2.0"
     esresolve: "npm:^0.3.2"
     fastify: "npm:^5.1.0"
     pino: "npm:^9.5.0"
@@ -4105,12 +4105,12 @@ __metadata:
   languageName: node
   linkType: hard
 
-"esbuild-dependency-graph@npm:^1.0.0":
-  version: 1.0.0
-  resolution: "esbuild-dependency-graph@npm:1.0.0"
+"esbuild-dependency-graph@npm:^1.2.0":
+  version: 1.2.0
+  resolution: "esbuild-dependency-graph@npm:1.2.0"
   peerDependencies:
     esbuild: "*"
-  checksum: 10c0/ef548ed4e5479754463f5557221a7847688795e7417977818c2a33fff4c7936d30deed58016507a2105ce585c7cb0182c96794bf0cc7d6b72a5ea2dea69a8b8a
+  checksum: 10c0/3c97961d1e4a923132a9b7ae55e804fc52169ba1b8c1e326caf744b2821eda4a2d65338566c807d747379bea50c2e75bff77dd2d361857770d51ce53e19184dc
   languageName: node
   linkType: hard
 

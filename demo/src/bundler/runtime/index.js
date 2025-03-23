@@ -52,7 +52,7 @@ class HMRClient {
             '[HMR] Unexpected error on module update. fully reload instead ::',
             error,
           );
-          this.handleReload();
+          // this.handleReload();
         }
         break;
     }
@@ -63,10 +63,10 @@ class HMRClient {
   }
 
   handleModuleUpdate(id, body) {
-    const targetModule = global.__modules.getContext(id.toString());
-    targetModule.hot.disposeCallbacks.forEach((callback) => callback());
+    const { meta } = global.__modules.getModule(id.toString());
+    meta.hot.disposeCallbacks.forEach((callback) => callback());
     _eval(body);
-    targetModule.hot.acceptCallbacks.forEach((callback) => callback({ body }));
+    meta.hot.acceptCallbacks.forEach((callback) => callback({ body }));
   }
 }
 
@@ -97,7 +97,5 @@ const reactRefresh = {
 };
 
 window.$$reactRefresh$$ = reactRefresh;
-// Import the jsx runtime code after the `window.$$reactRefresh$$` is initialized.
-window.$$jsxDevRuntime$$ = require('react/jsx-dev-runtime');
 
 new HMRClient().connect();
