@@ -52,7 +52,7 @@ class HMRClient {
             '[HMR] Unexpected error on module update. fully reload instead ::',
             error,
           );
-          // this.handleReload();
+          this.handleReload();
         }
         break;
     }
