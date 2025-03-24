@@ -2,10 +2,6 @@
 
 Configure the runtime environment to register and import modules in the global module registry.
 
-## Specification
-
-See [SPECIFICATION.md](./SPECIFICATION.md)
-
 ## Usage
 
 Setup from top of entry point like this:
@@ -58,8 +54,7 @@ Reference other module's exports using `global.__modules.require()`.
 
 ```ts
 // 2. Runtime phase
-var __ctx = global.__modules.getContext('1');
-__ctx.reset();
+var __ctx = global.__modules.register('1');
 
 var { default: foo } = global.__modules.require('1000'); // `./foo` module's id
 var { default: bar } = global.__modules.require('1001'); // `./bar` module's id
@@ -78,3 +73,83 @@ var __x;
 ```
 
 For transform plain module to the global module runtime specification, see more: [@global-modules/swc-plugin](https://github.com/leegeunhyeok/global-modules/tree/main/packages/swc-plugin)
+
+## Specification
+
+See [SPECIFICATION.md](./SPECIFICATION.md)
+
+### context
+
+The `context()` method registers the module context or returns the existing module context.
+
+```ts
+// Signature
+type Context = (id: ModuleId) => ModuleContext;
+
+// Example
+const __ctx = global.__modules.register('1');
+```
+
+### require
+
+The `require()` method returns the exports object of the module. if the module it not registered, it will throw an error.
+
+```ts
+// Signature
+type Require = (id: ModuleId) => Exports;
+
+// Example
+const exports = global.__modules.require('module-id');
+```
+
+### import
+
+The `import()` method returns the exports object of the module as a promise. if the module it not registered, it will throw an error.
+
+```ts
+// Signature
+type Import = (id: ModuleId) => Promise<Exports>;
+
+// Example
+const exports = await global.__modules.import('module-id');
+```
+
+### getRegistry
+
+The `getRegistry()` method returns the global module registry.
+
+```ts
+// Signature
+type GetRegistry = () => Map<ModuleId, Module>;
+
+// Example
+const registry = global.__modules.getRegistry();
+```
+
+### getModule
+
+The `getModule()` method returns the module.
+
+```ts
+// Signature
+type GetModule = (id: ModuleId) => Module;
+
+// Example
+const module = global.__modules.getModule('module-id');
+```
+
+### clear
+
+The `clear()` method clears all modules from the global module registry.
+
+```ts
+// Signature
+type Clear = () => void;
+
+// Example
+global.__modules.clear();
+```
+
+## License
+
+[MIT](./LICENSE)

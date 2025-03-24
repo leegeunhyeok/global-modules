@@ -70,27 +70,30 @@ exports[`@global-modules/swc-plugin > Bundle phase > [CJS] Basics 1`] = `
             __exports(module.exports, definitions);
           },
           { ns: toNamespaceExports }
-        ),
-        reset: () => void (module.exports = createExports())
+        )
       };
     }
     function register(id) {
-      const module = {};
+      const module = moduleRegistry.get(id) ?? {};
       module.id = id;
       module.context = createContext();
       moduleRegistry.set(id, module);
       return module.context;
     }
-    function getContext(id) {
-      return getModule(id).context;
+    function clear() {
+      moduleRegistry.clear();
     }
     function getRegistry() {
       return moduleRegistry;
     }
-    function clear() {
-      moduleRegistry.clear();
-    }
-    return { register, getContext, getRegistry, require: require2, clear };
+    return {
+      register,
+      require: require2,
+      import: (id) => Promise.resolve(require2(id)),
+      getRegistry,
+      getModule,
+      clear
+    };
   }
 
   // src/get-global-context.ts
@@ -123,12 +126,12 @@ exports[`@global-modules/swc-plugin > Bundle phase > [CJS] Basics 1`] = `
   // foo-linker:foo
   var require_foo = __commonJS({
     "foo-linker:foo"(exports, module) {
-      var __ctx = global.__modules.register("0");
+      var __context = global.__modules.register("0");
       var foo = "foo";
       var bar = "bar";
       var value = "baz";
       if (true) {
-        module.exports = __ctx.module.exports = {
+        module.exports = __context.module.exports = {
           foo,
           bar,
           baz: value
@@ -136,7 +139,7 @@ exports[`@global-modules/swc-plugin > Bundle phase > [CJS] Basics 1`] = `
       }
       module.exports[/* @__PURE__ */ function() {
         return "qux";
-      }()] = __ctx.module.exports[/* @__PURE__ */ function() {
+      }()] = __context.module.exports[/* @__PURE__ */ function() {
         return "qux";
       }()] = "qux";
       function invalidCommonJS(module1) {
@@ -229,27 +232,30 @@ exports[`@global-modules/swc-plugin > Bundle phase > [ESM] Basics 1`] = `
             __exports(module.exports, definitions);
           },
           { ns: toNamespaceExports }
-        ),
-        reset: () => void (module.exports = createExports())
+        )
       };
     }
     function register(id) {
-      const module = {};
+      const module = moduleRegistry.get(id) ?? {};
       module.id = id;
       module.context = createContext();
       moduleRegistry.set(id, module);
       return module.context;
     }
-    function getContext(id) {
-      return getModule(id).context;
+    function clear() {
+      moduleRegistry.clear();
     }
     function getRegistry() {
       return moduleRegistry;
     }
-    function clear() {
-      moduleRegistry.clear();
-    }
-    return { register, getContext, getRegistry, require: require2, clear };
+    return {
+      register,
+      require: require2,
+      import: (id) => Promise.resolve(require2(id)),
+      getRegistry,
+      getModule,
+      clear
+    };
   }
 
   // src/get-global-context.ts
@@ -283,28 +289,30 @@ exports[`@global-modules/swc-plugin > Bundle phase > [ESM] Basics 1`] = `
   // foo-linker:foo
   var foo_exports = {};
   __export(foo_exports, {
-    bar: () => bar,
-    baz: () => value,
-    default: () => foo_default,
+    bar: () => __x2,
+    baz: () => __x3,
+    default: () => __x,
     foo: () => __x1
   });
-  var __ctx = global.__modules.register("0");
+  var __context = global.__modules.register("0");
   var foo = "foo";
   var bar = "bar";
   var value = "baz";
+  var __default = 1;
   var foo = "foo";
-  __x1 = foo;
-  __ctx.exports(function() {
+  __x = __default, __x1 = foo, __x2 = bar, __x3 = value;
+  __context.exports(function() {
     return {
       "default": __x,
       "foo": __x1,
-      "bar": bar,
-      "baz": value
+      "bar": __x2,
+      "baz": __x3
     };
   });
   var __x;
   var __x1;
-  var foo_default = __x = 1;
+  var __x2;
+  var __x3;
 
   // <stdin>
   bridge(foo_exports);
@@ -382,27 +390,30 @@ exports[`@global-modules/swc-plugin > Bundle phase > [ESM] Export with declarati
             __exports(module.exports, definitions);
           },
           { ns: toNamespaceExports }
-        ),
-        reset: () => void (module.exports = createExports())
+        )
       };
     }
     function register(id) {
-      const module = {};
+      const module = moduleRegistry.get(id) ?? {};
       module.id = id;
       module.context = createContext();
       moduleRegistry.set(id, module);
       return module.context;
     }
-    function getContext(id) {
-      return getModule(id).context;
+    function clear() {
+      moduleRegistry.clear();
     }
     function getRegistry() {
       return moduleRegistry;
     }
-    function clear() {
-      moduleRegistry.clear();
-    }
-    return { register, getContext, getRegistry, require: require2, clear };
+    return {
+      register,
+      require: require2,
+      import: (id) => Promise.resolve(require2(id)),
+      getRegistry,
+      getModule,
+      clear
+    };
   }
 
   // src/get-global-context.ts
@@ -428,14 +439,14 @@ exports[`@global-modules/swc-plugin > Bundle phase > [ESM] Export with declarati
 
 (() => {
   // foo-linker:foo
-  var __ctx = global.__modules.register("0");
+  var __context = global.__modules.register("0");
   var obj = {
     value: 0
   };
   var newObj = obj;
   newObj.key = "key";
   __x = newObj;
-  __ctx.exports(function() {
+  __context.exports(function() {
     return {
       "newObj": __x
     };
@@ -518,27 +529,30 @@ exports[`@global-modules/swc-plugin > Runtime phase > [CJS] Basics 1`] = `
             __exports(module.exports, definitions);
           },
           { ns: toNamespaceExports }
-        ),
-        reset: () => void (module.exports = createExports())
+        )
       };
     }
     function register(id) {
-      const module = {};
+      const module = moduleRegistry.get(id) ?? {};
       module.id = id;
       module.context = createContext();
       moduleRegistry.set(id, module);
       return module.context;
     }
-    function getContext(id) {
-      return getModule(id).context;
+    function clear() {
+      moduleRegistry.clear();
     }
     function getRegistry() {
       return moduleRegistry;
     }
-    function clear() {
-      moduleRegistry.clear();
-    }
-    return { register, getContext, getRegistry, require: require2, clear };
+    return {
+      register,
+      require: require2,
+      import: (id) => Promise.resolve(require2(id)),
+      getRegistry,
+      getModule,
+      clear
+    };
   }
 
   // src/get-global-context.ts
@@ -562,7 +576,6 @@ exports[`@global-modules/swc-plugin > Runtime phase > [CJS] Basics 1`] = `
   });
 })();
 
-global.__modules.register('0');
 (() => {
   var __getOwnPropNames = Object.getOwnPropertyNames;
   var __commonJS = (cb, mod2) => function __require() {
@@ -571,27 +584,28 @@ global.__modules.register('0');
 
   // foo-linker:foo
   var require_foo = __commonJS({
-    "foo-linker:foo"() {
-      var __ctx = global.__modules.getContext("0");
-      __ctx.reset();
+    "foo-linker:foo"(exports, module) {
+      var __context = global.__modules.register("0");
       var foo = "foo";
       var bar = "bar";
       var value = "baz";
       if (true) {
-        __ctx.module.exports = {
+        module.exports = __context.module.exports = {
           foo,
           bar,
           baz: value
         };
       }
-      __ctx.module.exports[/* @__PURE__ */ function() {
+      module.exports[/* @__PURE__ */ function() {
+        return "qux";
+      }()] = __context.module.exports[/* @__PURE__ */ function() {
         return "qux";
       }()] = "qux";
-      function invalidCommonJS(module2) {
+      function invalidCommonJS(module1) {
         var require2 = function() {
         };
-        module2.exports.invalid = "invalid";
-        module2.exports = "default";
+        module1.exports.invalid = "invalid";
+        module1.exports = "default";
         require2("./some-module");
       }
       invalidCommonJS({
@@ -602,7 +616,7 @@ global.__modules.register('0');
 
   // <stdin>
   var mod = require_foo();
-  bridge(global.__modules.getContext("0").module.exports);
+  bridge(global.__modules.require("0"));
 })();
 "
 `;
@@ -677,27 +691,30 @@ exports[`@global-modules/swc-plugin > Runtime phase > [ESM] Basics 1`] = `
             __exports(module.exports, definitions);
           },
           { ns: toNamespaceExports }
-        ),
-        reset: () => void (module.exports = createExports())
+        )
       };
     }
     function register(id) {
-      const module = {};
+      const module = moduleRegistry.get(id) ?? {};
       module.id = id;
       module.context = createContext();
       moduleRegistry.set(id, module);
       return module.context;
     }
-    function getContext(id) {
-      return getModule(id).context;
+    function clear() {
+      moduleRegistry.clear();
     }
     function getRegistry() {
       return moduleRegistry;
     }
-    function clear() {
-      moduleRegistry.clear();
-    }
-    return { register, getContext, getRegistry, require: require2, clear };
+    return {
+      register,
+      require: require2,
+      import: (id) => Promise.resolve(require2(id)),
+      getRegistry,
+      getModule,
+      clear
+    };
   }
 
   // src/get-global-context.ts
@@ -721,7 +738,6 @@ exports[`@global-modules/swc-plugin > Runtime phase > [ESM] Basics 1`] = `
   });
 })();
 
-global.__modules.register('0');
 (() => {
   var __create = Object.create;
   var __defProp = Object.defineProperty;
@@ -752,30 +768,31 @@ global.__modules.register('0');
   // foo-linker:foo
   var require_foo = __commonJS({
     "foo-linker:foo"() {
-      var __ctx = global.__modules.getContext("0");
-      __ctx.reset();
+      var __context = global.__modules.register("0");
       var foo = "foo";
       var bar = "bar";
       var value = "baz";
-      __x = 1;
+      var __default = 1;
       var foo = "foo";
-      __x1 = foo;
-      __ctx.exports(function() {
+      __x = __default, __x1 = foo, __x2 = bar, __x3 = value;
+      __context.exports(function() {
         return {
           "default": __x,
           "foo": __x1,
-          "bar": bar,
-          "baz": value
+          "bar": __x2,
+          "baz": __x3
         };
       });
       var __x;
       var __x1;
+      var __x2;
+      var __x3;
     }
   });
 
   // <stdin>
   var mod = __toESM(require_foo());
-  bridge(global.__modules.getContext("0").module.exports);
+  bridge(global.__modules.require("0"));
 })();
 "
 `;
@@ -850,27 +867,30 @@ exports[`@global-modules/swc-plugin > Runtime phase > [ESM] Export with declarat
             __exports(module.exports, definitions);
           },
           { ns: toNamespaceExports }
-        ),
-        reset: () => void (module.exports = createExports())
+        )
       };
     }
     function register(id) {
-      const module = {};
+      const module = moduleRegistry.get(id) ?? {};
       module.id = id;
       module.context = createContext();
       moduleRegistry.set(id, module);
       return module.context;
     }
-    function getContext(id) {
-      return getModule(id).context;
+    function clear() {
+      moduleRegistry.clear();
     }
     function getRegistry() {
       return moduleRegistry;
     }
-    function clear() {
-      moduleRegistry.clear();
-    }
-    return { register, getContext, getRegistry, require: require2, clear };
+    return {
+      register,
+      require: require2,
+      import: (id) => Promise.resolve(require2(id)),
+      getRegistry,
+      getModule,
+      clear
+    };
   }
 
   // src/get-global-context.ts
@@ -894,7 +914,6 @@ exports[`@global-modules/swc-plugin > Runtime phase > [ESM] Export with declarat
   });
 })();
 
-global.__modules.register('0');
 (() => {
   var __create = Object.create;
   var __defProp = Object.defineProperty;
@@ -925,15 +944,14 @@ global.__modules.register('0');
   // foo-linker:foo
   var require_foo = __commonJS({
     "foo-linker:foo"() {
-      var __ctx = global.__modules.getContext("0");
-      __ctx.reset();
+      var __context = global.__modules.register("0");
       var obj = {
         value: 0
       };
       var newObj = obj;
       newObj.key = "key";
       __x = newObj;
-      __ctx.exports(function() {
+      __context.exports(function() {
         return {
           "newObj": __x
         };
@@ -944,7 +962,7 @@ global.__modules.register('0');
 
   // <stdin>
   var mod = __toESM(require_foo());
-  bridge(global.__modules.getContext("0").module.exports);
+  bridge(global.__modules.require("0"));
 })();
 "
 `;

@@ -4,10 +4,10 @@ export function registerHotModule(code: string, id: string) {
     code,
     `
     if (global.__modules) {
-      const context = global.__modules.getContext(${idString});
-      context.hot = window.__modules.hot(${idString});
-      context.hot.dispose(() => console.log('[HMR] Disposed', ${idString}));
-      context.hot.accept(() => {
+      const module = global.__modules.getModule(${idString});
+      module.meta = { hot: window.__modules.hot(${idString}) };
+      module.meta.hot.dispose(() => console.log('[HMR] Disposed', ${idString}));
+      module.meta.hot.accept(() => {
         console.log('[HMR] Accepted ::', ${idString});
         window.$$reactRefresh$$.performReactRefresh();
       });

@@ -10,7 +10,7 @@ use swc_global_modules::global_modules;
 
 const MODULE_ID: &str = "1000";
 
-fn tr(phase: f64, paths: Option<AHashMap<String, String>>) -> impl VisitMut + Pass {
+fn tr(runtime: bool, paths: Option<AHashMap<String, String>>) -> impl VisitMut + Pass {
     let unresolved_mark = Mark::new();
     let top_level_mark = Mark::new();
 
@@ -18,7 +18,7 @@ fn tr(phase: f64, paths: Option<AHashMap<String, String>>) -> impl VisitMut + Pa
         resolver(unresolved_mark, top_level_mark, false),
         global_modules(
             String::from(MODULE_ID),
-            phase,
+            runtime,
             paths,
             SyntaxContext::empty().apply_mark(unresolved_mark),
         ),
@@ -29,14 +29,14 @@ fn tr(phase: f64, paths: Option<AHashMap<String, String>>) -> impl VisitMut + Pa
 fn bundle_fixture(input: PathBuf) {
     let filename = input.to_string_lossy();
     let output = input.with_file_name("output.js");
-    let phase = 0.0; // ModulePhase::Bundle
+    let runtime = false;
 
     test_fixture(
         Syntax::Typescript(TsSyntax {
             tsx: filename.ends_with(".tsx"),
             ..Default::default()
         }),
-        &|_| tr(phase, None),
+        &|_| tr(runtime, None),
         &input,
         &output,
         Default::default(),
@@ -47,14 +47,14 @@ fn bundle_fixture(input: PathBuf) {
 fn runtime_fixture(input: PathBuf) {
     let filename = input.to_string_lossy();
     let output = input.with_file_name("output.js");
-    let phase = 1.0; // ModulePhase::Runtime
+    let runtime = true;
 
     test_fixture(
         Syntax::Typescript(TsSyntax {
             tsx: filename.ends_with(".tsx"),
             ..Default::default()
         }),
-        &|_| tr(phase, None),
+        &|_| tr(runtime, None),
         &input,
         &output,
         Default::default(),
@@ -65,7 +65,7 @@ fn runtime_fixture(input: PathBuf) {
 fn paths_fixture(input: PathBuf) {
     let filename = input.to_string_lossy();
     let output = input.with_file_name("output.js");
-    let phase = 1.0; // ModulePhase::Runtime
+    let runtime = true;
 
     let mut paths = AHashMap::default();
     paths.insert(String::from("react"), String::from("1000"));
@@ -89,7 +89,7 @@ fn paths_fixture(input: PathBuf) {
             tsx: filename.ends_with(".tsx"),
             ..Default::default()
         }),
-        &|_| tr(phase, Some(paths.clone())),
+        &|_| tr(runtime, Some(paths.clone())),
         &input,
         &output,
         Default::default(),

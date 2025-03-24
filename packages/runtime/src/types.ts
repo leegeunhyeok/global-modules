@@ -13,7 +13,6 @@ export interface ModuleContext {
   module: {
     exports: Exports;
   };
-  reset: () => void;
 }
 
 export interface ModuleExports {
@@ -21,6 +20,8 @@ export interface ModuleExports {
   ns: (exports: Exports) => Exports;
 }
 export type ModuleRequire = (id: ModuleId) => Exports;
+export type ModuleImport = (id: ModuleId) => Promise<Exports>;
+
 export type Exports = Record<string, unknown>;
 
 export interface GlobalModule {
@@ -29,17 +30,21 @@ export interface GlobalModule {
    */
   register: (id: ModuleId) => ModuleContext;
   /**
-   * Get module context from global registry.
+   * Get module exports from global registry.
    */
-  getContext: (id: ModuleId) => ModuleContext;
+  require: ModuleRequire;
+  /**
+   * Get module exports from global registry (promise).
+   */
+  import: ModuleImport;
+  /**
+   * Get module from global registry.
+   */
+  getModule: (id: ModuleId) => Module;
   /**
    * Get global module registry.
    */
   getRegistry: () => Map<ModuleId, Module>;
-  /**
-   * Get module exports from global registry.
-   */
-  require: (id: ModuleId) => Exports;
   /**
    * Clear all modules from the registry.
    */

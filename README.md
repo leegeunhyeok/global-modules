@@ -27,12 +27,12 @@ Then, transform the plain module to the global module runtime specification.
 
 ```ts
 import * as swc from '@swc/core';
-import plugin, { Phase } from '@global-modules/swc-plugin';
+import plugin from '@global-modules/swc-plugin';
 
 const result = await swc.transform(source, {
   jsc: {
     experimental: {
-      plugins: [[plugin, { id: 'module-id', phase: Phase.Bundle }]],
+      plugins: [[plugin, { id: 'module-id', runtime: false }]],
     },
   },
 });
@@ -58,3 +58,5 @@ For more details about usage, see [demo implementation (HMR on esbuild)](https:/
 ## License
 
 [MIT](./LICENSE)
+
+paths

@@ -1,4 +1,4 @@
-var __ctx = global.__modules.register("1000");
+const __context = global.__modules.register("1000");
 const foo = require('./foo');
 if (__DEV__) {
     require('inner-1');

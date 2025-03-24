@@ -1,9 +1,10 @@
-var __ctx = global.__modules.register("1000");
-__x = function() {};
-__ctx.exports(function() {
+const __context = global.__modules.register("1000");
+function __default() {}
+__x = __default;
+__context.exports(function() {
     return {
         "default": __x
     };
 });
 var __x;
-export default __x;
+export { __x as default };
